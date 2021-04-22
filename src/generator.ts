@@ -35,12 +35,12 @@ export class Generator {
         const { alias, target, subpath } = await toPackageTarget(targetStr || name, this.mapUrl.href);
         await this.traceMap.add(alias, target);
         module = targetStr ? name : alias + subpath.slice(1);
+        await this.traceMap.trace(module, this.mapUrl);
       }
       else {
         await this.traceMap.add(name, new URL(targetStr || name, baseUrl));
         module = name;
       }
-      await this.traceMap.trace(module, this.mapUrl);
     }
     finally {
       await finishInstall(true);
