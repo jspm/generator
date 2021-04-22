@@ -2,6 +2,7 @@ import { JspmError } from "../common/err.js";
 import { baseUrl, isRelative } from "../common/url.js";
 // @ts-ignore
 import sver from 'sver';
+// @ts-ignore
 import convertRange from 'sver/convert-range.js';
 import { InstallTarget } from "./installer.js";
 import resolver from "./resolver.js";

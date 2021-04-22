@@ -30,7 +30,7 @@ await generator.install('react');
 
 // Outputs the import map with "imports" entries for "react" and "custom",
 // And "scopes" entries for "react-dom", the dependencies of "custom", and the dependencies of app.js
-console.log(generator.getMap());
+JSON.stringify(generator.getMap(), null, 2);
 ```
 
 Like a file-system-based package manager, JSPM will dedupe dependencies in the import map and resolve version
