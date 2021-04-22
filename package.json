@@ -1,0 +1,28 @@
+{
+  "name": "@jspm/generator",
+  "description": "Package Import Map Generation Tool",
+  "license": "MIT",
+  "version": "1.0.0-beta.1",
+  "scripts": {
+    "tsc": "tsc -p .",
+    "tsc-watch": "tsc -p . --watch",
+    "rollup": "rollup -c",
+    "build": "npm run tsc && npm run rollup",
+    "test": "node test/test.js"
+  },
+  "type": "module",
+  "exports": "./dist/generator.js",
+  "imports": {
+    "#dev": "./lib/generator.js"
+  },
+  "dependencies": {
+    "es-module-lexer": "^0.3.26",
+    "make-fetch-happen": "^8.0.3",
+    "sver": "^1.8.3"
+  },
+  "devDependencies": {
+    "rollup": "^2.44.0",
+    "typescript": "^4.1.3"
+  },
+  "files": ["dist"]
+}
