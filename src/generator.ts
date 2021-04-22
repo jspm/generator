@@ -21,22 +21,24 @@ export class Generator {
     if (!this.mapUrl.pathname.endsWith('/'))
       this.mapUrl = new URL('./', this.mapUrl);
     this.traceMap = new TraceMap(this.mapUrl, {
+      stdlib: '@jspm/core@2',
       env,
       defaultProvider
     });
   }
 
-  async install (pkg: string, targetStr = pkg): Promise<void> {
+  async install (name: string, targetStr?: string): Promise<void> {
     const finishInstall = await this.traceMap.startInstall();
     try {
       let module: string;
-      if (isPackageTarget(targetStr)) {
-        const { alias, target, subpath } = await toPackageTarget(targetStr, this.mapUrl.href);
+      if (isPackageTarget(targetStr || name)) {
+        const { alias, target, subpath } = await toPackageTarget(targetStr || name, this.mapUrl.href);
         await this.traceMap.add(alias, target);
-        module = alias + subpath.slice(1);
+        module = targetStr ? name : alias + subpath.slice(1);
       }
       else {
-        module = new URL(targetStr, baseUrl).href;
+        await this.traceMap.add(name, new URL(targetStr || name, baseUrl));
+        module = name;
       }
       await this.traceMap.trace(module, this.mapUrl);
     }

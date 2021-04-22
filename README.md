@@ -28,9 +28,6 @@ const generator = new Generator({
 // install a new package into the import map
 await generator.install('react');
 
-// install a custom mapping, while also adding dependencies
-await generator.install('custom', './local-module.js');
-
 // Outputs the import map with "imports" entries for "react" and "custom",
 // And "scopes" entries for "react-dom", the dependencies of "custom", and the dependencies of app.js
 console.log(generator.getMap());
