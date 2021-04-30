@@ -1,12 +1,8 @@
 {
   "compilerOptions": {
-    "noUnusedParameters": true,
-    "noUnusedLocals": true,
     "typeRoots": ["node_modules/@types"],
     "module": "esnext",
     "target": "es2019",
-    "noImplicitAny": false,
-    "strictNullChecks": true,
     "sourceMap": true,
     "outDir": "lib",
     "declaration": true

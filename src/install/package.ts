@@ -40,22 +40,22 @@ export interface PackageTarget {
 }
 
 const supportedProtocols = ['https', 'http', 'data', 'file'];
-export async function parseUrlTarget (targetStr: string): Promise<{ alias: string, target: URL, subpath: string } | undefined> {
+export async function parseUrlTarget (targetStr: string): Promise<{ alias: string, target: URL, subpath: '.' | `./${string}` } | undefined> {
   const registryIndex = targetStr.indexOf(':');
   if (isRelative(targetStr) || registryIndex !== -1 && supportedProtocols.includes(targetStr.slice(0, registryIndex))) {
     const subpathIndex = targetStr.indexOf('|');
-    let subpath: string;
+    let subpath: '.' | `./${string}`
     if (subpathIndex === -1) {
       subpath = '.';
     }
     else {
-      subpath = './' + targetStr.slice(subpathIndex + 1);
+      subpath = `./${targetStr.slice(subpathIndex + 1)}` as `./${string}`;
       targetStr = targetStr.slice(0, subpathIndex);
     }
     const target = new URL(targetStr + (targetStr.endsWith('/') ? '' : '/'), baseUrl);
     const pkgUrl = await resolver.getPackageBase(target.href);
 
-    const alias = (pkgUrl ? await resolver.getPackageConfig(pkgUrl) : null)?.name || target.pathname.split('/').pop() as string;
+    const alias = (pkgUrl ? await resolver.getPackageConfig(pkgUrl) : null)?.name || target.pathname.split('/').slice(0, -1).pop() as string;
     if (!alias)
       throw new JspmError(`Unable to determine an alias for target package ${target.href}`);
     return { alias, target, subpath };
@@ -92,7 +92,7 @@ export function pkgUrlToNiceString (pkgUrl: string) {
   return pkgUrl;
 }
 
-export async function toPackageTarget (targetStr: string, parentPkgUrl: string): Promise<{ alias: string, target: InstallTarget, subpath: string }> {
+export async function toPackageTarget (targetStr: string, parentPkgUrl: string): Promise<{ alias: string, target: InstallTarget, subpath: '.' | `./${string}` }> {
   const urlTarget = await parseUrlTarget(targetStr);
   if (urlTarget)
     return urlTarget;
@@ -118,7 +118,7 @@ export async function toPackageTarget (targetStr: string, parentPkgUrl: string):
   return {
     alias,
     target: newPackageTarget(pkg.pkgName, parentPkgUrl),
-    subpath: pkg.subpath
+    subpath: pkg.subpath as '.' | `./{string}`
   };
 }
 

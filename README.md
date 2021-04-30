@@ -28,6 +28,12 @@ const generator = new Generator({
 // install a new package into the import map
 await generator.install('react');
 
+// install a package to a custom alias
+await generator.install({ alias: 'custom', target: 'react@16' });
+
+// install a specific subpath of a package
+await generator.install({ target: 'lit', subpath: './html.js' });
+
 // Outputs the import map with "imports" entries for "react" and "custom",
 // And "scopes" entries for "react-dom", the dependencies of "custom", and the dependencies of app.js
 JSON.stringify(generator.getMap(), null, 2);

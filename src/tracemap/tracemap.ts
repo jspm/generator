@@ -158,7 +158,7 @@ export default class TraceMap {
     return installed.slice(0, -1);
   }
 
-  async addAllPkgMappings (name: string, pkgUrl: string, env: string[], parentPkgUrl: string | null) {
+  async addAllPkgMappings (name: string, pkgUrl: string, env: string[] = this.env, parentPkgUrl: string | null = null) {
     const [url, subpathFilter] = pkgUrl.split('|');
     const exports = await resolver.resolveExports(url + (url.endsWith('/') ? '' : '/'), env, subpathFilter);
     for (const key of Object.keys(exports)) {
@@ -168,7 +168,10 @@ export default class TraceMap {
         continue;
       if (key.endsWith('*'))
         continue;
-      this.map.addMapping(name + key.slice(1), new URL(exports[key], url).href, parentPkgUrl);
+      let target = new URL(exports[key], url).href;
+      if (!exports[key].endsWith('/') && target.endsWith('/'))
+        target = target.slice(0, -1);
+      this.map.addMapping(name + key.slice(1), target, parentPkgUrl);
     }
   }
 
@@ -246,7 +249,9 @@ export default class TraceMap {
       if (!match)
         throw new JspmError(`No '${subpath}' exports subpath defined in ${pkgUrl} resolving ${pkgName}${importedFrom(parentUrl)}.`);
       if (match) {
-        const resolved = new URL(exports[match] + subpath.slice(match.length), pkgUrl).href;
+        let resolved = new URL(exports[match] + subpath.slice(match.length), pkgUrl).href;
+        if (!exports[match].endsWith('/') && resolved.endsWith('/'))
+          resolved = resolved.slice(0, -1);
         log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
         await this.traceUrl(resolved, parentUrl, env);
         return resolved;
