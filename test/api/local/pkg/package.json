@@ -1,0 +1,14 @@
+{
+  "name": "localpkg",
+  "exports": {
+    "./custom": "./a.js",
+    "./withdep": "./b.js",
+    "./withdep2": "./c.js",
+    "./remotedep": "./d.js"
+  },
+  "dependencies": {
+    "dep": "file:../dep",
+    "dep2": "../dep",
+    "react": "https://ga.jspm.io/npm:react@16.14.0"
+  }
+}

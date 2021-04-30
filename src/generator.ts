@@ -9,9 +9,9 @@ export interface GeneratorOptions {
 }
 
 export interface Install {
-  alias?: string;
-  subpath?: '.' | `./${string}`;
   target: string;
+  subpath?: '.' | `./${string}`;
+  alias?: string;
 }
 
 export class Generator {
@@ -35,6 +35,8 @@ export class Generator {
 
   async install (target: string): Promise<void>;
   async install (install: string | Install): Promise<void> {
+    if (arguments.length !== 1)
+      throw new Error('Install takes a single target string or object.');
     if (typeof install === 'string')
       install = { target: install };
     if (typeof install.target !== 'string')
