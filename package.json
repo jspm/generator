@@ -25,5 +25,23 @@
     "rollup": "^2.44.0",
     "typescript": "^4.1.3"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jspm/generator.git"
+  },
+  "keywords": [
+    "jspm",
+    "import maps",
+    "es modules",
+    "cdn",
+    "package manager"
+  ],
+  "author": "Guy Bedford",
+  "bugs": {
+    "url": "https://github.com/jspm/generator/issues"
+  },
+  "homepage": "https://github.com/jspm/generator#readme"
 }
