@@ -305,7 +305,7 @@ export class Resolver {
 
   private async parseTs (source: string) {
     // @ts-ignore
-    const ts = await import('typescript');
+    const ts = await import(eval('typescript'));
     return ts.transpileModule(source, {
       compilerOptions: {
         jsx: ts.JsxEmit.React,
