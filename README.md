@@ -2,11 +2,9 @@
 
 Package Import Map Generation Tool
 
-For an interactive UI for this tool running on JSPM.IO, see `https://generator.jspm.io`.
+For an interactive UI for this tool running on JSPM.IO, see [https://generator.jspm.io](https://generator.jspm.io).
 
 ### Usage
-
-Try it out in the JSPM sandbox [here](), (running with its own generated import map on JSPM).
 
 ```
 npm install @jspm/generator
@@ -109,14 +107,15 @@ For browsers without import maps, there are two recommended options:
   This involves adding a script tag to load the polyfill before the import map to enable.
 
 2. Use [SystemJS](https://github.com/systemjs/systemjs) to load System modules in older browsers.
-  To generate a SystemJS import map, use the `jspm.system` defaultProvider option. Then include
+  To generate a SystemJS import map, use the `'jspm.system'` `defaultProvider` option. Then include
   the SystemJS import map via a `<script type="systemjs-importmap">` tag with the System modules loaded via
   `<script type="systemjs-module>` or `System.import`. See the [SystemJS documentation](https://github.com/systemjs/systemjs)
   for further information on these workflows.
 
-Dynamically injecting `<script type="importmap">` via injection is supported as well but only if no
-modules have yet executed on the page. For dynamic import map injection workflows, creating an iframe
-for each import map and injecting it into this frame can be used to get around this constraint.
+Dynamically injecting `<script type="importmap">` from JavaScript is supported as well but only if no
+modules have yet executed on the page. For dynamic import map injection workflows, creating an IFrame
+for each import map and injecting it into this frame can be used to get around this constraint for
+in-page refreshing application workflows.
 
 ### Providers
 
