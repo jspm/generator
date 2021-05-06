@@ -2,7 +2,8 @@ import { ExactPackage } from "../install/package.js";
 
 export const name = 'skypack';
 
-export const cdnUrl = 'https://cdn.skypack.dev/';
+const cdnUrl = 'https://cdn.skypack.dev/';
+export const layers = { default: cdnUrl };
 
 export function pkgToUrl (pkg: ExactPackage) {
   return cdnUrl + pkg.name + '@' + pkg.version + '/';

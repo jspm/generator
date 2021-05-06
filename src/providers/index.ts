@@ -8,11 +8,11 @@ import { PackageTarget } from '../install/package.js';
 
 export interface Provider {
   name: string;
-  cdnUrl: string;
+  layers: Record<string, string>;
   parseUrlPkg (this: Resolver, url: string): ExactPackage | undefined;
-  pkgToUrl (this: Resolver, pkg: ExactPackage): string;
+  pkgToUrl (this: Resolver, pkg: ExactPackage, layer: string): string;
   getPackageConfig? (this: Resolver, pkgUrl: string): Promise<PackageConfig | null | undefined>;
-  resolveLatestTarget (this: Resolver, target: PackageTarget, unstable: boolean, parentUrl?: string): Promise<ExactPackage | null>;
+  resolveLatestTarget (this: Resolver, target: PackageTarget, unstable: boolean, layer: string, parentUrl?: string): Promise<ExactPackage | null>;
   getFileList? (this: Resolver, pkgUrl: string): Promise<string[]>;
 }
 
@@ -27,10 +27,12 @@ export function getProvider (name: string) {
   throw new Error('No ' + name + ' provider is defined.');
 }
 
-export function getUrlProvider (url: string) {
-  for (const cdnUrl of Object.keys(providers)) {
-    if (url.startsWith(cdnUrl)) {
-      return providers[cdnUrl];
+export function getUrlProvider (url: string): { provider: Provider | null, layer: string | null } {
+  for (const provider of Object.values(providers)) {
+    for (const [layer, cdnUrl] of Object.entries(provider.layers)) {
+      if (url.startsWith(cdnUrl))
+        return { provider, layer };
     }
   }
+  return { provider: null, layer: null };
 }

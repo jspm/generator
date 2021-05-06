@@ -101,7 +101,7 @@ export class Installer {
   lockfilePath: string;
   added = new Map<string, InstallTarget>();
   hasLock = false;
-  defaultProvider = 'jspm';
+  defaultProvider = { provider: 'jspm', layer: 'default' };
 
   constructor (baseUrl: URL, opts: InstallOptions) {
     this.installBaseUrl = baseUrl.href;
@@ -111,7 +111,10 @@ export class Installer {
     if (opts.lock)
       ({ resolutions, exists: this.hasLock } = opts.lock);
     if (opts.defaultProvider)
-      this.defaultProvider = opts.defaultProvider;
+      this.defaultProvider = {
+        provider: opts.defaultProvider.split('.')[0],
+        layer: opts.defaultProvider.split('.')[1] || 'default'
+      };
 
     this.installs = resolutions;
 

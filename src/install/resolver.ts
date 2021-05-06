@@ -7,9 +7,6 @@ import { computeIntegrity } from "../common/integrity.js";
 // @ts-ignore
 import { parse } from 'es-module-lexer';
 // @ts-ignore
-import { existsSync, writeFileSync } from 'fs';
-// @ts-ignore
-import { Buffer } from 'buffer';
 import { getProvider, getUrlProvider } from '../providers/index.js';
 // @ts-ignore
 import process from 'process';
@@ -25,18 +22,18 @@ export class Resolver {
   }
 
   parseUrlPkg (url: string): ExactPackage | undefined {
-    return getUrlProvider(url)?.parseUrlPkg.call(this, url);
+    return getUrlProvider(url).provider?.parseUrlPkg.call(this, url);
   }
 
-  pkgToUrl (pkg: ExactPackage, provider: string): string {
-    return getProvider(provider).pkgToUrl.call(this, pkg);
+  pkgToUrl (pkg: ExactPackage, { provider, layer }: { provider: string, layer: string }): string {
+    return getProvider(provider).pkgToUrl.call(this, pkg, layer);
   }
 
   async getPackageBase (url: string) {
     const pkg = this.parseUrlPkg(url);
     if (pkg) {
-      const provider = getUrlProvider(url);
-      return this.pkgToUrl(pkg, provider!.name);
+      const { provider, layer } = getUrlProvider(url);
+      return this.pkgToUrl(pkg, { provider: provider!.name, layer });
     }
   
     if (url.startsWith('node:'))
@@ -66,7 +63,7 @@ export class Resolver {
     if (cached) return cached;
     if (!this.pcfgPromises[pkgUrl])
       this.pcfgPromises[pkgUrl] = (async () => {
-        const provider = getUrlProvider(pkgUrl);
+        const { provider } = getUrlProvider(pkgUrl);
         if (provider) {
           const pcfg = await provider.getPackageConfig?.call(this, pkgUrl);
           if (pcfg !== undefined) {
@@ -80,6 +77,7 @@ export class Resolver {
           case 304:
             break;
           case 401:
+          case 403:
           case 404:
           case 406:
             this.pcfgs[pkgUrl] = null;
@@ -132,14 +130,15 @@ export class Resolver {
     }
   }
 
-  async resolveLatestTarget (target: PackageTarget, unstable: boolean, provider: string, parentUrl?: string): Promise<ExactPackage> {
-    const pkg = await getProvider(provider).resolveLatestTarget.call(this, target, unstable, parentUrl);
+  async resolveLatestTarget (target: PackageTarget, unstable: boolean, { provider, layer }: { provider: string, layer: string }, parentUrl?: string): Promise<ExactPackage> {
+    const pkg = await getProvider(provider).resolveLatestTarget.call(this, target, unstable, layer, parentUrl);
     if (pkg)
       return pkg;
     throw new JspmError(`Unable to resolve package ${target.registry}:${target.name} to "${target.ranges.join(' || ')}"${importedFrom(parentUrl)}`);
   }
 
   async wasCommonJS (url: string): Promise<boolean> {
+    // TODO: make this a provider hook
     const pkgUrl = await this.getPackageBase(url, );
     if (!pkgUrl)
       return false;

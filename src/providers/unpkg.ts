@@ -2,7 +2,9 @@ import { ExactPackage } from "../install/package.js";
 
 export const name = 'unpkg';
 
-export const cdnUrl = 'https://unpkg.com/';
+const cdnUrl = 'https://unpkg.com/';
+
+export const layers = { default: cdnUrl };
 
 export function pkgToUrl (pkg: ExactPackage) {
   return cdnUrl + pkg.name + '@' + pkg.version + '/';
