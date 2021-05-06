@@ -3,6 +3,8 @@ import { version } from '../version.js';
 import { readFileSync } from 'fs';
 // @ts-ignore
 import { fileURLToPath } from 'url';
+// @ts-ignore
+import { createRequire } from 'module';
 
 declare global {
   var process: any;
@@ -14,16 +16,12 @@ if (typeof fetch !== 'undefined') {
   _fetch = fetch;
 }
 else if (globalThis?.process?.versions?.node) {
-  // @ts-ignore
-  const path = await import('path') as any;
-  // @ts-ignore
-  const home = (await import('os')).homedir();
-  // @ts-ignore
-  const process = await import('process');
-  // @ts-ignore
-  const rimraf = await import('rimraf');
-  // @ts-ignore
-  const { default: makeFetchHappen } = await import('make-fetch-happen');
+  const require = createRequire(import.meta.url);
+  const path = require('path') as any;
+  const home = require('os').homedir();
+  const process = require('process');
+  const rimraf = require('rimraf');
+  const makeFetchHappen = require('make-fetch-happen');
   let cacheDir: string;
   if (process.platform === 'darwin')
     cacheDir = path.join(home, 'Library', 'Caches', 'jspm');
