@@ -125,7 +125,7 @@ These hooks include version resolution and converting package versions into URLs
 
 See `src/providers/[name].ts` for how to define a custom provider.
 
-Supported providers include "jspm", "skypack", "jsdelivr", "unpkg".
+Supported providers include "jspm", "jspm.system", "skypack", "jsdelivr", "unpkg".
 
 New providers can be merged in via PRs.
 
