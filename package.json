@@ -17,7 +17,7 @@
     "#dev": "./lib/generator.js"
   },
   "dependencies": {
-    "es-module-lexer": "^0.3.26",
+    "es-module-lexer": "^0.4.1",
     "make-fetch-happen": "^8.0.3",
     "sver": "^1.8.3"
   },
