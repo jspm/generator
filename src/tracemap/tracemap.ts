@@ -111,8 +111,13 @@ export default class TraceMap {
           this.installer!.newInstalls = false;
           await Promise.all([...this.traces].map(async trace => {
             const [specifier, parentUrl] = trace.split('##');
-            const resolved = await this.trace(specifier, new URL(parentUrl), this.tracedUrls?.[parentUrl]?.wasCJS ? ['require', ...this.env] : ['import', ...this.env]);
-            traceResolutions[trace] = resolved;
+            try {
+              const resolved = await this.trace(specifier, new URL(parentUrl), this.tracedUrls?.[parentUrl]?.wasCJS ? ['require', ...this.env] : ['import', ...this.env]);
+              traceResolutions[trace] = resolved;
+            }
+            catch {
+              // second pass errors ignored as they should have been thrown by first pass
+            }
           }));
         } while (this.installer!.newInstalls);
 
@@ -137,6 +142,9 @@ export default class TraceMap {
 
         for (const trace of this.traces) {
           const url = traceResolutions[trace];
+          // ignore errored
+          if (url === undefined)
+            continue;
           const [specifier, parentUrl] = trace.split('##');
           if (isPlain(specifier) && parentUrl === this.mapBase.href)
             this.map.addMapping(specifier, url);

@@ -298,7 +298,7 @@ export class Installer {
 
   async install (pkgName: string, pkgUrl: string, parentUrl: string = this.installBaseUrl): Promise<string> {
     if (!this.installing)
-      throwInternalError();
+      throwInternalError('Not installing');
     if (!this.opts.reset) {
       const existingUrl = this.installs[pkgUrl]?.[pkgName];
       if (existingUrl && !this.opts.reset)

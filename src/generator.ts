@@ -1,6 +1,7 @@
 import { baseUrl } from "./common/url.js";
 import { toPackageTarget } from "./install/package.js";
 import TraceMap from './tracemap/tracemap.js';
+import { LockResolutions } from './install/installer.js';
 
 export interface GeneratorOptions {
   mapUrl?: URL | string;
@@ -17,6 +18,8 @@ export interface Install {
 export class Generator {
   private traceMap: TraceMap;
   private mapUrl: URL;
+  private finishInstall: (success: boolean) => Promise<boolean | { pjsonChanged: boolean, lock: LockResolutions }> | null = null;
+  private installCnt = 0;
 
   constructor ({
     mapUrl = baseUrl,
@@ -43,7 +46,8 @@ export class Generator {
       throw new Error('Install requires a "target".');
     if (install.subpath !== undefined && (typeof install.subpath !== 'string' || (install.subpath !== '.' && !install.subpath.startsWith('./'))))
       throw new Error('Install subpath must be equal to "." or start with "./".');
-    const finishInstall = await this.traceMap.startInstall();
+    if (this.installCnt++ === 0)
+      this.finishInstall = await this.traceMap.startInstall();
     try {
       const { alias, target, subpath } = await toPackageTarget(install.target, this.mapUrl.href);
       await this.traceMap.add(install.alias || alias, target);
@@ -51,7 +55,11 @@ export class Generator {
       await this.traceMap.trace(module, this.mapUrl);
     }
     finally {
-      await finishInstall(true);
+      if (--this.installCnt === 0) {
+        const finishInstall = this.finishInstall;
+        this.finishInstall = null;
+        await finishInstall(true);
+      }
     }
   }
 

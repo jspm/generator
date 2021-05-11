@@ -1,0 +1,25 @@
+import { Generator } from '#dev';
+import assert from 'assert';
+
+const generator = new Generator();
+
+try {
+  await generator.install({ target: '@material-ui/icons@4.11.2', subpath: './AutorenewOutlined' });
+  assert.fail('Should Error');
+}
+catch (e) {
+  assert.ok(e.message.includes('No \'./AutorenewOutlined\' exports subpath defined in'));
+}
+
+const t = setTimeout(() => {
+  assert.fail('Process stalled');
+}, 5000);
+
+await generator.install('react@16');
+
+const json = generator.getMap();
+
+console.log(json);
+
+assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@16.14.0/dev.index.js');
+clearTimeout(t);
