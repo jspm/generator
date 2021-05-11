@@ -54,11 +54,8 @@ export class Generator {
       await this.traceMap.trace(module, this.mapUrl);
     }
     finally {
-      if (--this.installCnt === 0) {
-        const finishInstall = this.finishInstall;
-        this.finishInstall = null;
-        await finishInstall(true);
-      }
+      if (--this.installCnt === 0)
+        await this.finishInstall(true);
     }
   }
 
