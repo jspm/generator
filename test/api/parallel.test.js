@@ -9,6 +9,6 @@ const generator = new Generator({
 
 await Promise.all([generator.install('react@16'), generator.install('lit-element@2.5.1')]);
 const json = generator.getMap();
-console.log(json);
+
 assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@16.14.0/index.js');
 assert.strictEqual(json.imports['lit-element'], 'https://ga.jspm.io/npm:lit-element@2.5.1/lit-element.js');
