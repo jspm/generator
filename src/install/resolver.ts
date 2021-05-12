@@ -351,7 +351,8 @@ export class Resolver {
       catch (e) {
         // TODO: better parser errors
         if (e.message && e.message.startsWith('Parse error @:')) {
-          const pos = e.message.slice(14, e.message.indexOf('\n'));
+          const [topline] = e.message.split('\n', 1);
+          const pos = topline.slice(14);
           let [line, col] = pos.split(':');
           const lines = source.split('\n');
           // console.log(source);
