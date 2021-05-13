@@ -117,6 +117,33 @@ modules have yet executed on the page. For dynamic import map injection workflow
 for each import map and injecting it into this frame can be used to get around this constraint for
 in-page refreshing application workflows.
 
+### Package Configuration
+
+Package exports configurations are taken from the package.json. When attempting to install or resolve a subpath of a package
+that does not exist in its exports, an error will be thrown.
+
+To recover from errors like this, JSPM and Skypack have mechanisms for overriding package configurations:
+
+* [JSPM Overrides](https://github.com/jspm/overrides)
+* [Skypack Definitely Exported](https://github.com/snowpack/DefinitelyExported)
+
+Creating a PR to add custom exports overrides allows for fixing any package issues on the CDNs.
+
+For more information on the package exports field see the [Node.js documentation](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_package_entry_points).
+
+### Environment Conditions
+
+The conditions passed to the `env` option are environment conditions, as [supported by Node.js](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_conditions_definitions) in the package exports field.
+
+By default the `"default"`, `"require"` and `"import"` conditions are always supported regardless of what `env` conditions are provided.
+
+Webpack and RollupJS support a custom `"module"` condition as a bundler-specific solution to the [dual package hazard](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_dual_package_hazard).
+
+In cases where you find there are CommonJS and ESM variants of the same package being included, and resolving a `"module"` condition
+would avoid this, this can be set for example via `"env": ["module", "browser", "development"]`.
+
+Any other custom condition strings can also be provided.
+
 ### Providers
 
 Providers resolve package names and semver ranges to exact CDN package URL paths using provider hooks.
