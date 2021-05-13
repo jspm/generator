@@ -125,7 +125,7 @@ that does not exist in its exports, an error will be thrown.
 To recover from errors like this, JSPM and Skypack have mechanisms for overriding package configurations:
 
 * [JSPM Overrides](https://github.com/jspm/overrides)
-* [Skypack Definitely Exported](https://github.com/snowpack/DefinitelyExported)
+* [Skypack Definitely Exported](https://github.com/snowpackjs/DefinitelyExported)
 
 Creating a PR to add custom exports overrides allows for fixing any package issues on the CDNs.
 
