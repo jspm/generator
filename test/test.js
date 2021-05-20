@@ -67,7 +67,7 @@ async function forked (path, args = [], cwd, returnStream) {
         }
       }
       output({ name: relTest, status: code === 0 ? 'OK' : 'FAIL' });
-      if (code === 0) {
+      if (code === 1) {
         if (stopOnError)
           process.exit(1);
         hasErr = true;
