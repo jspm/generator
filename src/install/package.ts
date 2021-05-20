@@ -5,7 +5,7 @@ import sver from 'sver';
 // @ts-ignore
 import convertRange from 'sver/convert-range.js';
 import { InstallTarget } from "./installer.js";
-import resolver from "./resolver.js";
+import { Resolver } from "./resolver.js";
 import { urlToNiceStr } from "../common/url.js";
 
 const { SemverRange } = sver;
@@ -40,7 +40,7 @@ export interface PackageTarget {
 }
 
 const supportedProtocols = ['https', 'http', 'data', 'file'];
-export async function parseUrlTarget (targetStr: string, parentUrl?: string): Promise<{ alias: string, target: URL, subpath: '.' | `./${string}` } | undefined> {
+export async function parseUrlTarget (resolver: Resolver, targetStr: string, parentUrl?: string): Promise<{ alias: string, target: URL, subpath: '.' | `./${string}` } | undefined> {
   const registryIndex = targetStr.indexOf(':');
   if (isRelative(targetStr) || registryIndex !== -1 && supportedProtocols.includes(targetStr.slice(0, registryIndex))) {
     const subpathIndex = targetStr.indexOf('|');
@@ -80,7 +80,7 @@ export function isPackageTarget (targetStr: string): boolean {
   return true;
 }
 
-export function pkgUrlToNiceString (pkgUrl: string) {
+export function pkgUrlToNiceString (resolver: Resolver, pkgUrl: string) {
   const pkg = resolver.parseUrlPkg(pkgUrl);
   if (pkg) {
     const subpath = pkgUrl.slice(resolver.pkgToUrl(pkg, this.defaultProvider).length);
@@ -92,8 +92,8 @@ export function pkgUrlToNiceString (pkgUrl: string) {
   return pkgUrl;
 }
 
-export async function toPackageTarget (targetStr: string, parentPkgUrl: string): Promise<{ alias: string, target: InstallTarget, subpath: '.' | `./${string}` }> {
-  const urlTarget = await parseUrlTarget(targetStr, parentPkgUrl);
+export async function toPackageTarget (resolver: Resolver, targetStr: string, parentPkgUrl: string): Promise<{ alias: string, target: InstallTarget, subpath: '.' | `./${string}` }> {
+  const urlTarget = await parseUrlTarget(resolver, targetStr, parentPkgUrl);
   if (urlTarget)
     return urlTarget;
 

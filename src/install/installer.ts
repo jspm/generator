@@ -1,12 +1,12 @@
 // @ts-ignore
 import sver from 'sver';
 const { Semver } = sver;
-import { log } from '../common/log.js';
+import { Log } from '../common/log.js';
 // @ts-ignore
 import { builtinModules } from 'module';
 // @ts-ignore
 import { fileURLToPath } from 'url';
-import resolver from "./resolver.js";
+import { Resolver } from "./resolver.js";
 import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
 import { isURL, importedFrom } from "../common/url.js";
 import { JspmError, throwInternalError } from "../common/err.js";
@@ -102,8 +102,12 @@ export class Installer {
   added = new Map<string, InstallTarget>();
   hasLock = false;
   defaultProvider = { provider: 'jspm', layer: 'default' };
+  log: Log;
+  resolver: Resolver;
 
-  constructor (baseUrl: URL, opts: InstallOptions) {
+  constructor (baseUrl: URL, opts: InstallOptions, log: Log, resolver: Resolver) {
+    this.log = log;
+    this.resolver = resolver;
     this.installBaseUrl = baseUrl.href;
     this.opts = opts;
     this.lockfilePath = fileURLToPath(this.installBaseUrl + 'jspm.lock');
@@ -151,7 +155,7 @@ export class Installer {
         let pjsonChanged = false;
         const saveField: DependenciesField = this.opts.saveDev ? 'devDependencies' : this.opts.savePeer ? 'peerDependencies' : this.opts.saveOptional ? 'optionalDependencies' : 'dependencies';
         if (saveField && save) {
-          pjsonChanged = await updatePjson(this.installBaseUrl, async pjson => {
+          pjsonChanged = await updatePjson(this.resolver, this.installBaseUrl, async pjson => {
             pjson[saveField!] = pjson[saveField!] || {};
             for (const [name, target] of this.added) {
               if (target instanceof URL) {
@@ -165,7 +169,7 @@ export class Installer {
               else {
                 let versionRange = target.ranges.map(range => range.toString()).join(' || ');
                 if (versionRange === '*') {
-                  const pcfg = await resolver.getPackageConfig(this.installs[this.installBaseUrl][target.name]);
+                  const pcfg = await this.resolver.getPackageConfig(this.installs[this.installBaseUrl][target.name]);
                   if (pcfg)
                     versionRange = '^' + pcfg?.version;
                 }
@@ -178,7 +182,7 @@ export class Installer {
         // prune the lockfile to the include traces only
         // this is done after pjson updates to include any adds
         if (this.opts.prune || pjsonChanged) {
-          const deps = await resolver.getDepList(this.installBaseUrl, true);
+          const deps = await this.resolver.getDepList(this.installBaseUrl, true);
           // existing deps is any existing builtin resolutions
           const existingBuiltins = new Set(Object.keys(this.installs[this.installBaseUrl] || {}).filter(name => builtinSet.has(name)));
           await this.lockInstall([...new Set([...deps, ...existingBuiltins])], this.installBaseUrl, true);
@@ -200,7 +204,7 @@ export class Installer {
       visited.add(name + '##' + pkgUrl);
       const installUrl = await this.install(name, pkgUrl);
       const installPkgUrl = installUrl.split('|')[0] + (installUrl.indexOf('|') === -1 ? '' : '/');
-      const deps = await resolver.getDepList(installPkgUrl);
+      const deps = await this.resolver.getDepList(installPkgUrl);
       const existingDeps = Object.keys(this.installs[installPkgUrl] || {});
       await Promise.all([...new Set([...deps, ...existingDeps])].map(dep => visitInstall(dep, installPkgUrl)));
     };
@@ -226,7 +230,7 @@ export class Installer {
           return false;
         throw new Error('No installation found to replace.');
       }
-      targetUrl = resolver.pkgToUrl(pkg, this.defaultProvider);
+      targetUrl = this.resolver.pkgToUrl(pkg, this.defaultProvider);
     }
 
     let replaced = false;
@@ -257,12 +261,12 @@ export class Installer {
         this.added.set(pkgName, target);
       }
       else {
-        log('info', `Package ${pkgName} not declared in package.json dependencies${importedFrom(parentUrl)}.`);
+        this.log('info', `Package ${pkgName} not declared in package.json dependencies${importedFrom(parentUrl)}.`);
       }
     }
 
     if (target instanceof URL) {
-      log('install', `${pkgName} ${pkgScope} -> ${target.href}`);
+      this.log('install', `${pkgName} ${pkgScope} -> ${target.href}`);
       const pkgUrl = target.href + (target.href.endsWith('/') ? '' : '/');
       setResolution(this.installs, pkgName, pkgScope, pkgUrl);
       return pkgUrl;
@@ -271,27 +275,27 @@ export class Installer {
     if (this.opts.freeze) {
       const existingInstall = this.getBestMatch(target);
       if (existingInstall) {
-        log('install', `${pkgName} ${pkgScope} -> ${existingInstall.registry}:${existingInstall.name}@${existingInstall.version}`);
-        const pkgUrl = resolver.pkgToUrl(existingInstall, this.defaultProvider);
+        this.log('install', `${pkgName} ${pkgScope} -> ${existingInstall.registry}:${existingInstall.name}@${existingInstall.version}`);
+        const pkgUrl = this.resolver.pkgToUrl(existingInstall, this.defaultProvider);
         setResolution(this.installs, pkgName, pkgScope, pkgUrl);
         return pkgUrl;
       }
     }
 
-    const latest = await resolver.resolveLatestTarget(target, false, this.defaultProvider, parentUrl);
+    const latest = await this.resolver.resolveLatestTarget(target, false, this.defaultProvider, parentUrl);
     const installed = await this.getInstalledPackages(target);
     const restrictedToPkg = await this.tryUpgradePackagesTo(latest, installed);
 
     // cannot upgrade to latest -> stick with existing resolution (if compatible)
     if (restrictedToPkg && !this.opts.latest) {
-      log('install', `${pkgName} ${pkgScope} -> ${restrictedToPkg.registry}:${restrictedToPkg.name}@${restrictedToPkg.version}`);
-      const pkgUrl = resolver.pkgToUrl(restrictedToPkg, this.defaultProvider);
+      this.log('install', `${pkgName} ${pkgScope} -> ${restrictedToPkg.registry}:${restrictedToPkg.name}@${restrictedToPkg.version}`);
+      const pkgUrl = this.resolver.pkgToUrl(restrictedToPkg, this.defaultProvider);
       setResolution(this.installs, pkgName, pkgScope, pkgUrl);
       return pkgUrl;
     }
 
-    log('install', `${pkgName} ${pkgScope} -> ${latest.registry}:${latest.name}@${latest.version}`);
-    const pkgUrl = resolver.pkgToUrl(latest, this.defaultProvider);
+    this.log('install', `${pkgName} ${pkgScope} -> ${latest.registry}:${latest.name}@${latest.version}`);
+    const pkgUrl = this.resolver.pkgToUrl(latest, this.defaultProvider);
     setResolution(this.installs, pkgName, pkgScope, pkgUrl);
     return pkgUrl;
   }
@@ -305,7 +309,7 @@ export class Installer {
         return existingUrl;
     }
 
-    const pcfg = await resolver.getPackageConfig(pkgUrl) || {};
+    const pcfg = await this.resolver.getPackageConfig(pkgUrl) || {};
 
     // package dependencies
     const installTarget = pcfg.dependencies?.[pkgName] || pcfg.peerDependencies?.[pkgName] || pcfg.optionalDependencies?.[pkgName] || pcfg.devDependencies?.[pkgName];
@@ -344,7 +348,7 @@ export class Installer {
   private getBestMatch (matchPkg: PackageTarget): ExactPackage | null {
     let bestMatch: ExactPackage | null = null;
     for (const pkgUrl of Object.keys(this.installs)) {
-      const pkg = resolver.parseUrlPkg(pkgUrl);
+      const pkg = this.resolver.parseUrlPkg(pkgUrl);
       if (pkg && this.inRange(pkg, matchPkg)) {
         if (bestMatch)
           bestMatch = Semver.compare(new Semver(bestMatch.version), pkg.version) === -1 ? pkg : bestMatch;
@@ -382,7 +386,7 @@ export class Installer {
       if (hasUpgrade || this.opts.latest) {
         for (const { pkg, install } of installed) {
           if (pkg.version !== version) continue;
-          setResolution(this.installs, install.name, install.pkgUrl, resolver.pkgToUrl(pkg, this.defaultProvider));
+          setResolution(this.installs, install.name, install.pkgUrl, this.resolver.pkgToUrl(pkg, this.defaultProvider));
         }
       }
     }

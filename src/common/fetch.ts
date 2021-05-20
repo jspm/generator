@@ -12,7 +12,6 @@ declare global {
 
 let _fetch: typeof fetch;
 let clearCache: () => void = function () {};
-let setCache: (enabled: string | boolean) => void = function () {};
 if (typeof fetch !== 'undefined') {
   _fetch = augmentFetchForFileUrls(fetch);
 }
@@ -32,23 +31,6 @@ else if (globalThis?.process?.versions?.node) {
     cacheDir = path.join(process.env.XDG_CACHE_HOME || path.join(home, '.cache'), 'jspm');
   clearCache = function () {
     rimraf.sync(path.join(cacheDir, 'fetch-cache'));
-  };
-  setCache = function (mode) {
-    if (mode === true)
-      _fetch = augmentFetchForFileUrls(makeFetchHappen.defaults({
-        cacheManager: path.join(cacheDir, 'fetch-cache'),
-        headers: { 'User-Agent': `jspm/generator@${version}` }
-      }));
-    else if (mode === 'offline')
-      augmentFetchForFileUrls(makeFetchHappen.defaults({
-        cache: 'force-cache',
-        headers: { 'User-Agent': `jspm/generator@${version}` }
-      }));
-    else
-      augmentFetchForFileUrls(makeFetchHappen.defaults({
-        cache: 'no-store',
-        headers: { 'User-Agent': `jspm/generator@${version}` }
-      }));
   };
   _fetch = augmentFetchForFileUrls(makeFetchHappen.defaults({
     cacheManager: path.join(cacheDir, 'fetch-cache'),
@@ -129,4 +111,4 @@ function augmentFetchForFileUrls (_fetch: any): typeof fetch {
   } as typeof fetch;
 }
 
-export { _fetch as fetch, clearCache, setCache };
+export { _fetch as fetch, clearCache };

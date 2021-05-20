@@ -173,12 +173,13 @@ clearCache();
 
 ### Logging
 
-A logger is provided via:
+A logger is provided via `generator.logStream`:
 
 ```js
-import { logStream } from '@jspm/generator';
+const generator = new Generator();
+
 (async () => {
-  for await (const { type, message } of logStream()) {
+  for await (const { type, message } of generator.logStream()) {
     console.log(`${type}: ${message}`);
   }
 })();

@@ -1,6 +1,6 @@
 import { ExactPackage, PackageConfig, PackageTarget, ExportsTarget } from './package.js';
 import { JspmError } from '../common/err.js';
-import { log } from '../common/log.js';
+import { Log } from '../common/log.js';
 import { fetch } from '../common/fetch.js';
 import { importedFrom } from "../common/url.js";
 import { computeIntegrity } from "../common/integrity.js";
@@ -14,10 +14,12 @@ import process from 'process';
 import { pathToFileURL } from 'url';
 
 export class Resolver {
+  log: Log;
   pcfgPromises: Record<string, Promise<void>> = Object.create(null);
   pcfgs: Record<string, PackageConfig | null> = Object.create(null);
   fetchOpts: any;
-  constructor (fetchOpts?: any) {
+  constructor (log: Log, fetchOpts?: any) {
+    this.log = log;
     this.fetchOpts = fetchOpts;
   }
 
@@ -42,7 +44,7 @@ export class Resolver {
     let testUrl = new URL('./', url);
     do {
       let responseUrl;
-      if (responseUrl = await resolver.checkPjson(testUrl.href))
+      if (responseUrl = await this.checkPjson(testUrl.href))
         return new URL('.', responseUrl).href;
       // if hitting the base and we are in the cwd, use the cwd
       if (testUrl.pathname === '/') {
@@ -197,7 +199,7 @@ export class Resolver {
             exports[subpath] = pcfg.browser[subpath];
           }
           else {
-            log('todo', `Non ./ subpaths in browser field: ${pcfg.name}.browser['${subpath}'] = ${pcfg.browser[subpath]}`);
+            this.log('todo', `Non ./ subpaths in browser field: ${pcfg.name}.browser['${subpath}'] = ${pcfg.browser[subpath]}`);
           }
         }
       }
@@ -265,7 +267,7 @@ export class Resolver {
 
   //   const pkgContents: Record<string, string | ArrayBuffer> = Object.create(null);
 
-  //   const pcfg = await resolver.getPackageConfig(pkgUrl);
+  //   const pcfg = await this.getPackageConfig(pkgUrl);
   //   if (!pcfg || !pcfg.files || !(pcfg.files instanceof Array))
   //     throw new JspmError(`Unable to checkout ${pkgUrl} as there is no package files manifest.`);
 
@@ -456,18 +458,3 @@ function createSystemAnalysis (source: string, imports: string[], url: string): 
   const size = source.length;
   return { deps, dynamicDeps, size, integrity: computeIntegrity(source), system: true };
 }
-
-let resolver = new Resolver();
-
-export function newResolver (fetchOpts?: any) {
-  resolver = new Resolver(fetchOpts);
-}
-
-export function setOffline (isOffline = true) {
-  if (isOffline)
-    newResolver({ cache: 'only-if-cached' });
-  else
-    newResolver();
-}
-
-export { resolver as default }
