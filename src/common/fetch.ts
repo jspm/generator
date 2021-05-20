@@ -11,9 +11,10 @@ declare global {
 }
 
 let _fetch: typeof fetch;
-let clearCache: () => void;
+let clearCache: () => void = function () {};
+let setCache: (enabled: boolean) => void = function () {};
 if (typeof fetch !== 'undefined') {
-  _fetch = fetch;
+  _fetch = augmentFetchForFileUrls(fetch);
 }
 else if (globalThis?.process?.versions?.node) {
   const require = createRequire(import.meta.url);
@@ -32,79 +33,95 @@ else if (globalThis?.process?.versions?.node) {
   clearCache = function () {
     rimraf.sync(path.join(cacheDir, 'fetch-cache'));
   };
-  _fetch = makeFetchHappen.defaults({ cacheManager: path.join(cacheDir, 'fetch-cache'), headers: { 'User-Agent': `jspm/generator@${version}` } }) as typeof fetch;
+  setCache = function (enabled) {
+    if (enabled)
+      _fetch = augmentFetchForFileUrls(makeFetchHappen.defaults({
+        cacheManager: path.join(cacheDir, 'fetch-cache'),
+        headers: { 'User-Agent': `jspm/generator@${version}` }
+      }));
+    else
+      augmentFetchForFileUrls(makeFetchHappen.defaults({
+        cache: 'no-cache',
+        headers: { 'User-Agent': `jspm/generator@${version}` }
+      }));
+  };
+  _fetch = augmentFetchForFileUrls(makeFetchHappen.defaults({
+    cacheManager: path.join(cacheDir, 'fetch-cache'),
+    headers: { 'User-Agent': `jspm/generator@${version}` }
+  }));
 }
 else {
   throw new Error('No fetch implementation found for this environment, please post an issue.');
 }
 
-const __fetch = _fetch;
-// @ts-ignore
-_fetch = async function (url: URL, ...args: any[]) {
-  const urlString = url.toString();
-  if (urlString.startsWith('file:') || urlString.startsWith('data:') || urlString.startsWith('node:')) {
-    try {
-      let source: string;
-      if (urlString.startsWith('file:')) {
-        source = readFileSync(fileURLToPath(urlString));
-      }
-      else if (urlString.startsWith('node:')) {
-        source = '';
-      }
-      else {
-        source = decodeURIComponent(urlString.slice(urlString.indexOf(',')));
-      }
-      return {
-        status: 200,
-        async text () {
-          return source.toString();
-        },
-        async json () {
-          return JSON.parse(source.toString());
-        },
-        arrayBuffer () {
-          return source;
-        }
-      };
-    }
-    catch (e) {
-      if (e.code === 'EISDIR' || e.code === 'ENOTDIR')
-        return { status: 404, statusText: e.toString() };
-      if (e.code === 'ENOENT')
-        return { status: 404, statusText: e.toString() };
-      return { status: 500, statusText: e.toString() };
-    }
-  }
+function augmentFetchForFileUrls (_fetch: any): typeof fetch {
   // @ts-ignore
-  if (typeof Deno !== 'undefined' /*&& args[0]?.cache === 'only-if-cached' */) {
-    const { cache } = await import(eval('"../../deps/cache/mod.ts"'));
-    try {
-      const file = await cache(urlString);
-      return {
-        status: 200,
-        async text () {
-          // @ts-ignore
-          return (await Deno.readTextFile(file.path)).toString();
-        },
-        async json () {
-          // @ts-ignore
-          return JSON.parse((await Deno.readTextFile(file.path)).toString());
-        },
-        async arrayBuffer () {
-          // @ts-ignore
-          return (await Deno.readTextFile(file.path));
+  return async function (url: URL, ...args: any[]) {
+    const urlString = url.toString();
+    if (urlString.startsWith('file:') || urlString.startsWith('data:') || urlString.startsWith('node:')) {
+      try {
+        let source: string;
+        if (urlString.startsWith('file:')) {
+          source = readFileSync(fileURLToPath(urlString));
         }
-      };
-    }
-    catch (e) {
-      if (e.name === 'CacheError' && e.message.indexOf('Not Found !== -1')) {
-        return { status: 404, statusText: e.toString() };
+        else if (urlString.startsWith('node:')) {
+          source = '';
+        }
+        else {
+          source = decodeURIComponent(urlString.slice(urlString.indexOf(',')));
+        }
+        return {
+          status: 200,
+          async text () {
+            return source.toString();
+          },
+          async json () {
+            return JSON.parse(source.toString());
+          },
+          arrayBuffer () {
+            return source;
+          }
+        };
       }
-      throw e;
+      catch (e) {
+        if (e.code === 'EISDIR' || e.code === 'ENOTDIR')
+          return { status: 404, statusText: e.toString() };
+        if (e.code === 'ENOENT')
+          return { status: 404, statusText: e.toString() };
+        return { status: 500, statusText: e.toString() };
+      }
     }
-  }
-  // @ts-ignore
-  return __fetch(url, ...args);
-} as typeof fetch;
+    // @ts-ignore
+    if (typeof Deno !== 'undefined' /*&& args[0]?.cache === 'only-if-cached' */) {
+      const { cache } = await import(eval('"../../deps/cache/mod.ts"'));
+      try {
+        const file = await cache(urlString);
+        return {
+          status: 200,
+          async text () {
+            // @ts-ignore
+            return (await Deno.readTextFile(file.path)).toString();
+          },
+          async json () {
+            // @ts-ignore
+            return JSON.parse((await Deno.readTextFile(file.path)).toString());
+          },
+          async arrayBuffer () {
+            // @ts-ignore
+            return (await Deno.readTextFile(file.path));
+          }
+        };
+      }
+      catch (e) {
+        if (e.name === 'CacheError' && e.message.indexOf('Not Found !== -1')) {
+          return { status: 404, statusText: e.toString() };
+        }
+        throw e;
+      }
+    }
+    // @ts-ignore
+    return _fetch(url, ...args);
+  } as typeof fetch;
+}
 
-export { _fetch as fetch, clearCache };
+export { _fetch as fetch, clearCache, setCache };

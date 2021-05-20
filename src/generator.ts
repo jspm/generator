@@ -2,12 +2,13 @@ import { baseUrl } from "./common/url.js";
 import { toPackageTarget } from "./install/package.js";
 import TraceMap from './tracemap/tracemap.js';
 import { LockResolutions } from './install/installer.js';
-import { clearCache as clearFetchCache } from './common/fetch.js';
+import { clearCache as clearFetchCache, setCache } from './common/fetch.js';
 
 export interface GeneratorOptions {
   mapUrl?: URL | string;
-  defaultProvider?: string,
-  env?: string[]
+  defaultProvider?: string;
+  env?: string[];
+  cache?: boolean;
 }
 
 export interface Install {
@@ -29,7 +30,8 @@ export class Generator {
   constructor ({
     mapUrl = baseUrl,
     env = ['browser', 'development'],
-    defaultProvider = 'jspm'
+    defaultProvider = 'jspm',
+    cache = true
   }: GeneratorOptions = {}) {
     this.mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl) : mapUrl;
     if (!this.mapUrl.pathname.endsWith('/'))
@@ -39,6 +41,7 @@ export class Generator {
       env,
       defaultProvider
     });
+    setCache(cache);
   }
 
   async install (install: string | Install): Promise<void> {
