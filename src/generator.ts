@@ -34,7 +34,7 @@ export class Generator {
 
   constructor ({
     mapUrl = baseUrl,
-    env = ['browser', 'development'],
+    env = ['browser', 'development', 'module'],
     defaultProvider = 'jspm',
     cache = true
   }: GeneratorOptions = {}) {
