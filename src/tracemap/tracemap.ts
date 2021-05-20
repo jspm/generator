@@ -42,7 +42,7 @@ interface TraceEntry {
 
 // The tracemap fully drives the installer
 export default class TraceMap {
-  env = ['browser', 'development'];
+  env = ['browser', 'development', 'module'];
   installer: Installer | undefined;
   opts: TraceMapOptions;
   tracedUrls: TraceGraph = {};
@@ -261,7 +261,7 @@ export default class TraceMap {
       if (!match)
         throw new JspmError(`No '${subpath}' exports subpath defined in ${pkgUrl} resolving ${pkgName}${importedFrom(parentUrl)}.`);
       if (match) {
-        let resolved = new URL(exports[match] + subpath.slice(match.length), pkgUrl).href;
+        let resolved = new URL(match.indexOf('*') === -1 ? exports[match] + subpath.slice(match.length) : exports[match].replace(/\*/g, subpath.slice(match.length - 1)), pkgUrl).href;
         if (!exports[match].endsWith('/') && resolved.endsWith('/'))
           resolved = resolved.slice(0, -1);
         this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);

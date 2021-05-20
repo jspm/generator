@@ -4,11 +4,11 @@ import assert from 'assert';
 const generator = new Generator();
 
 try {
-  await generator.install({ target: '@material-ui/icons@4.11.2', subpath: './AutorenewOutlined' });
+  await generator.install({ target: '@material-ui/icons@4.11.2', subpath: './AutorenewOutline' });
   assert.fail('Should Error');
 }
 catch (e) {
-  assert.ok(e.message.includes('No \'./AutorenewOutlined\' exports subpath defined in'));
+  assert.ok(e.message.includes('Module not found'));
 }
 
 const t = setTimeout(() => {
