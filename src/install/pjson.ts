@@ -1,7 +1,7 @@
 import * as json from "../common/json.js";
 // @ts-ignore
 import { readFileSync, writeFileSync } from "fs";
-import resolver from "../install/resolver.js";
+import { Resolver } from "../install/resolver.js";
 import { PackageConfig } from "../install/package.js";
 
 export type DependenciesField = 'dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies';
@@ -23,7 +23,7 @@ export interface PackageJson {
   devDependencies?: Record<string, string>;
 }
 
-export async function updatePjson (pjsonBase: string, updateFn: (pjson: PackageJson) => void | PackageJson | Promise<void | PackageJson>): Promise<boolean> {
+export async function updatePjson (resolver: Resolver, pjsonBase: string, updateFn: (pjson: PackageJson) => void | PackageJson | Promise<void | PackageJson>): Promise<boolean> {
   const pjsonUrl = new URL('package.json', pjsonBase);
   let input;
   try {

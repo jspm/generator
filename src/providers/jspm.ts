@@ -1,6 +1,5 @@
 import { throwInternalError } from "../common/err.js";
 import { JspmError } from "../common/err.js";
-import { log } from "../common/log.js";
 import { importedFrom } from "../common/url.js";
 import { PackageTarget } from "../install/package.js";
 import { pkgToStr } from "../install/package.js";
@@ -64,7 +63,7 @@ export async function resolveLatestTarget (this: Resolver, target: PackageTarget
       if (lookup) {
         if (lookup instanceof Promise)
           throwInternalError();
-        log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> WILDCARD ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+        this.log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> WILDCARD ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
         return lookup;
       }
     }
@@ -77,7 +76,7 @@ export async function resolveLatestTarget (this: Resolver, target: PackageTarget
       if (lookup) {
         if (lookup instanceof Promise)
           throwInternalError();
-        log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> TAG ${tag}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+        this.log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> TAG ${tag}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
         return lookup;
       }
     }
@@ -90,7 +89,7 @@ export async function resolveLatestTarget (this: Resolver, target: PackageTarget
       if (lookup) {
         if (lookup instanceof Promise)
           throwInternalError();
-        log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> MAJOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+        this.log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> MAJOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
         return lookup;
       }
     }
@@ -103,7 +102,7 @@ export async function resolveLatestTarget (this: Resolver, target: PackageTarget
       if (lookup) {
         if (lookup instanceof Promise)
           throwInternalError();
-        log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> MINOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+        this.log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> MINOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
         return lookup;
       }
     }
