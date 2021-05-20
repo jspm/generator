@@ -44,7 +44,14 @@ const generator = new Generator({
    * See https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_conditional_exports
    * for more info
    */
-  env: ['production', 'browser']
+  env: ['production', 'browser'],
+
+  /*
+   * Default: true
+   *
+   * Whether to use a local FS cache for fetched modules
+   */
+  cache: false,
 });
 
 // Install a new package into the import map
@@ -83,6 +90,19 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
 The `"scopes"` field is populated with all necessary deep dependencies with versions deduped and shared as
 possible within version ranges. Just like a file-system-based package manager, JSPM will handle dependency
 version constraints in the import map to enable maximum code sharing with minimal duplication.
+
+## Caching
+
+By default a global fetch cache is maintained between runs on the file system.
+
+This caching can be disabled by setting `cache: false`.
+
+To clear the global cache, a `clearCache` function is also exported:
+
+```js
+import { clearCache } from '@jspm/generator';
+clearCache();
+```
 
 ### Working with Import Maps
 

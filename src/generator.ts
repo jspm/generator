@@ -2,6 +2,7 @@ import { baseUrl } from "./common/url.js";
 import { toPackageTarget } from "./install/package.js";
 import TraceMap from './tracemap/tracemap.js';
 import { LockResolutions } from './install/installer.js';
+import { clearCache as clearFetchCache } from './common/fetch.js';
 
 export interface GeneratorOptions {
   mapUrl?: URL | string;
@@ -13,6 +14,10 @@ export interface Install {
   target: string;
   subpath?: '.' | `./${string}`;
   alias?: string;
+}
+
+export function clearCache () {
+  clearFetchCache();
 }
 
 export class Generator {
