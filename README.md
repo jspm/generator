@@ -71,9 +71,6 @@ await generator.install({ target: 'lit@2', subpath: './html.js' });
 // The package.json is used to determine the exports and dependencies.
 await generator.install({ alias: 'mypkg', target: './packages/local-pkg', subpath: './feature' });
 
-// Pass an array to install to install multiple packages at the same time
-await generator.install([{ target: 'react' }, { target: 'lit' }]);
-
 console.log(JSON.stringify(generator.getMap(), null, 2));
 /*
  * Outputs the import map:
@@ -94,6 +91,19 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
 The `"scopes"` field is populated with all necessary deep dependencies with versions deduped and shared as
 possible within version ranges. Just like a file-system-based package manager, JSPM will handle dependency
 version constraints in the import map to enable maximum code sharing with minimal duplication.
+
+Multiple installs are supported via array inputs to install:
+
+```js
+// Pass an array to install to install multiple packages at the same time
+await generator.install([{ target: 'react' }, { target: 'lit' }]);
+```
+
+Multiple subpaths can be supported via the `subpaths` install option:
+
+```js
+await generator.install({ target: '@material-ui/core@4.11.4', subpaths: ['./AccordionDetails', './Accordion'] });
+```
 
 ### Working with Import Maps
 
