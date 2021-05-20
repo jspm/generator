@@ -49,6 +49,7 @@ async function forked (path, args = [], cwd, returnStream) {
 (async () => {
   if (fileURLToPath(import.meta.url) !== process.argv[1])
     return;
+  let hasErr = false;
   const testBase = resolve(fileURLToPath(import.meta.url) + '/../');
   const tests = glob.sync(testBase + '/**/*.test.js');
   const pool = new Pool(concurrency);
@@ -66,14 +67,19 @@ async function forked (path, args = [], cwd, returnStream) {
         }
       }
       output({ name: relTest, status: code === 0 ? 'OK' : 'FAIL' });
-      if (code === 0 && stopOnError)
-        process.exit(1);
+      if (code === 0) {
+        if (stopOnError)
+          process.exit(1);
+        hasErr = true;
+      }
     }
     finally {
       pool.pop();
     }
   }));
   process.stdout.write('\n');
+  if (hasErr)
+    process.exit(1);
 })()
 .catch(err => {
   console.error(err);

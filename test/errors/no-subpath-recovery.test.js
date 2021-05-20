@@ -23,3 +23,5 @@ console.log(json);
 
 assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@16.14.0/dev.index.js');
 clearTimeout(t);
+
+throw new Error('err');
