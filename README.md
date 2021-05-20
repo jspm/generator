@@ -37,7 +37,7 @@ const generator = new Generator({
   defaultProvider: 'jspm',
 
   /*
-   * Default: ['development', 'browser']
+   * Default: ['browser', 'development', 'module']
    * 
    * The conditional environment resolutions to apply.
    * 
@@ -158,10 +158,11 @@ The conditions passed to the `env` option are environment conditions, as [suppor
 
 By default the `"default"`, `"require"` and `"import"` conditions are always supported regardless of what `env` conditions are provided.
 
-Webpack and RollupJS support a custom `"module"` condition as a bundler-specific solution to the [dual package hazard](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_dual_package_hazard).
+Webpack and RollupJS support a custom `"module"` condition as a bundler-specific solution to the [dual package hazard](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_dual_package_hazard), which is by default included in the JSPM resolution as well although
+can be turned off if needed.
 
-In cases where you find there are CommonJS and ESM variants of the same package being included, and resolving a `"module"` condition
-would avoid this, this can be set for example via `"env": ["module", "browser", "development"]`.
+Note when providing custom conditions like setting `env: ["production"]` that the `"browser"` and `"module"` conditions still need to be
+applied as well via `env: ["production", "browser", "module"]`. Ordering does not matter though.
 
 Any other custom condition strings can also be provided.
 
