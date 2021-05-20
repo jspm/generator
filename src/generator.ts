@@ -44,7 +44,9 @@ export class Generator {
     setCache(cache);
   }
 
-  async install (install: string | Install): Promise<void> {
+  async install (install: string | Install | (string | Install)[]): Promise<void> {
+    if (Array.isArray(install))
+      return await Promise.all(install.map(install => this.install(install))).then(() => {});
     if (arguments.length !== 1)
       throw new Error('Install takes a single target string or object.');
     if (typeof install === 'string')

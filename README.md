@@ -71,6 +71,9 @@ await generator.install({ target: 'lit@2', subpath: './html.js' });
 // The package.json is used to determine the exports and dependencies.
 await generator.install({ alias: 'mypkg', target: './packages/local-pkg', subpath: './feature' });
 
+// Pass an array to install to install multiple packages at the same time
+await generator.install([{ target: 'react' }, { target: 'lit' }]);
+
 console.log(JSON.stringify(generator.getMap(), null, 2));
 /*
  * Outputs the import map:
