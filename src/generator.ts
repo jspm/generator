@@ -16,6 +16,7 @@ export interface GeneratorOptions {
 export interface Install {
   target: string;
   subpath?: '.' | `./${string}`;
+  subpaths?: ('.' | `./${string}`)[];
   alias?: string;
 }
 
@@ -63,9 +64,21 @@ export class Generator {
     if (typeof install === 'string')
       install = { target: install };
     if (typeof install.target !== 'string')
-      throw new Error('Install requires a "target".');
-    if (install.subpath !== undefined && (typeof install.subpath !== 'string' || (install.subpath !== '.' && !install.subpath.startsWith('./'))))
-      throw new Error('Install subpath must be equal to "." or start with "./".');
+      throw new Error('All installs require a "target".');
+    if (install.subpaths !== undefined) {
+      install.subpaths.every(subpath => {
+        if (typeof subpath !== 'string' || (subpath !== '.' && !subpath.startsWith('./')))
+          throw new Error(`Install subpath "${subpath}" must be equal to "." or start with "./".`);
+      });
+      return await Promise.all(install.subpaths.map(subpath => this.install({
+        target: (install as Install).target,
+        alias: (install as Install).alias,
+        subpath
+      }))).then(() => {});
+    }
+    if (install.subpath !== undefined && (typeof install.subpath !== 'string' || (install.subpath !== '.' && !install.subpath.startsWith('./')))) {
+      throw new Error(`Install subpath "${install.subpath}" must be equal to "." or start with "./".`);
+    }
     if (this.installCnt++ === 0)
       this.finishInstall = await this.traceMap.startInstall();
     try {
