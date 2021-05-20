@@ -50,6 +50,7 @@ const generator = new Generator({
    * Default: true
    *
    * Whether to use a local FS cache for fetched modules
+   * Set to 'offline' to use the offline cache
    */
   cache: false,
 });
