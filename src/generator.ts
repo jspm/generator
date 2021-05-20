@@ -3,6 +3,7 @@ import { toPackageTarget } from "./install/package.js";
 import TraceMap from './tracemap/tracemap.js';
 import { LockResolutions } from './install/installer.js';
 import { clearCache as clearFetchCache, setCache } from './common/fetch.js';
+export { logStream } from './common/log.js';
 
 export interface GeneratorOptions {
   mapUrl?: URL | string;

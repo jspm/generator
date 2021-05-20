@@ -95,19 +95,6 @@ The `"scopes"` field is populated with all necessary deep dependencies with vers
 possible within version ranges. Just like a file-system-based package manager, JSPM will handle dependency
 version constraints in the import map to enable maximum code sharing with minimal duplication.
 
-## Caching
-
-By default a global fetch cache is maintained between runs on the file system.
-
-This caching can be disabled by setting `cache: false`.
-
-To clear the global cache, a `clearCache` function is also exported:
-
-```js
-import { clearCache } from '@jspm/generator';
-clearCache();
-```
-
 ### Working with Import Maps
 
 Import maps are supported in Chrome 89+ and related Chromium browsers. In these environments, the import map
@@ -167,6 +154,39 @@ In cases where you find there are CommonJS and ESM variants of the same package 
 would avoid this, this can be set for example via `"env": ["module", "browser", "development"]`.
 
 Any other custom condition strings can also be provided.
+
+### Caching
+
+By default a global fetch cache is maintained between runs on the file system.
+
+This caching can be disabled by setting `cache: false`.
+
+When running offline, setting `cache: 'offline'` will only use the local cache and not touch the network at all,
+making fully offline workflows possible provided the modules have been seen before.
+
+To clear the global cache, a `clearCache` function is also exported:
+
+```js
+import { clearCache } from '@jspm/generator';
+clearCache();
+```
+
+### Logging
+
+A logger is provided via:
+
+```js
+import { logStream } from '@jspm/generator';
+(async () => {
+  for await (const { type, message } of logStream()) {
+    console.log(`${type}: ${message}`);
+  }
+})();
+```
+
+Log events recorded include `trace`, `resolve` and `install`.
+
+Note that the log messages are for debugging and not currently part of the semver contract of the project.
 
 ### Providers
 
