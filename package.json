@@ -7,7 +7,7 @@
   "scripts": {
     "tsc": "tsc -p .",
     "tsc-watch": "tsc -p . --watch",
-    "rollup": "rollup -c && cp lib/generator.d.ts dist/generator.d.ts",
+    "rollup": "rollup -c && cp lib/generator.d.ts dist/generator.d.ts && mkdir -p dist/common && cp lib/common/log.d.ts dist/common/log.d.ts",
     "build": "npm run tsc && npm run rollup",
     "test": "node test/test.js"
   },
