@@ -158,6 +158,8 @@ The conditions passed to the `env` option are environment conditions, as [suppor
 
 By default the `"default"`, `"require"` and `"import"` conditions are always supported regardless of what `env` conditions are provided.
 
+In addition the default conditions applied if no `env` option is set are `"browser"`, `"development"` and `"module"`.
+
 Webpack and RollupJS support a custom `"module"` condition as a bundler-specific solution to the [dual package hazard](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_dual_package_hazard), which is by default included in the JSPM resolution as well although
 can be turned off if needed.
 
