@@ -1,3 +1,4 @@
+import '@jspm/generator';
 (async () => {
   const tests = await (await fetch('/tests/list')).json();
 

@@ -21,7 +21,7 @@ const mimes = {
   '.wasm': 'application/wasm'
 };
 
-const shouldExit = process.env.WATCH_MODE !== 'true';
+const shouldExit = !process.env.WATCH_MODE;
 const testName = process.env.TEST_NAME ?? 'test';
 
 const testBase = resolve(fileURLToPath(import.meta.url) + '/../');
