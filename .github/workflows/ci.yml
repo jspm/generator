@@ -8,15 +8,11 @@ on:
 
 jobs:
   test-browser:
+    name: Firefox Browser Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        firefox: [
-          '60.0', # modules support
-          '67.0', # import(), import.meta
-          '89.0'  # top-level await
-        ]
-    name: Firefox Browser Tests
+        firefox: ['89.0']
     steps:
       - uses: actions/checkout@v2
       - name: Setup Node.js ${{ matrix.node }}
@@ -35,16 +31,17 @@ jobs:
           CI_BROWSER_FLAGS: -headless
 
   test-node:
+    name: Node.js Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [14.x, 16.x]
+        node: [14.x, 16.x]
     steps:
     - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js ${{ matrix.node }}
       uses: actions/setup-node@v2
       with:
-        node-version: ${{ matrix.node-version }}
+        node: ${{ matrix.node }}
     - run: npm install
     - run: npm run build
     - run: npm run test:node
@@ -52,8 +49,8 @@ jobs:
   # test-deno:
   #   strategy:
   #   matrix:
-  #     deno-version: [1.x]
+  #     deno: [1.x]
   #   steps:
   #   - uses: denoland/setup-deno@v1
   #     with:
-  #       deno-version: ${{ matrix.deno-version }}
+  #       deno: ${{ matrix.deno }}
