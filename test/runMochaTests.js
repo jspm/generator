@@ -3,7 +3,7 @@ import '@jspm/generator';
 // keepalive
 setInterval(() => {
   fetch('/tests/ping');
-}, 1000);
+}, 3000);
 
 (async () => {
   const tests = await (await fetch('/tests/list')).json();
