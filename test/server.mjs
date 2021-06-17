@@ -47,11 +47,12 @@ http.createServer(async function (req, res) {
   if (req.url.startsWith('/tests/ping')) {
     res.writeHead(200);
     res.end('');
+    return;
   }
   else if (req.url.startsWith('/tests/list')) {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
     res.end(JSON.stringify(tests));
-    return ;
+    return;
   }
   else if (req.url.startsWith('/done')) {
     console.log(kleur.green('Tests completed successfully.'));
