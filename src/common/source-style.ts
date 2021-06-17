@@ -1,5 +1,4 @@
-// @ts-ignore
-import os from 'os';
+import { isWindows } from './env.js';
 
 export interface SourceStyle {
   tab: string,
@@ -11,8 +10,8 @@ export interface SourceStyle {
 
 export const defaultStyle = {
   tab: '  ',
-  newline: os.EOL,
-  trailingNewline: os.EOL,
+  newline: isWindows ? '\r\n' : '\n',
+  trailingNewline: isWindows ? '\r\n' : '\n',
   indent: '',
   quote: '"'
 };
@@ -21,7 +20,7 @@ export function detectNewline (source: string) {
   let newLineMatch = source.match( /\r?\n|\r(?!\n)/);
   if (newLineMatch)
     return newLineMatch[0];
-  return os.EOL;
+  return isWindows ? '\r\n' : '\n';
 }
 
 export function detectIndent (source: string, newline: string) {

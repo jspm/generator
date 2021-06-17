@@ -2,19 +2,35 @@
 import sver from 'sver';
 const { Semver } = sver;
 import { Log } from '../common/log.js';
-// @ts-ignore
-import { builtinModules } from 'module';
-// @ts-ignore
-import { fileURLToPath } from 'url';
 import { Resolver } from "./resolver.js";
 import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
 import { isURL, importedFrom } from "../common/url.js";
 import { JspmError, throwInternalError } from "../common/err.js";
-import { DependenciesField, updatePjson } from './pjson.js';
-// @ts-ignore
-import path from 'path';
 
-export const builtinSet = new Set<string>(builtinModules);
+export const builtinSet = new Set<string>([
+  '_http_agent',         '_http_client',        '_http_common',
+  '_http_incoming',      '_http_outgoing',      '_http_server',
+  '_stream_duplex',      '_stream_passthrough', '_stream_readable',
+  '_stream_transform',   '_stream_wrap',        '_stream_writable',
+  '_tls_common',         '_tls_wrap',           'assert',
+  'assert/strict',       'async_hooks',         'buffer',
+  'child_process',       'cluster',             'console',
+  'constants',           'crypto',              'dgram',
+  'diagnostics_channel', 'dns',                 'dns/promises',
+  'domain',              'events',              'fs',
+  'fs/promises',         'http',                'http2',
+  'https',               'inspector',           'module',
+  'net',                 'os',                  'path',
+  'path/posix',          'path/win32',          'perf_hooks',
+  'process',             'punycode',            'querystring',
+  'readline',            'repl',                'stream',
+  'stream/promises',     'string_decoder',      'sys',
+  'timers',              'timers/promises',     'tls',
+  'trace_events',        'tty',                 'url',
+  'util',                'util/types',          'v8',
+  'vm',                  'wasi',                'worker_threads',
+  'zlib'
+]);
 
 export interface PackageInstall {
   name: string;
@@ -96,9 +112,8 @@ export class Installer {
   newInstalls = false;
   currentInstall = Promise.resolve();
   // @ts-ignore
-  stdlibTarget: InstallTarget = new URL('../../core/dist', import.meta.url);
+  stdlibTarget: InstallTarget;
   installBaseUrl: string;
-  lockfilePath: string;
   added = new Map<string, InstallTarget>();
   hasLock = false;
   defaultProvider = { provider: 'jspm', layer: 'default' };
@@ -110,7 +125,6 @@ export class Installer {
     this.resolver = resolver;
     this.installBaseUrl = baseUrl.href;
     this.opts = opts;
-    this.lockfilePath = fileURLToPath(this.installBaseUrl + 'jspm.lock');
     let resolutions: LockResolutions = {};
     if (opts.lock)
       ({ resolutions, exists: this.hasLock } = opts.lock);
@@ -149,48 +163,48 @@ export class Installer {
           return false;
         }
 
-        const save = this.opts.save || this.opts.saveDev || this.opts.savePeer || this.opts.saveOptional || this.hasLock || this.opts.lock;
+        // const save = this.opts.save || this.opts.saveDev || this.opts.savePeer || this.opts.saveOptional || this.hasLock || this.opts.lock;
 
-        // update the package.json dependencies
-        let pjsonChanged = false;
-        const saveField: DependenciesField = this.opts.saveDev ? 'devDependencies' : this.opts.savePeer ? 'peerDependencies' : this.opts.saveOptional ? 'optionalDependencies' : 'dependencies';
-        if (saveField && save) {
-          pjsonChanged = await updatePjson(this.resolver, this.installBaseUrl, async pjson => {
-            pjson[saveField!] = pjson[saveField!] || {};
-            for (const [name, target] of this.added) {
-              if (target instanceof URL) {
-                if (target.protocol === 'file:') {
-                  pjson[saveField!]![name] = 'file:' + path.relative(fileURLToPath(this.installBaseUrl), fileURLToPath(target));
-                }
-                else {
-                  pjson[saveField!]![name] = target.href;
-                }
-              }
-              else {
-                let versionRange = target.ranges.map(range => range.toString()).join(' || ');
-                if (versionRange === '*') {
-                  const pcfg = await this.resolver.getPackageConfig(this.installs[this.installBaseUrl][target.name]);
-                  if (pcfg)
-                    versionRange = '^' + pcfg?.version;
-                }
-                pjson[saveField!]![name] = (target.name === name ? '' : target.registry + ':' + target.name + '@') + versionRange;
-              }
-            }
-          });
-        }
+        // // update the package.json dependencies
+        // let pjsonChanged = false;
+        // const saveField: DependenciesField = this.opts.saveDev ? 'devDependencies' : this.opts.savePeer ? 'peerDependencies' : this.opts.saveOptional ? 'optionalDependencies' : 'dependencies';
+        // if (saveField && save) {
+        //   pjsonChanged = await updatePjson(this.resolver, this.installBaseUrl, async pjson => {
+        //     pjson[saveField!] = pjson[saveField!] || {};
+        //     for (const [name, target] of this.added) {
+        //       if (target instanceof URL) {
+        //         if (target.protocol === 'file:') {
+        //           pjson[saveField!]![name] = 'file:' + path.relative(fileURLToPath(this.installBaseUrl), fileURLToPath(target));
+        //         }
+        //         else {
+        //           pjson[saveField!]![name] = target.href;
+        //         }
+        //       }
+        //       else {
+        //         let versionRange = target.ranges.map(range => range.toString()).join(' || ');
+        //         if (versionRange === '*') {
+        //           const pcfg = await this.resolver.getPackageConfig(this.installs[this.installBaseUrl][target.name]);
+        //           if (pcfg)
+        //             versionRange = '^' + pcfg?.version;
+        //         }
+        //         pjson[saveField!]![name] = (target.name === name ? '' : target.registry + ':' + target.name + '@') + versionRange;
+        //       }
+        //     }
+        //   });
+        // }
 
-        // prune the lockfile to the include traces only
-        // this is done after pjson updates to include any adds
-        if (this.opts.prune || pjsonChanged) {
-          const deps = await this.resolver.getDepList(this.installBaseUrl, true);
-          // existing deps is any existing builtin resolutions
-          const existingBuiltins = new Set(Object.keys(this.installs[this.installBaseUrl] || {}).filter(name => builtinSet.has(name)));
-          await this.lockInstall([...new Set([...deps, ...existingBuiltins])], this.installBaseUrl, true);
-        }
+        // // prune the lockfile to the include traces only
+        // // this is done after pjson updates to include any adds
+        // if (this.opts.prune || pjsonChanged) {
+        //   const deps = await this.resolver.getDepList(this.installBaseUrl, true);
+        //   // existing deps is any existing builtin resolutions
+        //   const existingBuiltins = new Set(Object.keys(this.installs[this.installBaseUrl] || {}).filter(name => builtinSet.has(name)));
+        //   await this.lockInstall([...new Set([...deps, ...existingBuiltins])], this.installBaseUrl, true);
+        // }
 
         this.installing = false;
         resolve();
-        return { pjsonChanged, lock: this.installs };
+        return { pjsonChanged: false, lock: this.installs };
       };
     });
     return finishInstall!;

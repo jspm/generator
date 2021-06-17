@@ -2,16 +2,12 @@ import { ExactPackage, PackageConfig, PackageTarget, ExportsTarget } from './pac
 import { JspmError } from '../common/err.js';
 import { Log } from '../common/log.js';
 import { fetch } from '../common/fetch.js';
-import { importedFrom } from "../common/url.js";
+import { baseUrl, importedFrom } from "../common/url.js";
 import { computeIntegrity } from "../common/integrity.js";
 // @ts-ignore
 import { parse } from 'es-module-lexer';
 // @ts-ignore
 import { getProvider, getUrlProvider } from '../providers/index.js';
-// @ts-ignore
-import process from 'process';
-// @ts-ignore
-import { pathToFileURL } from 'url';
 
 export class Resolver {
   log: Log;
@@ -31,7 +27,7 @@ export class Resolver {
     return getProvider(provider).pkgToUrl.call(this, pkg, layer);
   }
 
-  async getPackageBase (url: string) {
+  async getPackageBase (url: string, stopBase = baseUrl) {
     const pkg = this.parseUrlPkg(url);
     if (pkg) {
       const { provider, layer } = getUrlProvider(url);
@@ -41,18 +37,19 @@ export class Resolver {
     if (url.startsWith('node:'))
       return url;
     
-    let testUrl = new URL('./', url);
+    let testUrl: URL;
+    try {
+      testUrl = new URL('./', url);
+    }
+    catch {
+      return url;
+    }
     do {
       let responseUrl;
       if (responseUrl = await this.checkPjson(testUrl.href))
         return new URL('.', responseUrl).href;
-      // if hitting the base and we are in the cwd, use the cwd
-      if (testUrl.pathname === '/') {
-        const cwd = pathToFileURL(process.cwd()) + '/';
-        if (url.startsWith(cwd))
-          return cwd;
-        return testUrl.href;
-      }
+      if (testUrl.href === stopBase.href)
+        return stopBase.href;
     } while (testUrl = new URL('../', testUrl));
   }
 
@@ -61,6 +58,8 @@ export class Resolver {
   async getPackageConfig (pkgUrl: string): Promise<PackageConfig | null> {
     if (!pkgUrl.endsWith('/'))
       throw new Error(`Internal Error: Package URL must end in "/". Got ${pkgUrl}`);
+    if (!pkgUrl.startsWith('file:') && !pkgUrl.startsWith('http:') && !pkgUrl.startsWith('https:'))
+      return null;
     let cached = this.pcfgs[pkgUrl];
     if (cached) return cached;
     if (!this.pcfgPromises[pkgUrl])
@@ -141,7 +140,7 @@ export class Resolver {
 
   async wasCommonJS (url: string): Promise<boolean> {
     // TODO: make this a provider hook
-    const pkgUrl = await this.getPackageBase(url, );
+    const pkgUrl = await this.getPackageBase(url);
     if (!pkgUrl)
       return false;
     const pcfg = await this.getPackageConfig(pkgUrl);
@@ -151,7 +150,7 @@ export class Resolver {
     return pcfg?.exports?.[subpath + '!cjs'] ? true : false;
   }
 
-  async resolveExports (pkgUrl: string, env: string[], subpathFilter?: string): Promise<Record<string, string>> {
+  async resolveExports (pkgUrl: string, env: string[]): Promise<Record<string, string>> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
 
     // conditional resolution from conditions
@@ -207,40 +206,6 @@ export class Resolver {
         exports['./'] = './';
       if (!exports['.'])
         exports['.'] = '.';
-    }
-
-    if (subpathFilter) {
-      subpathFilter = './' + subpathFilter;
-      const filteredExports = Object.create(null);
-      for (const key of Object.keys(exports)) {
-        if (key.startsWith(subpathFilter) && (key.length === subpathFilter.length || key[subpathFilter.length] === '/')) {
-          filteredExports['.' + key.slice(subpathFilter.length)] = exports[key];
-        }
-        else if (key.endsWith('*')) {
-          const patternBase = key.slice(0, -1);
-          if (subpathFilter.startsWith(patternBase)) {
-            const replacement = subpathFilter.slice(patternBase.length);
-            filteredExports['.'] = replaceTargets(exports[key], replacement);
-            filteredExports['./*'] = replaceTargets(exports[key], replacement + '/*');
-          }
-        }
-      }
-      function replaceTargets (target: ExportsTarget, replacement: string): ExportsTarget {
-        if (Array.isArray(target)) {
-          return [...target.map(target => replaceTargets(target, replacement))];
-        }
-        else if (typeof target === 'object' && target !== null) {
-          const newTarget: Record<string, ExportsTarget> = {};
-          for (const key of Object.keys(target))
-            newTarget[key] = replaceTargets(target[key], replacement);
-          return newTarget;
-        }
-        else if (typeof target === 'string') {
-          return target.replace(/\*/g, replacement);
-        }
-        return target;
-      }
-      return filteredExports;
     }
 
     return exports;
@@ -307,7 +272,7 @@ export class Resolver {
 
   private async parseTs (source: string) {
     // @ts-ignore
-    const ts = await import(eval('typescript'));
+    const { default: ts } = await import(eval('"typescript"'));
     return ts.transpileModule(source, {
       compilerOptions: {
         jsx: ts.JsxEmit.React,

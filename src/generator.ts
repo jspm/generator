@@ -11,6 +11,7 @@ export interface GeneratorOptions {
   defaultProvider?: string;
   env?: string[];
   cache?: string | boolean;
+  stdlib?: string;
 }
 
 export interface Install {
@@ -36,7 +37,8 @@ export class Generator {
     mapUrl = baseUrl,
     env = ['browser', 'development', 'module'],
     defaultProvider = 'jspm',
-    cache = true
+    cache = true,
+    stdlib = '@jspm/core'
   }: GeneratorOptions = {}) {
     let fetchOpts = undefined;
     if (cache === 'offline')
@@ -47,10 +49,15 @@ export class Generator {
     const resolver = new Resolver(log, fetchOpts);
     this.logStream = logStream;
     this.mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl) : mapUrl;
-    if (!this.mapUrl.pathname.endsWith('/'))
-      this.mapUrl = new URL('./', this.mapUrl);
+    if (!this.mapUrl.pathname.endsWith('/')) {
+      try {
+        this.mapUrl = new URL('./', this.mapUrl);
+      } catch {
+        this.mapUrl = new URL(this.mapUrl.href + '/');
+      }
+    }
     this.traceMap = new TraceMap(this.mapUrl, {
-      stdlib: '@jspm/core@2',
+      stdlib,
       env,
       defaultProvider
     }, log, resolver);

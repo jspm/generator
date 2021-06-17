@@ -170,22 +170,22 @@ export default class TraceMap {
     return installed.slice(0, -1);
   }
 
-  async addAllPkgMappings (name: string, pkgUrl: string, env: string[] = this.env, parentPkgUrl: string | null = null) {
-    const [url, subpathFilter] = pkgUrl.split('|');
-    const exports = await this.resolver.resolveExports(url + (url.endsWith('/') ? '' : '/'), env, subpathFilter);
-    for (const key of Object.keys(exports)) {
-      if (key.endsWith('!cjs'))
-        continue;
-      if (!exports[key])
-        continue;
-      if (key.endsWith('*'))
-        continue;
-      let target = new URL(exports[key], url).href;
-      if (!exports[key].endsWith('/') && target.endsWith('/'))
-        target = target.slice(0, -1);
-      this.map.addMapping(name + key.slice(1), target, parentPkgUrl);
-    }
-  }
+  // async addAllPkgMappings (name: string, pkgUrl: string, env: string[] = this.env, parentPkgUrl: string | null = null) {
+  //   const [url, subpathFilter] = pkgUrl.split('|');
+  //   const exports = await this.resolver.resolveExports(url + (url.endsWith('/') ? '' : '/'), env, subpathFilter);
+  //   for (const key of Object.keys(exports)) {
+  //     if (key.endsWith('!cjs'))
+  //       continue;
+  //     if (!exports[key])
+  //       continue;
+  //     if (key.endsWith('*'))
+  //       continue;
+  //     let target = new URL(exports[key], url).href;
+  //     if (!exports[key].endsWith('/') && target.endsWith('/'))
+  //       target = target.slice(0, -1);
+  //     this.map.addMapping(name + key.slice(1), target, parentPkgUrl);
+  //   }
+  // }
 
   async trace (specifier: string, parentUrl = this.mapBase, env = ['import', ...this.env]): Promise<string> {
     const parentPkgUrl = await this.resolver.getPackageBase(parentUrl.href);
@@ -253,15 +253,16 @@ export default class TraceMap {
     // @ts-ignore
     const installed = this.opts.freeze ? this.installer?.installs[parentPkgUrl]?.[pkgName] : await this.installer?.install(pkgName, parentPkgUrl, parentUrl.href);
     if (installed) {
-      let [pkgUrl, subpathFilter] = installed.split('|');
-      if (subpathFilter)
+      let [pkgUrl, subpathBase] = installed.split('|');
+      if (subpathBase)
         pkgUrl += '/';
-      const exports = await this.resolver.resolveExports(pkgUrl, env, subpathFilter);
-      const match = getMapMatch(subpath, exports);
+      const exports = await this.resolver.resolveExports(pkgUrl, env);
+      const key = subpathBase ? './' + subpathBase + subpath.slice(1) : subpath;
+      const match = getMapMatch(key, exports);
       if (!match)
-        throw new JspmError(`No '${subpath}' exports subpath defined in ${pkgUrl} resolving ${pkgName}${importedFrom(parentUrl)}.`);
+        throw new JspmError(`No '${key}' exports subpath defined in ${pkgUrl} resolving ${pkgName}${importedFrom(parentUrl)}.`);
       if (match) {
-        let resolved = new URL(match.indexOf('*') === -1 ? exports[match] + subpath.slice(match.length) : exports[match].replace(/\*/g, subpath.slice(match.length - 1)), pkgUrl).href;
+        let resolved = new URL(match.indexOf('*') === -1 ? exports[match] + key.slice(match.length) : exports[match].replace(/\*/g, key.slice(match.length - 1)), pkgUrl).href;
         if (!exports[match].endsWith('/') && resolved.endsWith('/'))
           resolved = resolved.slice(0, -1);
         this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
