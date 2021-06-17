@@ -123,13 +123,11 @@ export class ImportMap implements IImportMap {
     for (const scope of Object.keys(this.scopes)) {
       const scopeUrl = new URL(scope, this.baseUrl);
       let scopeBase: Record<string, string | null> | undefined, scopeBaseUrl: string | undefined;
-      if (scopeUrl.protocol !== 'file:') {
-        if (scopeUrl.origin === this.baseUrl.origin && scopeUrl.href.startsWith(this.baseUrl.origin))
-          scopeBaseUrl = '/';
-        else if (scopeUrl.href.startsWith(scopeUrl.origin))
-          scopeBaseUrl = scopeUrl.origin + '/';
-        if (scopeBaseUrl) scopeBase = this.scopes[scopeBaseUrl] || {};
-      }
+      if (scopeUrl.origin === this.baseUrl.origin && scopeUrl.href.startsWith(this.baseUrl.href))
+        scopeBaseUrl = this.baseUrl.href;
+      else if (scopeUrl.href.startsWith(scopeUrl.origin))
+        scopeBaseUrl = scopeUrl.origin + '/';
+      if (scopeBaseUrl) scopeBase = this.scopes[scopeBaseUrl] || {};
       if (!scopeBase) continue;
       const scopeImports = this.scopes[scope];
       let flattenedAll = true;

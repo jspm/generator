@@ -1,0 +1,3 @@
+[submodule "jspm-core"]
+	path = jspm-core
+	url = git@github.com:jspm/jspm-core

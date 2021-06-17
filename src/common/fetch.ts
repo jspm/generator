@@ -1,10 +1,4 @@
 import { version } from '../version.js';
-// @ts-ignore
-import { readFileSync } from 'fs';
-// @ts-ignore
-import { fileURLToPath } from 'url';
-// @ts-ignore
-import { createRequire } from 'module';
 
 declare global {
   var process: any;
@@ -13,35 +7,47 @@ declare global {
 let _fetch: typeof fetch;
 let clearCache: () => void = function () {};
 if (typeof fetch !== 'undefined') {
-  _fetch = augmentFetchForFileUrls(fetch);
+  _fetch = fetch;
 }
-else if (globalThis?.process?.versions?.node) {
-  const require = createRequire(import.meta.url);
-  const path = require('path') as any;
-  const home = require('os').homedir();
-  const process = require('process');
-  const rimraf = require('rimraf');
-  const makeFetchHappen = require('make-fetch-happen');
-  let cacheDir: string;
-  if (process.platform === 'darwin')
-    cacheDir = path.join(home, 'Library', 'Caches', 'jspm');
-  else if (process.platform === 'win32')
-    cacheDir = path.join(process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'), 'jspm-cache');
-  else
-    cacheDir = path.join(process.env.XDG_CACHE_HOME || path.join(home, '.cache'), 'jspm');
-  clearCache = function () {
-    rimraf.sync(path.join(cacheDir, 'fetch-cache'));
-  };
-  _fetch = augmentFetchForFileUrls(makeFetchHappen.defaults({
-    cacheManager: path.join(cacheDir, 'fetch-cache'),
-    headers: { 'User-Agent': `jspm/generator@${version}` }
-  }));
+else if (globalThis.process?.versions?.node) {
+  let __fetch: (url: URL, ...args: any[]) => Promise<Response>;
+  _fetch = async function (url: URL, ...args: any[]) {
+    if (__fetch)
+      return __fetch(url, ...args);
+    // @ts-ignore
+    const path = await import('path');
+    // @ts-ignore
+    const { homedir } = await import('os');
+    // @ts-ignore
+    const { default: process } = await import('process');
+    // @ts-ignore
+    const { default: rimraf } = await import('rimraf');
+    // @ts-ignore
+    const { default: makeFetchHappen } = await import('make-fetch-happen');
+    // @ts-ignore
+    const { readFileSync } = await import('fs');
+    let cacheDir: string;
+    if (process.platform === 'darwin')
+      cacheDir = path.join(homedir(), 'Library', 'Caches', 'jspm');
+    else if (process.platform === 'win32')
+      cacheDir = path.join(process.env.LOCALAPPDATA || path.join(homedir(), 'AppData', 'Local'), 'jspm-cache');
+    else
+      cacheDir = path.join(process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache'), 'jspm');
+    clearCache = function () {
+      rimraf.sync(path.join(cacheDir, 'fetch-cache'));
+    };
+    __fetch = augmentFetchForFileUrls(makeFetchHappen.defaults({
+      cacheManager: path.join(cacheDir, 'fetch-cache'),
+      headers: { 'User-Agent': `jspm/generator@${version}` }
+    }), readFileSync) as any;
+    return __fetch(url, ...args);
+  } as any as typeof fetch;
 }
 else {
   throw new Error('No fetch implementation found for this environment, please post an issue.');
 }
 
-function augmentFetchForFileUrls (_fetch: any): typeof fetch {
+function augmentFetchForFileUrls (_fetch: any, readFileSync: (path: string | URL) => string): Response {
   // @ts-ignore
   return async function (url: URL, ...args: any[]) {
     const urlString = url.toString();
@@ -49,7 +55,7 @@ function augmentFetchForFileUrls (_fetch: any): typeof fetch {
       try {
         let source: string;
         if (urlString.startsWith('file:')) {
-          source = readFileSync(fileURLToPath(urlString));
+          source = readFileSync(new URL(urlString));
         }
         else if (urlString.startsWith('node:')) {
           source = '';

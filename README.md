@@ -4,14 +4,45 @@ Package Import Map Generation Tool
 
 For an interactive UI for this tool running on JSPM.IO, see [https://generator.jspm.io](https://generator.jspm.io).
 
-### Usage
+### Installation
 
+Node.js:
 ```
 npm install @jspm/generator
 ```
 
-`@jspm/generator` only ships as an ES module, so to use it in Node.js add `"type": "module"` to your package.json file
-or write an `.mjs` to load it:
+`@jspm/generator` only ships as an ES module, so to use it in Node.js add `"type": "module"` to your package.json file or write an `.mjs` to load it.
+
+Browser (self install):
+
+``html
+<!-- ES Module Shims: Import maps polyfill for modules browsers without import maps support (all except Chrome 89+) -->
+<script async src="https://ga.jspm.io/npm:es-module-shims@0.11.0/dist/es-module-shims.min.js"></script>
+
+<!--
+  JSPM Generator Import Map
+  Edit URL: https://generator.jspm.io/#Y2VgYGBmD0pNTC5RCC5JLCpJLWJILdbNzU8pzUnVzUmtSC1yMNAz0TNkKC4DMg31LPSMkZj6yfl5QE6JblFiXnqqXlYxAFyav05QAA
+-->
+<script type="importmap">
+{
+  "imports": {
+    "@jspm/generator": "https:ga.jspm.io/npm:@jspm/generator@1.0.0-beta.3/dist/generator.js",
+    "es-module-lexer": "https://ga.jspm.io/npm:es-module-lexer@0.4.1/dist/lexer.cjs",
+    "sver": "https://ga.jspm.io/npm:sver@1.8.3/sver.js",
+    "sver/convert-range.js": "https://ga.jspm.io/npm:sver@1.8.3/convert-range.js"
+  },
+  "scopes": {
+    "https://ga.jspm.io/": {
+      "buffer": "https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.7/nodelibs/buffer.js",
+      "process": "https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.7/nodelibs/process.js",
+      "semver": "https://ga.jspm.io/npm:semver@6.3.0/semver.js"
+    }
+  }
+}
+</script>
+
+<script type="module" src="generate.mjs"></script>
+```
 
 generate.mjs
 ```js
@@ -104,6 +135,18 @@ Multiple subpaths can be supported via the `subpaths` install option:
 ```js
 await generator.install({ target: '@material-ui/core@4.11.4', subpaths: ['./AccordionDetails', './Accordion'] });
 ```
+
+### Providers
+
+Providers resolve package names and semver ranges to exact CDN package URL paths using provider hooks.
+
+These hooks include version resolution and converting package versions into URLs and back again.
+
+See `src/providers/[name].ts` for how to define a custom provider.
+
+Supported providers include "jspm", "jspm.system", "skypack", "jsdelivr", "unpkg".
+
+New providers can be merged in via PRs.
 
 ### Working with Import Maps
 
@@ -201,18 +244,6 @@ const generator = new Generator();
 Log events recorded include `trace`, `resolve` and `install`.
 
 Note that the log messages are for debugging and not currently part of the semver contract of the project.
-
-### Providers
-
-Providers resolve package names and semver ranges to exact CDN package URL paths using provider hooks.
-
-These hooks include version resolution and converting package versions into URLs and back again.
-
-See `src/providers/[name].ts` for how to define a custom provider.
-
-Supported providers include "jspm", "jspm.system", "skypack", "jsdelivr", "unpkg".
-
-New providers can be merged in via PRs.
 
 ## Contributing
 

@@ -1,10 +1,3 @@
-// @ts-ignore
-import { pathToFileURL, fileURLToPath } from 'url';
-// @ts-ignore
-import process from 'process';
-// @ts-ignore
-import path from 'path';
-
 declare global {
   // @ts-ignore
   var document: any;
@@ -16,7 +9,7 @@ export let baseUrl: URL;
 // @ts-ignore
 if (typeof Deno !== 'undefined') {
   // @ts-ignore
-  baseUrl = pathToFileURL(Deno.cwd() + '/');
+  baseUrl = new URL('file://' + Deno.cwd() + '/');
 }
 else if (typeof process !== 'undefined' && process.versions.node) {
   baseUrl = new URL('file://' + process.cwd() + '/');
@@ -70,9 +63,7 @@ export function isRelative (specifier: string) {
   return specifier.startsWith('./') || specifier.startsWith('../') || specifier.startsWith('/');
 }
 
-export function urlToNiceStr (url: URL | string) {
-  let relPath = path.relative(process.cwd(), fileURLToPath(url));
-  if (relPath[0] !== '.')
-    relPath = './' + relPath;
-  return relPath;
+export function urlToNiceStr (url: string) {
+  if (url.startsWith(baseUrl.href))
+    return './' + url.slice(baseUrl.href.length);
 }

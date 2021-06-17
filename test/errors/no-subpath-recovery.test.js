@@ -1,4 +1,4 @@
-import { Generator } from '#dev';
+import { Generator } from '@jspm/generator';
 import assert from 'assert';
 
 const generator = new Generator();
@@ -18,8 +18,6 @@ const t = setTimeout(() => {
 await generator.install('react@16');
 
 const json = generator.getMap();
-
-console.log(json);
 
 assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@16.14.0/dev.index.js');
 clearTimeout(t);

@@ -1,4 +1,4 @@
-import { Generator } from '#dev';
+import { Generator } from '@jspm/generator';
 import assert from 'assert';
 
 const generator = new Generator({

@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
+
+jobs:
+  test-browser:
+    name: Firefox Browser Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        firefox: ['89.0']
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Setup Firefox ${{ matrix.firefox }}
+        uses: browser-actions/setup-firefox@latest
+        with:
+          firefox-version: ${{ matrix.firefox }}
+      - run: npm install
+      - run: npm run build
+      - run: npm run test:browser
+        env:
+          CI_BROWSER: /opt/hostedtoolcache/firefox/${{ matrix.firefox }}/x64/firefox
+          CI_BROWSER_FLAGS: -headless
+
+  test-node:
+    name: Node.js Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [14.x, 16.x]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js ${{ matrix.node }}
+      uses: actions/setup-node@v2
+      with:
+        node: ${{ matrix.node }}
+    - run: npm install
+    - run: npm run build
+    - run: npm run test:node
+  
+  # test-deno:
+  #   strategy:
+  #   matrix:
+  #     deno: [1.x]
+  #   steps:
+  #   - uses: denoland/setup-deno@v1
+  #     with:
+  #       deno: ${{ matrix.deno }}
