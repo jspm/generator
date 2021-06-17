@@ -5,7 +5,8 @@ import { PackageTarget } from "../install/package.js";
 import { pkgToStr } from "../install/package.js";
 import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../install/resolver.js";
-import { fetch } from '../common/fetch.js';
+// @ts-ignore
+import { fetch } from '#fetch';
 
 export const name = 'jspm';
 

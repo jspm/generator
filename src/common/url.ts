@@ -3,6 +3,8 @@ declare global {
   var document: any;
   // @ts-ignore
   var location: any;
+  // @ts-ignore
+  var process: any;
 }
 
 export let baseUrl: URL;

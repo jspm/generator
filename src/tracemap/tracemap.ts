@@ -7,6 +7,7 @@ import { getMapMatch, getScopeMatches, IImportMap, ImportMap } from "./map.js";
 import { Resolver } from "../install/resolver.js";
 import { Log } from "../common/log.js";
 
+// TODO: options as trace-specific / stored as top-level per top-level load
 export interface TraceMapOptions extends InstallOptions {
   system?: boolean;
   env?: string[];
@@ -65,6 +66,7 @@ export default class TraceMap {
       this.map = opts.inputMap instanceof ImportMap ? opts.inputMap : new ImportMap(mapBase).extend(opts.inputMap);
     else
       this.map = new ImportMap(mapBase);
+    this.installer = new Installer(this.mapBase, this.opts, this.log, this.resolver);
   }
 
   replace (target: InstallTarget, pkgUrl: string): boolean {
@@ -97,9 +99,6 @@ export default class TraceMap {
   }
 
   async startInstall () {
-    if (!this.installer)
-      this.installer = new Installer(this.mapBase, this.opts, this.log, this.resolver);
-
     const finishInstall = await this.installer.startInstall();
 
     return async (success: boolean) => {

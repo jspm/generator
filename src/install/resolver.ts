@@ -1,7 +1,8 @@
 import { ExactPackage, PackageConfig, PackageTarget, ExportsTarget } from './package.js';
 import { JspmError } from '../common/err.js';
 import { Log } from '../common/log.js';
-import { fetch } from '../common/fetch.js';
+// @ts-ignore
+import { fetch } from '#fetch';
 import { baseUrl, importedFrom } from "../common/url.js";
 import { computeIntegrity } from "../common/integrity.js";
 // @ts-ignore

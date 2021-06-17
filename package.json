@@ -15,6 +15,16 @@
   },
   "type": "module",
   "imports": {
+    "#fetch": {
+      "test": {
+        "node": "./lib/common/fetch-node.js",
+        "default": "./lib/common/fetch.js"
+      },
+      "default": {
+        "node": "./dist/fetch-node.js",
+        "default": "./dist/fetch.js"
+      }
+    },
     "#test/*": "./test/*.js"
   },
   "exports": {
