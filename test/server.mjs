@@ -35,16 +35,20 @@ function setBrowserTimeout () {
   if (browserTimeout)
     clearTimeout(browserTimeout);
   browserTimeout = setTimeout(() => {
-    console.log('No browser requests made to server for 10s, closing.');
+    console.log('No browser requests made to server for 5s, closing.');
     process.exit(failTimeout || process.env.CI_BROWSER ? 1 : 0);
-  }, 30000);
+  }, 5000);
 }
 
 setBrowserTimeout();
 
 http.createServer(async function (req, res) {
   setBrowserTimeout();
-  if (req.url.startsWith('/tests/list')) {
+  if (req.url.startsWith('/tests/ping')) {
+    res.writeHead(200);
+    res.end('');
+  }
+  else if (req.url.startsWith('/tests/list')) {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
     res.end(JSON.stringify(tests));
     return ;
@@ -62,7 +66,7 @@ http.createServer(async function (req, res) {
     const cnt = req.url.slice(7);
     console.log(kleur.red(cnt + ' test failures found.'));
     if (shouldExit) {
-      failTimeout = setTimeout(() => process.exit(1), 30000);
+      failTimeout = setTimeout(() => process.exit(1), 5000);
     }
   }
   else if (failTimeout) {
