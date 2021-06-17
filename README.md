@@ -17,7 +17,7 @@ Browser (self install):
 
 ```html
 <!-- ES Module Shims: Import maps polyfill for modules browsers without import maps support (all except Chrome 89+) -->
-<script async src="https://ga.jspm.io/npm:es-module-shims@0.11.0/dist/es-module-shims.min.js"></script>
+<script async src="https://ga.jspm.io/npm:es-module-shims@0.11.1/dist/es-module-shims.min.js"></script>
 
 <!--
   JSPM Generator Import Map
