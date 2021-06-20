@@ -73,6 +73,7 @@ export class Generator {
   }
 
   async install (install: string | Install | (string | Install)[]): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
+    this.traceMap.clearLists();
     if (Array.isArray(install))
       return await Promise.all(install.map(install => this.install(install))).then(() => ({
         staticDeps: [...this.traceMap.staticList],

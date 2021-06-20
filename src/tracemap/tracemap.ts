@@ -69,6 +69,13 @@ export default class TraceMap {
     this.installer = new Installer(this.mapBase, this.opts, this.log, this.resolver);
   }
 
+  clearLists () {
+    this.staticList = new Set();
+    this.dynamicList = new Set();
+    this.tracedUrls = {};
+    this.traces = new Set();
+  }
+
   replace (target: InstallTarget, pkgUrl: string): boolean {
     return this.installer!.replace(target, pkgUrl);
   }
