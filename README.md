@@ -63,7 +63,7 @@ const generator = new Generator({
 
   /*
    * Default: 'jspm'
-   * Supported: 'jspm', 'jspm.system', 'skypack', 'jsdelivr', 'unpkg'.
+   * Supported: 'jspm', 'jspm.system', 'nodemodules', 'skypack', 'jsdelivr', 'unpkg'.
    */
   defaultProvider: 'jspm',
 
@@ -144,7 +144,7 @@ These hooks include version resolution and converting package versions into URLs
 
 See `src/providers/[name].ts` for how to define a custom provider.
 
-Supported providers include "jspm", "jspm.system", "skypack", "jsdelivr", "unpkg".
+Supported providers include "jspm", "jspm.system", "nodemodules", "skypack", "jsdelivr", "unpkg".
 
 New providers can be merged in via PRs.
 
