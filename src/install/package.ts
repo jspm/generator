@@ -84,8 +84,8 @@ export function isPackageTarget (targetStr: string): boolean {
 export function pkgUrlToNiceString (resolver: Resolver, pkgUrl: string) {
   const pkg = resolver.parseUrlPkg(pkgUrl);
   if (pkg) {
-    const subpath = pkgUrl.slice(resolver.pkgToUrl(pkg, this.defaultProvider).length);
-    return pkgToStr(pkg) + subpath;
+    const subpath = pkgUrl.slice(resolver.pkgToUrl(pkg.pkg, this.defaultProvider).length);
+    return pkgToStr(pkg.pkg) + subpath;
   }
   if (pkgUrl.startsWith('file:')) {
     return urlToNiceStr(pkgUrl);

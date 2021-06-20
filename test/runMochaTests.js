@@ -30,7 +30,6 @@ setInterval(() => {
       if (name.startsWith('deno'))
         continue;
       test(name, async function () {
-        console.log(name);
         await import('./' + name + '.js');
       });
     }
