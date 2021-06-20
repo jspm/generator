@@ -1,4 +1,10 @@
 import '@jspm/generator';
+
+// keepalive
+setInterval(() => {
+  fetch('/tests/ping');
+}, 3000);
+
 (async () => {
   const tests = await (await fetch('/tests/list')).json();
 
@@ -24,6 +30,7 @@ import '@jspm/generator';
       if (name.startsWith('deno'))
         continue;
       test(name, async function () {
+        console.log(name);
         await import('./' + name + '.js');
       });
     }

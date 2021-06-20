@@ -98,7 +98,7 @@ function pruneResolutions (resolutions: LockResolutions, to: [string, string][])
 //   return resolutions[pkgUrl][name];
 // }
 
-function setResolution (resolutions: LockResolutions, name: string, pkgUrl: string, resolution: string) {
+export function setResolution (resolutions: LockResolutions, name: string, pkgUrl: string, resolution: string) {
   if (!pkgUrl.endsWith('/'))
     throwInternalError(pkgUrl);
   resolutions[pkgUrl] = resolutions[pkgUrl] || {};

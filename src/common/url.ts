@@ -3,6 +3,8 @@ declare global {
   var document: any;
   // @ts-ignore
   var location: any;
+  // @ts-ignore
+  var process: any;
 }
 
 export let baseUrl: URL;
@@ -47,6 +49,8 @@ export function relativeUrl (url: URL, baseUrl: URL) {
 
 export function isURL (specifier: string) {
   try {
+    if (specifier[0] === '#')
+      return false;
     new URL(specifier);
   }
   catch {
