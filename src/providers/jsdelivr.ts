@@ -4,8 +4,6 @@ export const name = 'jsdelivr';
 
 const cdnUrl = 'https://cdn.jsdelivr.net/';
 
-export const layers = { default: cdnUrl };
-
 export function pkgToUrl (pkg: ExactPackage) {
   return cdnUrl + pkg.registry + '/' + pkg.name + '@' + pkg.version + '/';
 }
