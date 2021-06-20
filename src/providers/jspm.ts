@@ -13,21 +13,21 @@ export const name = 'jspm';
 const cdnUrl = 'https://ga.jspm.io/';
 const systemCdnUrl = 'https://ga.system.jspm.io/';
 
-export const layers = {
-  default: 'https://ga.jspm.io/',
-  system: 'https://ga.system.jspm.io/'
-};
-
 export function pkgToUrl (pkg: ExactPackage, layer: string) {
   return (layer === 'system' ? systemCdnUrl : cdnUrl) + pkgToStr(pkg) + '/';
 }
 
 const exactPkgRegEx = /^(([a-z]+):)?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
-export function parseUrlPkg (url: string): ExactPackage | undefined {
-  if (!url.startsWith(cdnUrl) && !url.startsWith(systemCdnUrl))
+export function parseUrlPkg (url: string): { pkg: ExactPackage, layer: string } | undefined {
+  let layer: string;
+  if (url.startsWith(cdnUrl))
+    layer = 'default';
+  else if (url.startsWith(systemCdnUrl))
+    layer = 'system';
+  else
     return;
-  const [,, registry, name, version] = url.slice((url.startsWith(cdnUrl) ? cdnUrl : systemCdnUrl).length).match(exactPkgRegEx) || [];
-  return { registry, name, version };
+  const [,, registry, name, version] = url.slice((layer === 'default' ? cdnUrl : systemCdnUrl).length).match(exactPkgRegEx) || [];
+  return { pkg: { registry, name, version }, layer };
 }
 
 let resolveCache: Record<string, {
@@ -41,7 +41,7 @@ export function clearResolveCache () {
   resolveCache = {};
 }
 
-export async function resolveLatestTarget (this: Resolver, target: PackageTarget, unstable: boolean, _layer: string, parentUrl?: string): Promise<ExactPackage | null> {
+export async function resolveLatestTarget (this: Resolver, target: PackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | null> {
   const { registry, name, ranges } = target;
 
   // exact version optimization

@@ -120,14 +120,28 @@ export class ImportMap implements IImportMap {
   }
 
   flatten () {
+    const scopeBaseOrigin: Record<string, string> = {};
     for (const scope of Object.keys(this.scopes)) {
       const scopeUrl = new URL(scope, this.baseUrl);
-      let scopeBase: Record<string, string | null> | undefined, scopeBaseUrl: string | undefined;
-      if (scopeUrl.origin === this.baseUrl.origin && scopeUrl.href.startsWith(this.baseUrl.href))
-        scopeBaseUrl = this.baseUrl.href;
-      else if (scopeUrl.href.startsWith(scopeUrl.origin))
-        scopeBaseUrl = scopeUrl.origin + '/';
-      if (scopeBaseUrl) scopeBase = this.scopes[scopeBaseUrl] || {};
+      const scopeOrigin = scopeUrl.protocol + '//' + scopeUrl.hostname + (scopeUrl.port ? ':' + scopeUrl.port : '') + '/';
+      if (!scopeBaseOrigin[scopeOrigin]) {
+        scopeBaseOrigin[scopeOrigin] = scopeUrl.href;
+        continue;
+      }
+      if (scopeUrl.href.startsWith(scopeBaseOrigin[scopeOrigin]))
+        continue;
+      const curScopeBaseParts = scopeBaseOrigin[scopeOrigin].slice(scopeOrigin.length).split('/');
+      const scopeParts = scopeUrl.href.slice(scopeOrigin.length).split('/');
+      let i = 0;
+      while (scopeParts[i] === curScopeBaseParts[i])
+        i++;
+      scopeBaseOrigin[scopeOrigin] = scopeOrigin + scopeParts.slice(0, i).join('/') + (i > 0 ? '/' : '');
+    }
+    for (const scope of Object.keys(this.scopes)) {
+      const scopeUrl = new URL(scope, this.baseUrl);
+      const scopeOrigin = scopeUrl.protocol + '//' + scopeUrl.hostname + (scopeUrl.port ? ':' + scopeUrl.port : '') + '/';
+      const scopeBaseUrl = scopeBaseOrigin[scopeOrigin]!;
+      const scopeBase = this.scopes[scopeBaseUrl] || {};
       if (!scopeBase) continue;
       const scopeImports = this.scopes[scope];
       if (scopeBase === scopeImports) continue;

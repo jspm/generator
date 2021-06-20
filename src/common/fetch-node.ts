@@ -57,9 +57,20 @@ export const fetch = async function (url: URL, ...args: any[]) {
       };
     }
     catch (e) {
-      if (e.code === 'EISDIR' || e.code === 'ENOTDIR')
-        return { status: 404, statusText: e.toString() };
-      if (e.code === 'ENOENT')
+      if (e.code === 'EISDIR')
+        return {
+          status: 200,
+          async text () {
+            return '';
+          },
+          async json () {
+            throw new Error('Not JSON');
+          },
+          arrayBuffer () {
+            return new ArrayBuffer(0);
+          }
+        };
+      if (e.code === 'ENOENT' || e.code === 'ENOENT')
         return { status: 404, statusText: e.toString() };
       return { status: 500, statusText: e.toString() };
     }

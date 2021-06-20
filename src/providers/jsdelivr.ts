@@ -10,12 +10,12 @@ export function pkgToUrl (pkg: ExactPackage) {
   return cdnUrl + pkg.registry + '/' + pkg.name + '@' + pkg.version + '/';
 }
 
-const exactPkgRegEx = /^((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
+const exactPkgRegEx = /^([^\/]+)\/((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
 export function parseUrlPkg (url: string): ExactPackage | undefined {
   if (!url.startsWith(cdnUrl))
     return;
-  const [,, name, version] = url.slice(cdnUrl.length).match(exactPkgRegEx) || [];
-  return { registry: 'npm', name, version };
+  const [, registry, name, version] = url.slice(cdnUrl.length).match(exactPkgRegEx) || [];
+  return { registry, name, version };
 }
 
 // Use JSPM verion resolver for now

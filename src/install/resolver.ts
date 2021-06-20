@@ -8,7 +8,7 @@ import { computeIntegrity } from "../common/integrity.js";
 // @ts-ignore
 import { parse } from 'es-module-lexer';
 // @ts-ignore
-import { getProvider, getUrlProvider } from '../providers/index.js';
+import { getProvider, providers } from '../providers/index.js';
 
 export class Resolver {
   log: Log;
@@ -20,8 +20,13 @@ export class Resolver {
     this.fetchOpts = fetchOpts;
   }
 
-  parseUrlPkg (url: string): ExactPackage | undefined {
-    return getUrlProvider(url).provider?.parseUrlPkg.call(this, url);
+  parseUrlPkg (url: string): { pkg: ExactPackage, source: { layer: string, provider: string } } | undefined {
+    for (const provider of Object.values(providers)) {
+      const result = provider.parseUrlPkg.call(this, url);
+      if (result)
+        return { pkg: 'pkg' in result ? result.pkg : result, source: { provider: provider.name, layer: 'layer' in result ? result.layer : 'default' } };
+    }
+    return null;
   }
 
   pkgToUrl (pkg: ExactPackage, { provider, layer }: { provider: string, layer: string }): string {
@@ -30,10 +35,8 @@ export class Resolver {
 
   async getPackageBase (url: string) {
     const pkg = this.parseUrlPkg(url);
-    if (pkg) {
-      const { provider, layer } = getUrlProvider(url);
-      return this.pkgToUrl(pkg, { provider: provider!.name, layer });
-    }
+    if (pkg)
+      return this.pkgToUrl(pkg.pkg, pkg.source);
   
     if (url.startsWith('node:'))
       return url;
@@ -63,9 +66,9 @@ export class Resolver {
     if (cached) return cached;
     if (!this.pcfgPromises[pkgUrl])
       this.pcfgPromises[pkgUrl] = (async () => {
-        const { provider } = getUrlProvider(pkgUrl);
-        if (provider) {
-          const pcfg = await provider.getPackageConfig?.call(this, pkgUrl);
+        const parsed = this.parseUrlPkg(pkgUrl);
+        if (parsed) {
+          const pcfg = await getProvider(parsed.source.provider).getPackageConfig?.call(this, pkgUrl);
           if (pcfg !== undefined) {
             this.pcfgs[pkgUrl] = pcfg;
             return;

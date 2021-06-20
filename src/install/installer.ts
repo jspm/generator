@@ -363,11 +363,11 @@ export class Installer {
     let bestMatch: ExactPackage | null = null;
     for (const pkgUrl of Object.keys(this.installs)) {
       const pkg = this.resolver.parseUrlPkg(pkgUrl);
-      if (pkg && this.inRange(pkg, matchPkg)) {
+      if (pkg && this.inRange(pkg.pkg, matchPkg)) {
         if (bestMatch)
-          bestMatch = Semver.compare(new Semver(bestMatch.version), pkg.version) === -1 ? pkg : bestMatch;
+          bestMatch = Semver.compare(new Semver(bestMatch.version), pkg.pkg.version) === -1 ? pkg.pkg : bestMatch;
         else
-          bestMatch = pkg;
+          bestMatch = pkg.pkg;
       }
     }
     return bestMatch;
