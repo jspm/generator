@@ -28,7 +28,7 @@ export class Resolver {
     return getProvider(provider).pkgToUrl.call(this, pkg, layer);
   }
 
-  async getPackageBase (url: string, stopBase = baseUrl) {
+  async getPackageBase (url: string) {
     const pkg = this.parseUrlPkg(url);
     if (pkg) {
       const { provider, layer } = getUrlProvider(url);
@@ -49,8 +49,6 @@ export class Resolver {
       let responseUrl;
       if (responseUrl = await this.checkPjson(testUrl.href))
         return new URL('.', responseUrl).href;
-      if (testUrl.href === stopBase.href)
-        return stopBase.href;
     } while (testUrl = new URL('../', testUrl));
   }
 
@@ -109,7 +107,8 @@ export class Resolver {
       Object.keys(pjson.dependencies || {}),
       Object.keys(dev && pjson.devDependencies || {}),
       Object.keys(pjson.peerDependencies || {}),
-      Object.keys(pjson.optionalDependencies || {})
+      Object.keys(pjson.optionalDependencies || {}),
+      Object.keys(pjson.imports || {})
     ].flat())];
   }
 
@@ -176,11 +175,11 @@ export class Resolver {
         exports['.'] = pcfg.exports;
       }
       else if (!allDotKeys(pcfg.exports)) {
-        exports['.'] = getExportsTarget(pcfg.exports, env);
+        exports['.'] = resolvePackageTarget(pcfg.exports, pkgUrl, env);
       }
       else {
         for (const expt of Object.keys(pcfg.exports)) {
-          exports[expt] = getExportsTarget((pcfg.exports as Record<string, ExportsTarget>)[expt], env);
+          exports[expt] = resolvePackageTarget((pcfg.exports as Record<string, ExportsTarget>)[expt], pkgUrl, env);
         }
       }
     }
@@ -338,14 +337,24 @@ export class Resolver {
   }
 }
 
-export function getExportsTarget(target: ExportsTarget, env: string[]): string | null {
+export function resolvePackageTarget (target: ExportsTarget, packageUrl: string, env: string[], subpath?: string | undefined): string | null {
   if (typeof target === 'string') {
-    return target;
+    if (subpath === undefined)
+      return new URL(target, packageUrl).href;
+    if (target.indexOf('*') !== -1) {
+      return new URL(target.replace(/\*/g, subpath), packageUrl).href;
+    }
+    else if (target.endsWith('/')) {
+      return new URL(target + subpath, packageUrl).href;
+    }
+    else {
+      throw new Error('Expected pattern or path export');
+    }
   }
   else if (typeof target === 'object' && target !== null && !Array.isArray(target)) {
     for (const condition in target) {
       if (condition === 'default' || env.includes(condition)) {
-        const resolved = getExportsTarget(target[condition], env);
+        const resolved = resolvePackageTarget(target[condition], packageUrl, env, subpath);
         if (resolved)
           return resolved;
       }
@@ -354,7 +363,7 @@ export function getExportsTarget(target: ExportsTarget, env: string[]): string |
   else if (Array.isArray(target)) {
     // TODO: Validation for arrays
     for (const targetFallback of target) {
-      return getExportsTarget(targetFallback, env);
+      return resolvePackageTarget(targetFallback, packageUrl, env, subpath);
     }
   }
   return null;

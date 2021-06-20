@@ -130,6 +130,7 @@ export class ImportMap implements IImportMap {
       if (scopeBaseUrl) scopeBase = this.scopes[scopeBaseUrl] || {};
       if (!scopeBase) continue;
       const scopeImports = this.scopes[scope];
+      if (scopeBase === scopeImports) continue;
       let flattenedAll = true;
       for (const name of Object.keys(scopeImports)) {
         const existing = scopeBase[name];

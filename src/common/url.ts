@@ -49,6 +49,8 @@ export function relativeUrl (url: URL, baseUrl: URL) {
 
 export function isURL (specifier: string) {
   try {
+    if (specifier[0] === '#')
+      return false;
     new URL(specifier);
   }
   catch {

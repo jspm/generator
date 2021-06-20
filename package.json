@@ -6,12 +6,13 @@
   "types": "dist/generator.d.ts",
   "scripts": {
     "tsc": "tsc -p .",
-    "tsc-watch": "tsc -p . --watch",
+    "tsc:watch": "tsc -p . --watch",
     "rollup": "rollup -c && cp lib/generator.d.ts dist/generator.d.ts && mkdir -p dist/common && cp lib/common/log.d.ts dist/common/log.d.ts",
     "build": "npm run tsc && npm run rollup",
     "test": "npm run test:node && npm run test:browser",
     "test:node": "node test/test.js",
-    "test:browser": "node test/server.mjs"
+    "test:browser": "node test/server.mjs",
+    "test:watch": "cross-env WATCH_MODE=1 node test/server.mjs"
   },
   "type": "module",
   "imports": {
@@ -41,6 +42,7 @@
   },
   "devDependencies": {
     "chalk": "^4.1.1",
+    "cross-env": "^7.0.2",
     "rollup": "^2.44.0",
     "typescript": "^4.1.3"
   },
