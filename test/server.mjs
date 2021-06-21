@@ -92,7 +92,11 @@ http.createServer(async function (req, res) {
     await once(fileStream, 'readable');
   }
   catch (e) {
-    if (e.code === 'EISDIR' || e.code === 'ENOENT') {
+    if (e.code === 'EISDIR') {
+      res.writeHead(200, { 'content-type': 'text/plain' });
+      res.end('Directory');
+    }
+    else if (e.code === 'ENOENT') {
       res.writeHead(404, {
         'content-type': 'text/html'
       });
