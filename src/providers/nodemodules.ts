@@ -38,10 +38,10 @@ async function dirExists (url: URL, parentUrl?: string) {
 export async function resolveLatestTarget (this: Resolver, target: PackageTarget, _unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | null> {
   let curUrl = new URL('node_modules/', parentUrl);
   const rootUrl = new URL('/node_modules/', parentUrl).href;
-  while (!await dirExists.call(this, curUrl)) {
-    curUrl = new URL('../../node_modules/', curUrl);
+  while (!(await dirExists.call(this, curUrl))) {
     if (curUrl.href === rootUrl)
       return null;
+    curUrl = new URL('../../node_modules/', curUrl);
   }
   return { registry: 'node_modules', name: target.name, version: curUrl.href };
 }
