@@ -188,11 +188,9 @@ Note that the log messages are for debugging and not currently part of the semve
 
 #### mapUrl
 
-> _Type_: URL | String Absolute URL | String URL relative to CWD
-
-> _Default_: pathTofileURL(process.cwd() + '/')
-
-> The URL of the import map itself, used to construct relative import map URLs.
+**Type**: URL | String Absolute URL | String URL relative to CWD<br/>
+**Default**: pathTofileURL(process.cwd() + '/')<br/>
+_The URL of the import map itself, used to construct relative import map URLs._
 
 The `mapUrl` is used in order to output relative URLs for modules located on the same
 host as the import map.
@@ -203,11 +201,9 @@ map are relative to the URL of the import map.
 
 #### rootUrl
 
-> _Type_: URL | String Absolute URL | String URL relative to CWD
-
-> _Default_: null
-
-> The URL to treat as the root of the serving protocol of the import map, used to construct absolute import map URLs.
+**Type**: URL | String Absolute URL | String URL relative to CWD<br/>
+**Default**: null<br/>
+_The URL to treat as the root of the serving protocol of the import map, used to construct absolute import map URLs._
 
 When set, `rootUrl` takes precendence over `mapUrl` and is used to normalize all import map URLs
 as absolute paths against this URL.
@@ -217,11 +213,9 @@ will be normalized to `/local/mod.js` in the output map.
 
 #### defaultProvider
 
-> _Type_: 'jspm' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg'
-
-> _Default_: 'jspm'
-
-> The default provider to use for a new install. Providers are responsible for resolution from abstract package names and version ranges to exact URL locations.
+**Type**: 'jspm' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg'<br/>
+**Default**: 'jspm'<br/>
+_The default provider to use for a new install. Providers are responsible for resolution from abstract package names and version ranges to exact URL locations._
 
 Providers resolve package names and semver ranges to exact CDN package URL paths using provider hooks.
 
@@ -233,11 +227,9 @@ New providers can be merged in via PRs.
 
 #### env
 
-> _Type_: String[]
-
-> _Default_: ['browser', 'development', 'module']
-
-> The conditional environment resolutions to apply.
+**Type**: String[]<br/>
+**Default**: ['browser', 'development', 'module']<br/>
+_The conditional environment resolutions to apply._
 
 The conditions passed to the `env` option are environment conditions, as [supported by Node.js](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_conditions_definitions) in the package exports field.
 
@@ -255,11 +247,9 @@ Any other custom condition strings can also be provided.
 
 #### cache
 
-> _Type_: Boolean | String
-
-> _Default_: true
-
-> Whether to use a local FS cache for fetched modules. Set to 'offline' to use the offline cache.
+**Type**: Boolean | String<br/>
+**Default**: true<br/>
+_Whether to use a local FS cache for fetched modules. Set to 'offline' to use the offline cache._
 
 By default a global fetch cache is maintained between runs on the file system.
 
