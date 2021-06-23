@@ -29,12 +29,18 @@ export function importedFrom (parentUrl?: string | URL) {
   return ` imported from ${parentUrl}`;
 }
 
-export function relativeUrl (url: URL, baseUrl: URL) {
+function matchesRoot (url: URL, baseUrl: URL) {
+  return url.protocol === baseUrl.protocol && url.host === baseUrl.host && url.port === baseUrl.port && url.username === baseUrl.username && url.password === baseUrl.password;
+}
+
+export function relativeUrl (url: URL, baseUrl: URL, absolute = false) {
   const href = url.href;
   const baseUrlHref = baseUrl.href;
   if (href.startsWith(baseUrlHref))
-    return './' + href.slice(baseUrlHref.length);
-  if (url.protocol !== baseUrl.protocol || url.host !== baseUrl.host || url.port !== baseUrl.port || url.username !== baseUrl.username || url.password !== baseUrl.password)
+    return (absolute ? '/' : './') + href.slice(baseUrlHref.length);
+  if (!matchesRoot(url, baseUrl))
+    return url.href;
+  if (absolute)
     return url.href;
   const baseUrlPath = baseUrl.pathname;
   const urlPath = url.pathname;

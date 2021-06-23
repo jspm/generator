@@ -173,7 +173,7 @@ export class ImportMap implements IImportMap {
     return this;
   }
 
-  rebase (newBaseUrl: string = this.baseUrl.href) {
+  rebase (newBaseUrl: string = this.baseUrl.href, abs = false) {
     const oldBaseUrl = this.baseUrl;
     this.baseUrl = new URL(newBaseUrl, baseUrl);
     if (!this.baseUrl.pathname.endsWith('/')) this.baseUrl.pathname += '/';
@@ -181,10 +181,10 @@ export class ImportMap implements IImportMap {
     for (const impt of Object.keys(this.imports)) {
       const target = this.imports[impt];
       if (target !== null && target[0] !== '/')
-        this.imports[impt] = relativeUrl(new URL(target, oldBaseUrl), this.baseUrl);
+        this.imports[impt] = relativeUrl(new URL(target, oldBaseUrl), this.baseUrl, abs);
     }
     for (const scope of Object.keys(this.scopes)) {
-      const newScope = relativeUrl(new URL(scope, oldBaseUrl), this.baseUrl);
+      const newScope = relativeUrl(new URL(scope, oldBaseUrl), this.baseUrl, abs);
       const scopeImports = this.scopes[scope];
       if (scope !== newScope) {
         delete this.scopes[scope];
@@ -193,23 +193,23 @@ export class ImportMap implements IImportMap {
       for (const name of Object.keys(scopeImports)) {
         const target = scopeImports[name];
         if (target !== null && target[0] !== '/')
-          scopeImports[name] = relativeUrl(new URL(target, oldBaseUrl), this.baseUrl);
+          scopeImports[name] = relativeUrl(new URL(target, oldBaseUrl), this.baseUrl, abs);
       }
     }
     const newDepcache = Object.create(null);
     for (const dep of Object.keys(this.depcache)) {
       const importsRebased = this.depcache[dep].map(specifier => {
         if (isPlain(specifier)) return specifier;
-        return relativeUrl(new URL(specifier, oldBaseUrl), this.baseUrl);
+        return relativeUrl(new URL(specifier, oldBaseUrl), this.baseUrl, abs);
       });
-      const depRebased = relativeUrl(new URL(dep, oldBaseUrl), this.baseUrl);
+      const depRebased = relativeUrl(new URL(dep, oldBaseUrl), this.baseUrl, abs);
       newDepcache[depRebased] = importsRebased;
     }
     this.depcache = newDepcache;
     const newIntegrity = Object.create(null);
     for (const dep of Object.keys(this.integrity)) {
       const integrityVal = this.integrity[dep];
-      const depRebased = relativeUrl(new URL(dep, oldBaseUrl), this.baseUrl);
+      const depRebased = relativeUrl(new URL(dep, oldBaseUrl), this.baseUrl, abs);
       newIntegrity[depRebased] = integrityVal;
     }
     this.integrity = newIntegrity;

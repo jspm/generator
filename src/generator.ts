@@ -9,6 +9,7 @@ import { Resolver } from "./install/resolver.js";
 
 export interface GeneratorOptions {
   mapUrl?: URL | string;
+  rootUrl?: URL | string;
   defaultProvider?: string;
   env?: string[];
   cache?: string | boolean;
@@ -29,6 +30,7 @@ export function clearCache () {
 export class Generator {
   traceMap: TraceMap;
   mapUrl: URL;
+  rootUrl: URL | null;
   finishInstall: (success: boolean) => Promise<boolean | { pjsonChanged: boolean, lock: LockResolutions }> | null = null;
   installCnt = 0;
 
@@ -36,6 +38,7 @@ export class Generator {
 
   constructor ({
     mapUrl = baseUrl,
+    rootUrl = undefined,
     env = ['browser', 'development', 'module'],
     defaultProvider = 'jspm',
     cache = true,
@@ -49,7 +52,8 @@ export class Generator {
     const { log, logStream } = createLogger();
     const resolver = new Resolver(log, fetchOpts);
     this.logStream = logStream;
-    this.mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl) : mapUrl;
+    this.mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl, baseUrl) : mapUrl;
+    this.rootUrl = typeof rootUrl === 'string' ? new URL(rootUrl, baseUrl) : rootUrl || null;
     if (!this.mapUrl.pathname.endsWith('/')) {
       try {
         this.mapUrl = new URL('./', this.mapUrl);
@@ -115,7 +119,10 @@ export class Generator {
   getMap () {
     const map = this.traceMap.map.clone();
     map.flatten();
-    map.rebase();
+    if (this.rootUrl)
+      map.rebase(this.rootUrl.href, true);
+    else
+      map.rebase();
     map.sort();
     return map.toJSON();
   }
