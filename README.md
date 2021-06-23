@@ -202,7 +202,7 @@ map are relative to the URL of the import map.
 #### rootUrl
 
 > Type: URL | String Absolute URL | String URL relative to CWD<br/>
-Default: null<br/>
+Default: Empty<br/>
 _The URL to treat as the root of the serving protocol of the import map, used to construct absolute import map URLs._
 
 When set, `rootUrl` takes precendence over `mapUrl` and is used to normalize all import map URLs
