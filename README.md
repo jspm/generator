@@ -2,7 +2,11 @@
 
 Package Import Map Generation Tool
 
+Manages version resolutions of modules against modules CDNs or even local node_modules via [supported providers](#defaultProvider).
+
 For an interactive UI for this tool running on JSPM.IO, see [https://generator.jspm.io](https://generator.jspm.io).
+
+## Getting Started
 
 ### Installation
 
@@ -13,20 +17,13 @@ npm install @jspm/generator
 
 `@jspm/generator` only ships as an ES module, so to use it in Node.js add `"type": "module"` to your package.json file or write an `.mjs` to load it.
 
-Browser (self install):
+Browser:
 
 ```html
-<!-- ES Module Shims: Import maps polyfill for modules browsers without import maps support (all except Chrome 89+) -->
-<script async src="https://ga.jspm.io/npm:es-module-shims@0.11.1/dist/es-module-shims.min.js"></script>
-
-<!--
-  JSPM Generator Import Map
-  Edit URL: https://generator.jspm.io/#Y2VgYGBmD0pNTC5RCC5JLCpJLWJILdbNzU8pzUnVzUmtSC1yMNAz0TNkKC4DMg31LPSMkZj6yfl5QE6JblFiXnqqXlYxAFyav05QAA
--->
 <script type="importmap">
 {
   "imports": {
-    "@jspm/generator": "https:ga.jspm.io/npm:@jspm/generator@1.0.0-beta.3/dist/generator.js",
+    "@jspm/generator": "https://ga.jspm.io/npm:@jspm/generator@1.0.0-beta.3/dist/generator.js",
     "es-module-lexer": "https://ga.jspm.io/npm:es-module-lexer@0.4.1/dist/lexer.cjs",
     "sver": "https://ga.jspm.io/npm:sver@1.8.3/sver.js",
     "sver/convert-range.js": "https://ga.jspm.io/npm:sver@1.8.3/convert-range.js"
@@ -40,49 +37,19 @@ Browser (self install):
   }
 }
 </script>
-
 <script type="module" src="generate.mjs"></script>
 ```
+
+### Usage
 
 generate.mjs
 ```js
 import { Generator } from '@jspm/generator';
 
 const generator = new Generator({
-  /*
-   * Default: process.cwd() + '/'
-   * 
-   * The URL of the import map itself
-   * 
-   * This is used in order to output relative URLs for modules located on the same
-   * host as the import map.
-   * (Eg for `file:///path/to/project/map.importmap`, installing local file packages will
-   * be output as relative URLs to the import map location supporting any host)
-   */  
   mapUrl: import.meta.url,
-
-  /*
-   * Default: 'jspm'
-   * Supported: 'jspm', 'jspm.system', 'nodemodules', 'skypack', 'jsdelivr', 'unpkg'.
-   */
   defaultProvider: 'jspm',
-
-  /*
-   * Default: ['browser', 'development', 'module']
-   * 
-   * The conditional environment resolutions to apply.
-   * 
-   * See https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_conditional_exports
-   * for more info
-   */
   env: ['production', 'browser'],
-
-  /*
-   * Default: true
-   *
-   * Whether to use a local FS cache for fetched modules
-   * Set to 'offline' to use the offline cache
-   */
   cache: false,
 });
 
@@ -138,15 +105,17 @@ await generator.install({ target: '@material-ui/core@4.11.4', subpaths: ['./Acco
 
 ### Providers
 
-Providers resolve package names and semver ranges to exact CDN package URL paths using provider hooks.
+Supported providers include `"jspm"`, `"jspm.system"`, `"nodemodules"`, `"skypack"`, `"jsdelivr"`, `"unpkg"`, with all except
+`"nodemodules"` corresponding to their respective CDNs as the package source.
 
-These hooks include version resolution and converting package versions into URLs and back again.
+The `"nodemodules"` provider does a traditional `node_modules` path search from the current module URL (eg for a
+`file:///` URL when generating maps for local code). When running over other URL protocols such as from the browser, the
+only requirement is that the protocol in use does not return an error code for directory listing requests to node_modules, as
+many local dev servers support. The dependency package can then be located and the import map is constructed against these
+node_modules lookups.
 
-See `src/providers/[name].ts` for how to define a custom provider.
-
-Supported providers include "jspm", "jspm.system", "nodemodules", "skypack", "jsdelivr", "unpkg".
-
-New providers can be merged in via PRs.
+The `"jspm.system"` provider can be used to generate import maps for SystemJS, which behave identically to modules on `"jspm"`
+but fully supporting older browsers due to the semantic equivalence with ES modules of the SystemJS module format.
 
 ### Working with Import Maps
 
@@ -181,6 +150,8 @@ modules have yet executed on the page. For dynamic import map injection workflow
 for each import map and injecting it into this frame can be used to get around this constraint for
 in-page refreshing application workflows.
 
+## API
+
 ### Package Configuration
 
 Package exports configurations are taken from the package.json. When attempting to install or resolve a subpath of a package
@@ -194,38 +165,6 @@ To recover from errors like this, JSPM and Skypack have mechanisms for overridin
 Creating a PR to add custom exports overrides allows for fixing any package issues on the CDNs.
 
 For more information on the package exports field see the [Node.js documentation](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_package_entry_points).
-
-### Environment Conditions
-
-The conditions passed to the `env` option are environment conditions, as [supported by Node.js](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_conditions_definitions) in the package exports field.
-
-By default the `"default"`, `"require"` and `"import"` conditions are always supported regardless of what `env` conditions are provided.
-
-In addition the default conditions applied if no `env` option is set are `"browser"`, `"development"` and `"module"`.
-
-Webpack and RollupJS support a custom `"module"` condition as a bundler-specific solution to the [dual package hazard](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_dual_package_hazard), which is by default included in the JSPM resolution as well although
-can be turned off if needed.
-
-Note when providing custom conditions like setting `env: ["production"]` that the `"browser"` and `"module"` conditions still need to be
-applied as well via `env: ["production", "browser", "module"]`. Ordering does not matter though.
-
-Any other custom condition strings can also be provided.
-
-### Caching
-
-By default a global fetch cache is maintained between runs on the file system.
-
-This caching can be disabled by setting `cache: false`.
-
-When running offline, setting `cache: 'offline'` will only use the local cache and not touch the network at all,
-making fully offline workflows possible provided the modules have been seen before.
-
-To clear the global cache, a `clearCache` function is also exported:
-
-```js
-import { clearCache } from '@jspm/generator';
-clearCache();
-```
 
 ### Logging
 
@@ -244,6 +183,87 @@ const generator = new Generator();
 Log events recorded include `trace`, `resolve` and `install`.
 
 Note that the log messages are for debugging and not currently part of the semver contract of the project.
+
+### Options
+
+#### mapUrl
+
+> _Type_: URL | String Absolute URL | String URL relative to CWD
+> _Default_: pathTofileURL(process.cwd() + '/')
+> The URL of the import map itself, used to construct relative import map URLs.
+
+The `mapUrl` is used in order to output relative URLs for modules located on the same
+host as the import map.
+
+E.g. for `mapUrl: 'file:///path/to/project/map.importmap'`, installing local file packages
+will be output as relative URLs to their file locations from the map location, since all URLs in an import
+map are relative to the URL of the import map.
+
+#### rootUrl
+
+> _Type_: URL | String Absolute URL | String URL relative to CWD
+> _Default_: null
+> The URL to treat as the root of the serving protocol of the import map, used to construct absolute import map URLs.
+
+When set, `rootUrl` takes precendence over `mapUrl` and is used to normalize all import map URLs
+as absolute paths against this URL.
+
+E.g. for `rootUrl: 'file:///path/to/project/public'`, any local module `public/local/mod.js` within the `public` folder
+will be normalized to `/local/mod.js` in the output map.
+
+#### defaultProvider
+
+> _Type_: 'jspm' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg'
+> _Default_: 'jspm'
+> The default provider to use for a new install. Providers are responsible for resolution from abstract package names and version ranges to exact URL locations.
+
+Providers resolve package names and semver ranges to exact CDN package URL paths using provider hooks.
+
+These hooks include version resolution and converting package versions into URLs and back again.
+
+See `src/providers/[name].ts` for how to define a custom provider.
+
+New providers can be merged in via PRs.
+
+#### env
+
+> _Type_: String[]
+> _Default_: ['browser', 'development', 'module']
+> The conditional environment resolutions to apply.
+
+The conditions passed to the `env` option are environment conditions, as [supported by Node.js](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_conditions_definitions) in the package exports field.
+
+By default the `"default"`, `"require"` and `"import"` conditions are always supported regardless of what `env` conditions are provided.
+
+In addition the default conditions applied if no `env` option is set are `"browser"`, `"development"` and `"module"`.
+
+Webpack and RollupJS support a custom `"module"` condition as a bundler-specific solution to the [dual package hazard](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_dual_package_hazard), which is by default included in the JSPM resolution as well although
+can be turned off if needed.
+
+Note when providing custom conditions like setting `env: ["production"]` that the `"browser"` and `"module"` conditions still need to be
+applied as well via `env: ["production", "browser", "module"]`. Ordering does not matter though.
+
+Any other custom condition strings can also be provided.
+
+#### cache
+
+> _Type_: Boolean | String
+> _Default_: true
+> Whether to use a local FS cache for fetched modules. Set to 'offline' to use the offline cache.
+
+By default a global fetch cache is maintained between runs on the file system.
+
+This caching can be disabled by setting `cache: false`.
+
+When running offline, setting `cache: 'offline'` will only use the local cache and not touch the network at all,
+making fully offline workflows possible provided the modules have been seen before.
+
+To clear the global cache, a `clearCache` function is also exported:
+
+```js
+import { clearCache } from '@jspm/generator';
+clearCache();
+```
 
 ## Contributing
 
