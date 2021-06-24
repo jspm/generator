@@ -258,11 +258,63 @@ This caching can be disabled by setting `cache: false`.
 When running offline, setting `cache: 'offline'` will only use the local cache and not touch the network at all,
 making fully offline workflows possible provided the modules have been seen before.
 
-To clear the global cache, a `clearCache` function is also exported:
+### Utility Functions
+
+The following utility functions are exported as additional exports of the generator:
+
+#### clearCache
+
+> Parameters: []<br/>
+> Return: void
+_Supports clearing the global fetch cache in Node.js._
+
+Example:
 
 ```js
 import { clearCache } from '@jspm/generator';
 clearCache();
+```
+
+#### getPackageConfig
+
+_Get the package.json configuration for a specific URL or package._
+
+```js
+import { getPackageConfig } from '@jspm/generator';
+
+// Supports a resolved package
+{
+  const packageJson = await getPackageConfig({ registry: 'npm', name: 'lit-element', version: '2.5.1' });
+}
+
+// Or alternatively provide any URL
+{
+  const packageJson = await getPackageConfig('https://ga.jspm.io/npm:lit-element@2.5.1/lit-element.js');
+}
+```
+
+#### lookup
+
+_Get the lookup resolution information for a specific install._
+
+Example:
+
+```js
+import { lookup } from '@jspm/generator';
+
+await lookup('lit-element');
+/*
+{
+  install: {
+    target: { registry: 'npm', name: 'lit-element', range: '^2.0' },
+    subpath: '.',
+    alias: 'lit-element'
+  },
+  resolved: { registry: 'npm', name: 'lit-element', version: '2.5.1' }
+}
+*/
+
+// The "resolved" property can also be passed directly to getPackageConfig
 ```
 
 ## Contributing

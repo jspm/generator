@@ -48,10 +48,14 @@ export class Resolver {
     catch {
       return url;
     }
+    const rootUrl = new URL('/', testUrl).href;
     do {
       let responseUrl;
       if (responseUrl = await this.checkPjson(testUrl.href))
         return new URL('.', responseUrl).href;
+      // No package base -> use directory itself
+      if (testUrl.href === rootUrl)
+        return new URL('./', url).href;
     } while (testUrl = new URL('../', testUrl));
   }
 
