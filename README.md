@@ -264,8 +264,6 @@ The following utility functions are exported as additional exports of the genera
 
 #### clearCache
 
-> Parameters: []<br/>
-> Return: void
 _Supports clearing the global fetch cache in Node.js._
 
 Example:
