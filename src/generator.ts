@@ -1,7 +1,7 @@
 import { baseUrl } from "./common/url.js";
-import { toPackageTarget } from "./install/package.js";
+import { ExactPackage, toPackageTarget } from "./install/package.js";
 import TraceMap from './tracemap/tracemap.js';
-import { LockResolutions } from './install/installer.js';
+import { InstallTarget, LockResolutions } from './install/installer.js';
 // @ts-ignore
 import { clearCache as clearFetchCache } from '#fetch';
 import { createLogger, LogStream } from './common/log.js';
@@ -12,7 +12,7 @@ export interface GeneratorOptions {
   rootUrl?: URL | string;
   defaultProvider?: string;
   env?: string[];
-  cache?: string | boolean;
+  cache?: 'offline' | boolean;
   stdlib?: string;
 }
 
@@ -68,14 +68,6 @@ export class Generator {
     }, log, resolver);
   }
 
-  async lookup (install: string | Install) {
-    const { target, subpath } = await installToTarget.call(this, install);
-    if (target instanceof URL)
-      throw new Error('URL lookups not supported');
-    const resolved = await this.traceMap.resolver.resolveLatestTarget(target, true, this.traceMap.installer.defaultProvider);
-    return { subpath, ...resolved };
-  }
-
   async install (install: string | Install | (string | Install)[]): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
     this.traceMap.clearLists();
     if (Array.isArray(install))
@@ -126,6 +118,42 @@ export class Generator {
     map.sort();
     return map.toJSON();
   }
+}
+
+export interface LookupOptions {
+  provider?: string;
+  cache?: 'offline' | boolean;
+}
+
+export async function lookup (install: string | Install, { provider, cache }: LookupOptions = {}) {
+  const generator = new Generator({ cache: !cache, defaultProvider: provider });
+  const { target, subpath, alias } = await installToTarget.call(generator, install);
+  if (target instanceof URL)
+    throw new Error('URL lookups not supported');
+  const resolved = await generator.traceMap.resolver.resolveLatestTarget(target, true, generator.traceMap.installer.defaultProvider);
+  return {
+    install: {
+      target: {
+        registry: target.registry,
+        name: target.name,
+        range: target.ranges.map(range => range.toString()).join(' || ')
+      },
+      subpath,
+      alias
+    },
+    resolved
+  };
+}
+
+export async function getPackageConfig (pkg: string | URL | ExactPackage, { provider, cache }: LookupOptions = {}) {
+  const generator = new Generator({ cache: !cache, defaultProvider: provider });
+  if (typeof pkg === 'object' && 'name' in pkg)
+    pkg = generator.traceMap.resolver.pkgToUrl(pkg, generator.traceMap.installer.defaultProvider);
+  else if (typeof pkg === 'string')
+    pkg = new URL(pkg).href;
+  else
+    pkg = pkg.href;
+  return generator.traceMap.resolver.getPackageConfig(pkg);
 }
 
 async function installToTarget (this: Generator, install: Install | string) {
