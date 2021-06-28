@@ -125,8 +125,8 @@ export default class TraceMap {
               const resolved = await this.trace(specifier, new URL(parentUrl), this.tracedUrls?.[parentUrl]?.wasCJS ? ['require', ...this.env] : ['import', ...this.env]);
               traceResolutions[trace] = resolved;
             }
-            catch {
-              // second pass errors ignored as they should have been thrown by first pass
+            catch (e) {
+              throw e;
             }
           }));
         } while (this.installer!.newInstalls);
