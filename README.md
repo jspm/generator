@@ -103,6 +103,25 @@ Multiple subpaths can be supported via the `subpaths` install option:
 await generator.install({ target: '@material-ui/core@4.11.4', subpaths: ['./AccordionDetails', './Accordion'] });
 ```
 
+### Module Preloading
+
+The return value of the the `install` command contains the full dependency graph list via `staticDeps` and `dynamicDeps`:
+
+```js
+const { staticDeps, dynamicDeps } = await generator.install('lit');
+```
+
+These are arrays of full URLs to the loaded module, which can be used to construct module preloading tags:
+
+```js
+let preloadHtml = '';
+for (const dep of staticDeps) {
+  preloadHtml += `<link rel="modulepreload" href="${dep}"/>\n`;
+}
+```
+
+For batch install jobs, the dependencies include all installs. When using separate `.install` commands the lists are per-install.
+
 ### Providers
 
 Supported providers include `"jspm"`, `"jspm.system"`, `"nodemodules"`, `"skypack"`, `"jsdelivr"`, `"unpkg"`, with all except
