@@ -1,9 +1,9 @@
 import { baseUrl } from "./common/url.js";
 import { ExactPackage, toPackageTarget } from "./install/package.js";
 import TraceMap from './tracemap/tracemap.js';
-import { InstallTarget, LockResolutions } from './install/installer.js';
+import { LockResolutions } from './install/installer.js';
 // @ts-ignore
-import { clearCache as clearFetchCache } from '#fetch';
+import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
 import { createLogger, LogStream } from './common/log.js';
 import { Resolver } from "./install/resolver.js";
 
@@ -108,6 +108,13 @@ export class Generator {
     }
   }
 
+  // resolver that uses the internal import map
+  resolve (specifier: string, parentUrl: URL | string = baseUrl) {
+    if (typeof parentUrl === 'string')
+      parentUrl = new URL(parentUrl, baseUrl);
+    return this.traceMap.map.resolve(specifier, parentUrl).href;
+  }
+
   getMap () {
     const map = this.traceMap.map.clone();
     map.flatten();
@@ -123,6 +130,11 @@ export class Generator {
 export interface LookupOptions {
   provider?: string;
   cache?: 'offline' | boolean;
+}
+
+export async function fetch (url: string, opts: any) {
+  // @ts-ignore
+  return _fetch(url, opts);
 }
 
 export async function lookup (install: string | Install, { provider, cache }: LookupOptions = {}) {

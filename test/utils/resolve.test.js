@@ -1,0 +1,13 @@
+import { Generator } from '@jspm/generator';
+import assert from 'assert';
+
+const generator = new Generator({
+  mapUrl: import.meta.url
+});
+
+await generator.install('@jspm/generator');
+
+const generatorUrl = new URL('../../dist/generator.js', import.meta.url).href;
+
+assert.strictEqual(generator.resolve('@jspm/generator'), generatorUrl);
+assert.strictEqual(generator.resolve('#fetch', generatorUrl), new URL('./fetch.js', generatorUrl).href);
