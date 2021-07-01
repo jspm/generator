@@ -11,7 +11,8 @@ export let baseUrl: URL;
 // @ts-ignore
 if (typeof Deno !== 'undefined') {
   // @ts-ignore
-  baseUrl = new URL('file://' + Deno.cwd() + '/');
+  const denoCwd = Deno.cwd();
+  baseUrl = new URL('file://' + (denoCwd[0] === '/' ? '' : '/') + denoCwd + '/');
 }
 else if (typeof process !== 'undefined' && process.versions.node) {
   baseUrl = new URL('file://' + process.cwd() + '/');

@@ -4,7 +4,7 @@ import { denoExec } from '#test/deno';
 const generator = new Generator({
   mapUrl: 'about:blank',
   stdlib: new URL('../../jspm-core/', import.meta.url),
-  env: ['production', 'node', 'deno', 'module', 'browser']
+  env: ['production', 'node', 'deno', 'module']
 });
 
 const targetUrl = new URL('../../', import.meta.url).href;
@@ -19,8 +19,8 @@ await denoExec(generator.getMap(), `
 
   const generator = new Generator({
     mapUrl: 'about:blank',
-    stdlib: new URL('../../jspm-core/', import.meta.url),
-    env: ['production', 'node', 'deno', 'module', 'browser']
+    stdlib: new URL('../../jspm-core/', ${JSON.stringify(import.meta.url)}),
+    env: ['production', 'node', 'deno', 'module']
   });
 
   // inception!
