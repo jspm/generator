@@ -4,25 +4,28 @@ import { denoExec } from '#test/deno';
 const generator = new Generator({
   mapUrl: 'about:blank',
   stdlib: new URL('../../jspm-core/', import.meta.url),
-  env: ['production', 'node', 'deno', 'module']
+  env: ['production', 'node', 'deno', 'module', 'browser']
 });
 
+const targetUrl = new URL('../../', import.meta.url).href;
 
-// (async () => {
-//   for await (const { type, message } of generator.logStream())
-//     console.log(`${type}: ${message}`);
-// })();
-if (false) {
+await generator.install({ alias: '@jspm/generator', target: targetUrl });
 
-await generator.install('cowsay');
+const map = generator.getMap();
 
 await denoExec(generator.getMap(), `
-  import cowsay from 'cowsay';
+  import { Generator } from '@jspm/generator';
+  import { assertEquals } from "https://deno.land/std@0.100.0/testing/asserts.ts";
 
-  console.log(cowsay.say({
-    text : "I'm a moooodule",
-    e : "oO",
-    T : "U "
-  }));
+  const generator = new Generator({
+    mapUrl: 'about:blank',
+    stdlib: new URL('../../jspm-core/', import.meta.url),
+    env: ['production', 'node', 'deno', 'module', 'browser']
+  });
+
+  // inception!
+  await generator.install({ alias: '@jspm/generator', target: ${JSON.stringify(targetUrl)} });
+  const map = generator.getMap();
+
+  assertEquals(map, ${JSON.stringify(map)})
 `);
-}

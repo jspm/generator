@@ -18,10 +18,12 @@
   "imports": {
     "#fetch": {
       "test": {
+        "deno": "./lib/common/fetch.js",
         "node": "./lib/common/fetch-node.js",
         "default": "./lib/common/fetch.js"
       },
       "default": {
+        "deno": "./dist/fetch.js",
         "node": "./dist/fetch-node.js",
         "default": "./dist/fetch.js"
       }
