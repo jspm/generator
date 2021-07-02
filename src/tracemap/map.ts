@@ -251,20 +251,15 @@ export class ImportMap implements IImportMap {
   }
 }
 
-const scopeCache = new WeakMap<Record<string, Record<string, string | null>>, [string, string][]>();
 export function getScopeMatches (parentUrl: URL, scopes: Record<string, Record<string, string | null>>, baseUrl: URL): [string, string][] {
   const parentUrlHref = parentUrl.href;
 
-  let scopeCandidates = scopeCache.get(scopes);
-  if (!scopeCandidates) {
-    scopeCandidates = Object.keys(scopes).map(scope => [scope, new URL(scope, baseUrl).href]);
-    scopeCandidates = scopeCandidates.sort(([, matchA], [, matchB]) => matchA.length < matchB.length ? 1 : -1);
-    scopeCache.set(scopes, scopeCandidates);
-  }
+  let scopeCandidates = Object.keys(scopes).map(scope => [scope, new URL(scope, baseUrl).href]);
+  scopeCandidates = scopeCandidates.sort(([, matchA], [, matchB]) => matchA.length < matchB.length ? 1 : -1);
 
   return scopeCandidates.filter(([, scopeUrl]) => {
     return scopeUrl === parentUrlHref || scopeUrl.endsWith('/') && parentUrlHref.startsWith(scopeUrl);
-  });
+  }) as [string, string][];
 }
 
 export function getMapMatch<T = any> (specifier: string, map: Record<string, T>): string | undefined {

@@ -84,6 +84,11 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
  *   "scopes": { ... }
  * }
  */
+
+// Once packages are installed, the resolve function provides direct import map resolutions:
+
+// https://ga.jspm.io/npm:lit@2.0.0-rc.1/decorators.js
+console.log(generator.resolve('lib/decorators.js'/*, optionalScopeUrl */));
 ```
 
 The `"scopes"` field is populated with all necessary deep dependencies with versions deduped and shared as
@@ -291,6 +296,19 @@ Example:
 import { clearCache } from '@jspm/generator';
 clearCache();
 ```
+
+#### fetch
+
+_Use the internal fetch implementation, useful for hooking into the same shared local fetch cache._
+
+```js
+import { fetch } from '@jspm/generator';
+
+const res = await fetch(url);
+console.log(await res.text());
+```
+
+Use the `{ cache: 'no-store' }` option to disable the cache, and the `{ cache: 'force-cache' }` option to enforce the offline cache.
 
 #### getPackageConfig
 
