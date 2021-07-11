@@ -48,6 +48,12 @@ import { Generator } from '@jspm/generator';
 
 const generator = new Generator({
   mapUrl: import.meta.url,
+  inputMap: {
+    "imports": {
+      "react-dom": "https://ga.jspm.io/npm:react-dom@17.0.2/index.js"
+    },
+    "scopes": {/* ... */}
+  },
   defaultProvider: 'jspm',
   env: ['production', 'browser'],
   cache: false,
@@ -79,7 +85,8 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
  *     "lit/html.js": "https://ga.jspm.io/npm:lit@2.0.0-rc.1/html.js",
  *     "mypkg/feature": "./packages/local-pkg/feature.js",
  *     "react": "https://ga.jspm.io/npm:react@17.0.2/index.js",
- *     "react16": "https://ga.jspm.io/npm:react@16.14.0/index.js"
+ *     "react16": "https://ga.jspm.io/npm:react@16.14.0/index.js",
+ *     "react-dom": "https://ga.jspm.io/npm:react-dom@17.0.2/index.js"
  *   },
  *   "scopes": { ... }
  * }
@@ -234,6 +241,14 @@ as absolute paths against this URL.
 
 E.g. for `rootUrl: 'file:///path/to/project/public'`, any local module `public/local/mod.js` within the `public` folder
 will be normalized to `/local/mod.js` in the output map.
+
+#### inputMap
+
+> Type: Object | undefined<br/>
+Default: {}<br/>
+_The import map to extend._
+
+The initial state of the import map that generator operations work on top of.
 
 #### defaultProvider
 

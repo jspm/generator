@@ -6,10 +6,15 @@ import { LockResolutions } from './install/installer.js';
 import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
 import { createLogger, LogStream } from './common/log.js';
 import { Resolver } from "./install/resolver.js";
+import { IImportMap } from "./tracemap/map";
 
 export interface GeneratorOptions {
   mapUrl?: URL | string;
   rootUrl?: URL | string;
+  /**
+   * The initial state of the import map that generator operations work on top of.
+   */
+  inputMap?: IImportMap;
   defaultProvider?: string;
   env?: string[];
   cache?: 'offline' | boolean;
@@ -39,6 +44,7 @@ export class Generator {
   constructor ({
     mapUrl = baseUrl,
     rootUrl = undefined,
+    inputMap = undefined,
     env = ['browser', 'development', 'module'],
     defaultProvider = 'jspm',
     cache = true,
@@ -64,7 +70,8 @@ export class Generator {
     this.traceMap = new TraceMap(this.mapUrl, {
       stdlib,
       env,
-      defaultProvider
+      defaultProvider,
+      inputMap,
     }, log, resolver);
   }
 
