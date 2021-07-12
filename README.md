@@ -248,7 +248,7 @@ will be normalized to `/local/mod.js` in the output map.
 Default: {}<br/>
 _The import map to extend._
 
-The initial state of the import map that generator operations work on top of.
+An initial import map to start with - can be from a previous install or provide custom mappings.
 
 #### defaultProvider
 
