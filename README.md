@@ -48,13 +48,18 @@ import { Generator } from '@jspm/generator';
 
 const generator = new Generator({
   mapUrl: import.meta.url,
+  inputMap: {
+    "imports": {
+      "react": "https://cdn.skypack.dev/react"
+    }
+  },
   defaultProvider: 'jspm',
   env: ['production', 'browser'],
   cache: false,
 });
 
 // Install a new package into the import map
-await generator.install('react');
+await generator.install('react-dom');
 
 // Install a package version and subpath into the import map (installs lit/decorators.js)
 await generator.install('lit@2/decorators.js');
@@ -78,8 +83,9 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
  *     "lit/decorators.js": "https://ga.jspm.io/npm:lit@2.0.0-rc.1/decorators.js",
  *     "lit/html.js": "https://ga.jspm.io/npm:lit@2.0.0-rc.1/html.js",
  *     "mypkg/feature": "./packages/local-pkg/feature.js",
- *     "react": "https://ga.jspm.io/npm:react@17.0.2/index.js",
- *     "react16": "https://ga.jspm.io/npm:react@16.14.0/index.js"
+ *     "react": "https://cdn.skypack.dev/react",
+ *     "react16": "https://ga.jspm.io/npm:react@16.14.0/index.js",
+ *     "react-dom": "https://ga.jspm.io/npm:react-dom@17.0.2/index.js"
  *   },
  *   "scopes": { ... }
  * }
@@ -234,6 +240,14 @@ as absolute paths against this URL.
 
 E.g. for `rootUrl: 'file:///path/to/project/public'`, any local module `public/local/mod.js` within the `public` folder
 will be normalized to `/local/mod.js` in the output map.
+
+#### inputMap
+
+> Type: Object | undefined<br/>
+Default: {}<br/>
+_The import map to extend._
+
+An initial import map to start with - can be from a previous install or provide custom mappings.
 
 #### defaultProvider
 
