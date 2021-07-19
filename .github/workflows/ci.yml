@@ -32,12 +32,13 @@ jobs:
           CI_BROWSER: /opt/hostedtoolcache/firefox/${{ matrix.firefox }}/x64/firefox
           CI_BROWSER_FLAGS: -headless
 
-  test-node:
-    name: Node.js Tests
+  test-servers:
+    name: Node.js & Deno Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node: [14.x, 16.x]
+        deno: [1.x]
     steps:
     - uses: actions/checkout@v2
       with:
@@ -46,18 +47,10 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node }}
-    - run: ls jspm-core/nodelibs
-    - run: cat jspm-core/package.json
+    - uses: denoland/setup-deno@v1
+      with:
+        deno: ${{ matrix.deno }}
     - run: npm install
     - run: cd jspm-core && npm install
     - run: npm run build
     - run: npm run test:node
-  
-  # test-deno:
-  #   strategy:
-  #   matrix:
-  #     deno: [1.x]
-  #   steps:
-  #   - uses: denoland/setup-deno@v1
-  #     with:
-  #       deno: ${{ matrix.deno }}
