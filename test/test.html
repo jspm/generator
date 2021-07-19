@@ -10,7 +10,7 @@
   "imports": {
     "@jspm/generator": "/lib/generator.js",
     "@jspm/import-map": "/node_modules/@jspm/import-map/dist/map.js",
-    "#fetch": "/lib/common/fetch.js",
+    "#fetch": "/lib/common/fetch-native.js",
     "assert": "https://ga.jspm.io/npm:assert@2.0.0/build/assert.js",
     "es-module-lexer": "https://ga.jspm.io/npm:es-module-lexer@0.4.1/dist/lexer.cjs",
     "sver": "https://ga.jspm.io/npm:sver@1.8.3/sver.js",
@@ -45,17 +45,6 @@
     }
   }
 }
-</script>
-<script async>
-  setTimeout(() => {
-    importShim('./runMochaTests.js').then(() => {
-      fetch('/debug', { headers: { message: 'IMPORTED TESTS' } });
-    })
-    .catch(e => {
-      fetch('/debug', { headers: { message: 'FAILED TO IMPORT TESTS' } });
-      fetch('/debug', { headers: { message: e.toString() } });
-    });
-  }, 5000);
 </script>
 <script type="module" src="./runMochaTests.js"></script>
 <div id="mocha"></div>
