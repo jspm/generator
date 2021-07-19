@@ -46,5 +46,8 @@
   }
 }
 </script>
+<script>
+  fetch('/debug', { headers: { message: 'Browser executing' } });
+</script>
 <script type="module" src="./runMochaTests.js"></script>
 <div id="mocha"></div>

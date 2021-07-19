@@ -38,14 +38,20 @@ function setBrowserTimeout () {
   browserTimeout = setTimeout(() => {
     console.log('No browser requests made to server for 10s, closing.');
     process.exit(failTimeout || process.env.CI_BROWSER ? 1 : 0);
-  }, 30000);
+  }, 10000);
 }
 
 setBrowserTimeout();
 
 http.createServer(async function (req, res) {
   setBrowserTimeout();
-  if (req.url.startsWith('/tests/ping')) {
+  if (req.url === '/debug') {
+    console.log(req.headers.message);
+    res.writeHead(200);
+    res.end('');
+    return;
+  }
+  else if (req.url.startsWith('/tests/ping')) {
     res.writeHead(200);
     res.end('');
     return;
