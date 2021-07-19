@@ -53,8 +53,6 @@ jobs:
     - run: npm install
     - run: cd jspm-core && npm install
     - run: npm run build
-    - run: ls /opt/hostedtoolcache/deno/${{ matrix.deno }}
-    - run: ls /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64
     - run: npm run test:node
       env:
-        DENO_BIN: /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64
+        DENO_BIN: /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64/deno
