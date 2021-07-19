@@ -47,13 +47,15 @@
 }
 </script>
 <script async>
-  importShim('./runMochaTests.js').then(() => {
-    fetch('/debug', { headers: { message: 'IMPORTED TESTS' } });
-  })
-  .catch(e => {
-    fetch('/debug', { headers: { message: 'FAILED TO IMPORT TESTS' } });
-    fetch('/debug', { headers: { message: e.toString() } });
-  });
+  setTimeout(() => {
+    importShim('./runMochaTests.js').then(() => {
+      fetch('/debug', { headers: { message: 'IMPORTED TESTS' } });
+    })
+    .catch(e => {
+      fetch('/debug', { headers: { message: 'FAILED TO IMPORT TESTS' } });
+      fetch('/debug', { headers: { message: e.toString() } });
+    });
+  }, 5000);
 </script>
 <script type="module" src="./runMochaTests.js"></script>
 <div id="mocha"></div>
