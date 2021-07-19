@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { resolve, relative, dirname } from 'path';
 import glob from 'glob';
 import { strictEqual, ok } from 'assert';
+import process from 'process';
 
 const stopOnError = process.env.STOP;
 const only = process.env.ONLY;
@@ -34,6 +35,7 @@ async function forked (path, args = [], cwd, returnStream) {
     cwd,
     stdio: 'pipe',
     env: {
+      ...process.env,
       NODE_OPTIONS: '--conditions=test'
     }
   });
