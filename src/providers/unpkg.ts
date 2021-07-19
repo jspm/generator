@@ -1,7 +1,5 @@
 import { ExactPackage } from "../install/package.js";
 
-export const name = 'unpkg';
-
 const cdnUrl = 'https://unpkg.com/';
 
 export function pkgToUrl (pkg: ExactPackage) {

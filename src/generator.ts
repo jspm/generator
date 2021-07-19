@@ -7,6 +7,7 @@ import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
 import { createLogger, LogStream } from './common/log.js';
 import { Resolver } from "./install/resolver.js";
 import { IImportMap } from "./tracemap/map";
+import { Provider } from "./providers/index.js";
 
 export interface GeneratorOptions {
   mapUrl?: URL | string;
@@ -19,6 +20,7 @@ export interface GeneratorOptions {
   env?: string[];
   cache?: 'offline' | boolean;
   stdlib?: string;
+  customProviders?: Record<string, Provider>;
 }
 
 export interface Install {
@@ -47,6 +49,7 @@ export class Generator {
     inputMap = undefined,
     env = ['browser', 'development', 'module'],
     defaultProvider = 'jspm',
+    customProviders = undefined,
     cache = true,
     stdlib = '@jspm/core'
   }: GeneratorOptions = {}) {
@@ -57,6 +60,11 @@ export class Generator {
       fetchOpts = { cache: 'no-store' };
     const { log, logStream } = createLogger();
     const resolver = new Resolver(log, fetchOpts);
+    if (customProviders) {
+      for (const provider of Object.keys(customProviders)) {
+        resolver.addCustomProvider(provider, customProviders[provider]);
+      }
+    }
     this.logStream = logStream;
     this.mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl, baseUrl) : mapUrl;
     this.rootUrl = typeof rootUrl === 'string' ? new URL(rootUrl, baseUrl) : rootUrl || null;

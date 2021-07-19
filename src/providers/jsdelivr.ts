@@ -1,7 +1,5 @@
 import { ExactPackage } from "../install/package.js";
 
-export const name = 'jsdelivr';
-
 const cdnUrl = 'https://cdn.jsdelivr.net/';
 
 export function pkgToUrl (pkg: ExactPackage) {

@@ -3,20 +3,20 @@ import * as skypack from './skypack.js';
 import * as jsdelivr from './jsdelivr.js';
 import * as unpkg from './unpkg.js';
 import * as nodemodules from './nodemodules.js';
-import { PackageConfig, ExactPackage } from '../install/package.js';
+import { PackageConfig, ExactPackage, LatestPackageTarget } from '../install/package.js';
 import { Resolver } from '../install/resolver.js';
 import { PackageTarget } from '../install/package.js';
 
 export interface Provider {
-  name: string;
   parseUrlPkg (this: Resolver, url: string): ExactPackage | { pkg: ExactPackage, layer: string } | undefined;
   pkgToUrl (this: Resolver, pkg: ExactPackage, layer: string): string;
+  resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, layer: string, parentUrl: string): Promise<ExactPackage | null>;
+
   getPackageConfig? (this: Resolver, pkgUrl: string): Promise<PackageConfig | null | undefined>;
-  resolveLatestTarget (this: Resolver, target: PackageTarget, unstable: boolean, layer: string, parentUrl: string): Promise<ExactPackage | null>;
-  getFileList? (this: Resolver, pkgUrl: string): Promise<string[]>;
+  // getFileList? (this: Resolver, pkgUrl: string): Promise<string[]>;
 }
 
-export const providers: Record<string, Provider> = {
+export const defaultProviders: Record<string, Provider> = {
   jsdelivr,
   jspm,
   nodemodules,
@@ -24,7 +24,7 @@ export const providers: Record<string, Provider> = {
   unpkg
 };
 
-export function getProvider (name: string) {
+export function getProvider (name: string, providers: Record<string, Provider> = defaultProviders) {
   const provider = providers[name];
   if (provider)
     return provider;
