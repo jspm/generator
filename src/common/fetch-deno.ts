@@ -50,14 +50,27 @@ export const fetch = async function (url: URL, ...args: any[]) {
             return new ArrayBuffer(0);
           }
         };
-      console.log(e.name === 'NotFound');
       if (e.name === 'NotFound')
         return { status: 404, statusText: e.toString() };
       return { status: 500, statusText: e.toString() };
     }
   }
   else {
-    const file = await cache(urlString);
+    let file;
+    try {
+      file = await cache(urlString);
+    }
+    catch (e) {
+      if (e.name === 'SyntaxError') {
+        // Weird bug in Deno cache...
+        // @ts-ignore
+        return _fetch(url, ...args);
+      }
+      if (e.name === 'CacheError' && e.message === 'Not Found') {
+        return { status: 404, statusText: e.toString() };
+      }
+      throw e;
+    }
     // @ts-ignore
     const source = await Deno.readTextFile(file.path);
     return {
@@ -73,6 +86,4 @@ export const fetch = async function (url: URL, ...args: any[]) {
       }
     };
   }
-  // @ts-ignore
-  return _fetch(url, ...args);
 }

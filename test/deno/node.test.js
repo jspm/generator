@@ -7,10 +7,11 @@ const generator = new Generator({
   env: ['production', 'node', 'deno', 'module']
 });
 
-await generator.install('express');
+// mocha 9 uses supports-color which assumes the "process" global
+await generator.install('mocha@8');
 
 await denoExec(generator.getMap(), `
-  import express from 'express';
+  import mocha from 'mocha';
 
-  console.log(express);
+  console.log(mocha);
 `);

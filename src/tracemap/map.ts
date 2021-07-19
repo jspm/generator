@@ -120,6 +120,7 @@ export class ImportMap implements IImportMap {
   }
 
   flatten () {
+    return;
     const scopeBaseOrigin: Record<string, string> = {};
     for (const scope of Object.keys(this.scopes)) {
       const scopeUrl = new URL(scope, this.baseUrl);
