@@ -1,14 +1,12 @@
 import { throwInternalError } from "../common/err.js";
 import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
-import { PackageTarget } from "../install/package.js";
+import { LatestPackageTarget } from "../install/package.js";
 import { pkgToStr } from "../install/package.js";
 import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../install/resolver.js";
 // @ts-ignore
 import { fetch } from '#fetch';
-
-export const name = 'jspm';
 
 const cdnUrl = 'https://ga.jspm.io/';
 const systemCdnUrl = 'https://ga.system.jspm.io/';
@@ -41,12 +39,12 @@ export function clearResolveCache () {
   resolveCache = {};
 }
 
-export async function resolveLatestTarget (this: Resolver, target: PackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | null> {
-  const { registry, name, ranges } = target;
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | null> {
+  const { registry, name, range } = target;
 
   // exact version optimization
-  if (ranges.length === 1 && ranges[0].isExact && !ranges[0].version.tag)
-    return { registry, name, version: ranges[0].version.toString() };
+  if (range.isExact && !range.version.tag)
+    return { registry, name, version: range.version.toString() };
 
   const cache = resolveCache[target.registry + ':' + target.name] = resolveCache[target.registry + ':' + target.name] || {
     latest: null,
@@ -55,57 +53,55 @@ export async function resolveLatestTarget (this: Resolver, target: PackageTarget
     tags: Object.create(null)
   };
 
-  for (const range of ranges.reverse()) {
-    if (range.isWildcard) {
-      let lookup = await (cache.latest || (cache.latest = lookupRange.call(this, registry, name, '', unstable, parentUrl)));
-      // Deno wat?
-      if (lookup instanceof Promise)
-        lookup = await lookup;
-      if (lookup) {
-        if (lookup instanceof Promise)
-          throwInternalError();
-        this.log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> WILDCARD ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-        return lookup;
-      }
-    }
-    else if (range.isExact && range.version.tag) {
-      const tag = range.version.tag;
-      let lookup = await (cache.tags[tag] || (cache.tags[tag] = lookupRange.call(this, registry, name, tag, unstable, parentUrl)));
-      // Deno wat?
-      if (lookup instanceof Promise)
+  if (range.isWildcard) {
+    let lookup = await (cache.latest || (cache.latest = lookupRange.call(this, registry, name, '', unstable, parentUrl)));
+    // Deno wat?
+    if (lookup instanceof Promise)
       lookup = await lookup;
-      if (lookup) {
-        if (lookup instanceof Promise)
-          throwInternalError();
-        this.log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> TAG ${tag}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-        return lookup;
-      }
-    }
-    else if (range.isMajor) {
-      const major = range.version.major;
-      let lookup = await (cache.majors[major] || (cache.majors[major] = lookupRange.call(this, registry, name, major, unstable, parentUrl)));
-      // Deno wat?
+    if (lookup) {
       if (lookup instanceof Promise)
-        lookup = await lookup;
-      if (lookup) {
-        if (lookup instanceof Promise)
-          throwInternalError();
-        this.log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> MAJOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-        return lookup;
-      }
+        throwInternalError();
+      this.log('resolve', `${target.registry}:${target.name}@${range} -> WILDCARD ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+      return lookup;
     }
-    else if (range.isStable) {
-      const minor = `${range.version.major}.${range.version.minor}`;
-      let lookup = await (cache.minors[minor] || (cache.minors[minor] = lookupRange.call(this, registry, name, minor, unstable, parentUrl)));
-      // Deno wat?
+  }
+  else if (range.isExact && range.version.tag) {
+    const tag = range.version.tag;
+    let lookup = await (cache.tags[tag] || (cache.tags[tag] = lookupRange.call(this, registry, name, tag, unstable, parentUrl)));
+    // Deno wat?
+    if (lookup instanceof Promise)
+    lookup = await lookup;
+    if (lookup) {
       if (lookup instanceof Promise)
-        lookup = await lookup;
-      if (lookup) {
-        if (lookup instanceof Promise)
-          throwInternalError();
-        this.log('resolve', `${target.registry}:${target.name}@${target.ranges.map(range => range.toString()).join('|')} -> MINOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-        return lookup;
-      }
+        throwInternalError();
+      this.log('resolve', `${target.registry}:${target.name}@${range} -> TAG ${tag}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+      return lookup;
+    }
+  }
+  else if (range.isMajor) {
+    const major = range.version.major;
+    let lookup = await (cache.majors[major] || (cache.majors[major] = lookupRange.call(this, registry, name, major, unstable, parentUrl)));
+    // Deno wat?
+    if (lookup instanceof Promise)
+      lookup = await lookup;
+    if (lookup) {
+      if (lookup instanceof Promise)
+        throwInternalError();
+      this.log('resolve', `${target.registry}:${target.name}@${range} -> MAJOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+      return lookup;
+    }
+  }
+  else if (range.isStable) {
+    const minor = `${range.version.major}.${range.version.minor}`;
+    let lookup = await (cache.minors[minor] || (cache.minors[minor] = lookupRange.call(this, registry, name, minor, unstable, parentUrl)));
+    // Deno wat?
+    if (lookup instanceof Promise)
+      lookup = await lookup;
+    if (lookup) {
+      if (lookup instanceof Promise)
+        throwInternalError();
+      this.log('resolve', `${target.registry}:${target.name}@${range} -> MINOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+      return lookup;
     }
   }
   return null;

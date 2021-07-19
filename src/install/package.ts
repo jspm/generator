@@ -40,6 +40,12 @@ export interface PackageTarget {
   ranges: any[];
 }
 
+export interface LatestPackageTarget {
+  registry: string;
+  name: string;
+  range: any;
+}
+
 const supportedProtocols = ['https', 'http', 'data', 'file'];
 export async function parseUrlTarget (resolver: Resolver, targetStr: string, parentUrl?: string): Promise<{ alias: string, target: URL, subpath: '.' | `./${string}` } | undefined> {
   const registryIndex = targetStr.indexOf(':');

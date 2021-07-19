@@ -54,6 +54,7 @@ const generator = new Generator({
     }
   },
   defaultProvider: 'jspm',
+  customProviders: {},
   env: ['production', 'browser'],
   cache: false,
 });
@@ -261,7 +262,54 @@ These hooks include version resolution and converting package versions into URLs
 
 See `src/providers/[name].ts` for how to define a custom provider.
 
-New providers can be merged in via PRs.
+New providers can be provided via the `customProviders` option. PRs to merge in providers are welcome as well.
+
+#### customProviders
+
+> Type: Object | undefined<br/>
+Default: undefined</br>
+_Custom provider definitions._
+
+When installing from a custom CDN it can be advisable to define a custom provider in order to be able to get version deduping against that CDN.
+
+Custom provider definitions define a provider name, and the provider instance consisting of three main hooks:
+
+* `pkgToUrl({ registry: string, name: string, version: string }, layer: string) -> String URL`: Returns the URL for a given exact package registry, name and version to use for this provider. If the provider is using layers, the `layer` string can be used to determine the URL layer (where the `defaultProvider: '[name].[layer]'` form is used to determine the layer, eg minified v unminified etc). It is important that package URLs always end in `/`, because packages must be treated as folders not files. An error will be thrown for package URLs returned not ending in `/`.
+* `parsePkgUrl(url: string) -> { { registry: string, name: string, version: string }, layer: string } | undefined`: Defines the converse operation to `pkgToUrl`, converting back from a string URL
+into the exact package registry, name and version, as well as the layer. Should always return `undefined` for unknown URLs as the first matching provider is treated as authoritative when dealing with
+multi-provider installations.
+* `resolveLatestTarget(target: { registry: string, name: string, range: SemverRange }, unstable: boolean, layer: string, parentUrl: string) -> Promise<{ registry: string, name: string, version: string } | null>: Resolve the latest version to use for a given package target. `unstable` indicates that prerelease versions can be matched. The definition of `SemverRange` is as per the [sver package](https://www.npmjs.com/package/sver#semverrange). Returning `null` corresponds to a package not found error.
+
+The use of `pkgToUrl` and `parsePkgUrl` is what allows the JSPM Generator to dedupe package versions internally based on their unique internal identifier `[registry]:[name]@[version]` regardless of what CDN location is used. URLs that do not support `parsePkgUrl` can still be installed and used fine, they just do not participate in version deduping operations.
+
+For example, a custom unpkg provider can be defined as:
+
+```js
+const unpkgUrl = 'https://unpkg.com/';
+const exactPkgRegEx = /^((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
+
+const generator = new Generator({
+  defaultProvider: 'custom',
+  customProviders: {
+    custom: {
+      pkgToUrl ({ registry, name, version }) {
+        return `${unpkgUrl}${name}@${version}/`;
+      },
+      parseUrlPkg (url) {
+        if (url.startsWith(unpkgUrl)) {
+          const [, name, version] = url.slice(unpkgUrl.length).match(exactPkgRegEx) || [];
+          return { registry: 'npm', name, version };
+        }
+      },
+      resolveLatestTarget ({ registry, name, range }, unstable, layer, parentUrl) {
+        return { registry, name, version: '3.6.0' };
+      }
+    }
+  }
+});
+
+await generator.install('custom:jquery');
+```
 
 #### env
 

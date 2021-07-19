@@ -1,12 +1,10 @@
-import { PackageTarget } from "../install/package.js";
+import { LatestPackageTarget, PackageTarget } from "../install/package.js";
 import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../install/resolver.js";
 // @ts-ignore
 import { fetch } from '#fetch';
 import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
-
-export const name = 'nodemodules';
 
 export function pkgToUrl (pkg: ExactPackage) {
   return new URL(pkg.version + pkg.name + '/').href;
@@ -35,7 +33,7 @@ async function dirExists (url: URL, parentUrl?: string) {
   }
 }
 
-export async function resolveLatestTarget (this: Resolver, target: PackageTarget, _unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | null> {
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, _unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | null> {
   let curUrl = new URL('node_modules/', parentUrl);
   const rootUrl = new URL('/node_modules/', parentUrl).href;
   while (!(await dirExists.call(this, curUrl))) {

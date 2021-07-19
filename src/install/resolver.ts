@@ -8,29 +8,41 @@ import { computeIntegrity } from "../common/integrity.js";
 // @ts-ignore
 import { parse } from 'es-module-lexer';
 // @ts-ignore
-import { getProvider, providers } from '../providers/index.js';
+import { getProvider, defaultProviders, Provider } from '../providers/index.js';
 
 export class Resolver {
   log: Log;
   pcfgPromises: Record<string, Promise<void>> = Object.create(null);
   pcfgs: Record<string, PackageConfig | null> = Object.create(null);
   fetchOpts: any;
+  providers = defaultProviders;
   constructor (log: Log, fetchOpts?: any) {
     this.log = log;
     this.fetchOpts = fetchOpts;
   }
 
+  addCustomProvider (name: string, provider: Provider) {
+    if (!provider.pkgToUrl)
+      throw new Error('Custom provider "' + name + '" must define a "pkgToUrl" method.');
+    if (!provider.parseUrlPkg)
+      throw new Error('Custom provider "' + name + '" must define a "parseUrlPkg" method.');
+    if (!provider.resolveLatestTarget)
+      throw new Error('Custom provider "' + name + '" must define a "resolveLatestTarget" method.');
+    this.providers = Object.assign({}, this.providers, { [name]: provider });
+  }
+
   parseUrlPkg (url: string): { pkg: ExactPackage, source: { layer: string, provider: string } } | undefined {
-    for (const provider of Object.values(providers)) {
-      const result = provider.parseUrlPkg.call(this, url);
+    for (const provider of Object.keys(this.providers)) {
+      const providerInstance = this.providers[provider];
+      const result = providerInstance.parseUrlPkg.call(this, url);
       if (result)
-        return { pkg: 'pkg' in result ? result.pkg : result, source: { provider: provider.name, layer: 'layer' in result ? result.layer : 'default' } };
+        return { pkg: 'pkg' in result ? result.pkg : result, source: { provider, layer: 'layer' in result ? result.layer : 'default' } };
     }
     return null;
   }
 
   pkgToUrl (pkg: ExactPackage, { provider, layer }: { provider: string, layer: string }): string {
-    return getProvider(provider).pkgToUrl.call(this, pkg, layer);
+    return getProvider(provider, this.providers).pkgToUrl.call(this, pkg, layer);
   }
 
   async getPackageBase (url: string) {
@@ -72,7 +84,7 @@ export class Resolver {
       this.pcfgPromises[pkgUrl] = (async () => {
         const parsed = this.parseUrlPkg(pkgUrl);
         if (parsed) {
-          const pcfg = await getProvider(parsed.source.provider).getPackageConfig?.call(this, pkgUrl);
+          const pcfg = await getProvider(parsed.source.provider, this.providers).getPackageConfig?.call(this, pkgUrl);
           if (pcfg !== undefined) {
             this.pcfgs[pkgUrl] = pcfg;
             return;
@@ -139,10 +151,23 @@ export class Resolver {
   }
 
   async resolveLatestTarget (target: PackageTarget, unstable: boolean, { provider, layer }: { provider: string, layer: string }, parentUrl?: string): Promise<ExactPackage> {
-    const pkg = await getProvider(provider).resolveLatestTarget.call(this, target, unstable, layer, parentUrl);
+    // find the range to resolve latest
+    let range: any;
+    for (const possibleRange of target.ranges.sort(target.ranges[0].constructor.compare)) {
+      if (!range) {
+        range = possibleRange;
+      }
+      else if (possibleRange.gt(range) && !range.contains(possibleRange)) {
+        range = possibleRange;
+      }
+    }
+
+    const latestTarget = { registry: target.registry, name: target.name, range };
+
+    const pkg = await getProvider(provider, this.providers).resolveLatestTarget.call(this, latestTarget, unstable, layer, parentUrl);
     if (pkg)
       return pkg;
-    throw new JspmError(`Unable to resolve package ${target.registry}:${target.name} to "${target.ranges.join(' || ')}"${importedFrom(parentUrl)}`);
+    throw new JspmError(`Unable to resolve package ${latestTarget.registry}:${latestTarget.name} to "${latestTarget.range}"${importedFrom(parentUrl)}`);
   }
 
   async wasCommonJS (url: string): Promise<boolean> {
