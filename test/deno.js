@@ -18,7 +18,7 @@ export function denoExec (map, source) {
     execSync(`deno run --unstable --no-check --allow-all --import-map=${tmpMap} ${tmpSrc}`);
   }
   finally {
-    unlinkSync(tmpMap);
-    unlinkSync(tmpSrc);
+    // unlinkSync(tmpMap);
+    // unlinkSync(tmpSrc);
   }
 }
