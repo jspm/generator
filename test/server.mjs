@@ -26,7 +26,7 @@ const shouldExit = !process.env.WATCH_MODE;
 const testName = process.env.TEST_NAME ?? 'test';
 
 const testBase = resolve(fileURLToPath(import.meta.url) + '/../');
-const tests = glob.sync(testBase + '/**/*.test.js').map(test => test.slice(testBase.length + 1, -3));
+const tests = glob.sync(testBase + '/**/*.test.js').map(test => test.slice(testBase.length + 1, -3)).filter(test => !test.startsWith('deno/'));
 
 let failTimeout, browserTimeout;
 
