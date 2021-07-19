@@ -46,7 +46,7 @@
   }
 }
 </script>
-<script type="module">
+<script async>
   importShim('./runMochaTests.js').then(() => {
     fetch('/debug', { headers: { message: 'IMPORTED TESTS' } });
   })
