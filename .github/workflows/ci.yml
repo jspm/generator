@@ -15,8 +15,6 @@ jobs:
         firefox: ['89.0']
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
       - name: Setup Node.js ${{ matrix.node }}
         uses: actions/setup-node@v2
         with:
