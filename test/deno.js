@@ -17,9 +17,9 @@ export function denoExec (map, source) {
   writeFileSync(tmpSrc, source);
   try {
     execSync(`${process.env.DENO_BIN || 'deno'} run --unstable --no-check --allow-all --import-map=${tmpMap} ${tmpSrc}`);
-  }
-  finally {
     unlinkSync(tmpMap);
     unlinkSync(tmpSrc);
+  }
+  finally {
   }
 }
