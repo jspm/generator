@@ -304,6 +304,8 @@ export class Resolver {
 
   private async parseTs (source: string) {
     // @ts-ignore
+    if (typeof Deno !== 'undefined')
+      return '';
     const { default: ts } = await import(eval('"typescript"'));
     return ts.transpileModule(source, {
       compilerOptions: {

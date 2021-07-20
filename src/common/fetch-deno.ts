@@ -1,33 +1,12 @@
-import { version } from '../version.js';
 // @ts-ignore
-import path from 'path';
+import { fetch as _fetch } from './fetch-native.js';
 // @ts-ignore
-import { homedir } from 'os';
+import { fileURLToPath } from 'url';
 // @ts-ignore
-import process from 'process';
-// @ts-ignore
-import rimraf from 'rimraf';
-// @ts-ignore
-import makeFetchHappen from 'make-fetch-happen';
-// @ts-ignore
-import { readFileSync } from 'fs';
-
-let cacheDir: string;
-if (process.platform === 'darwin')
-  cacheDir = path.join(homedir(), 'Library', 'Caches', 'jspm');
-else if (process.platform === 'win32')
-  cacheDir = path.join(process.env.LOCALAPPDATA || path.join(homedir(), 'AppData', 'Local'), 'jspm-cache');
-else
-  cacheDir = path.join(process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache'), 'jspm');
+import { cache } from "https://deno.land/x/cache/mod.ts";
 
 export function clearCache () {
-  rimraf.sync(path.join(cacheDir, 'fetch-cache'));
 };
-
-const _fetch = makeFetchHappen.defaults({
-  cacheManager: path.join(cacheDir, 'fetch-cache'),
-  headers: { 'User-Agent': `jspm/generator@${version}` }
-});
 
 export const fetch = async function (url: URL, ...args: any[]) {
   const urlString = url.toString();
@@ -35,7 +14,8 @@ export const fetch = async function (url: URL, ...args: any[]) {
     try {
       let source: string;
       if (urlString.startsWith('file:')) {
-        source = readFileSync(new URL(urlString));
+        // @ts-ignore
+        source = await Deno.readTextFile(fileURLToPath(urlString));
       }
       else if (urlString.startsWith('node:')) {
         source = '';
@@ -70,11 +50,40 @@ export const fetch = async function (url: URL, ...args: any[]) {
             return new ArrayBuffer(0);
           }
         };
-      if (e.code === 'ENOENT' || e.code === 'ENOENT')
+      if (e.name === 'NotFound')
         return { status: 404, statusText: e.toString() };
       return { status: 500, statusText: e.toString() };
     }
   }
-  // @ts-ignore
-  return _fetch(url, ...args);
+  else {
+    let file;
+    try {
+      file = await cache(urlString);
+    }
+    catch (e) {
+      if (e.name === 'SyntaxError') {
+        // Weird bug in Deno cache...
+        // @ts-ignore
+        return _fetch(url, ...args);
+      }
+      if (e.name === 'CacheError' && e.message === 'Not Found') {
+        return { status: 404, statusText: e.toString() };
+      }
+      throw e;
+    }
+    // @ts-ignore
+    const source = await Deno.readTextFile(file.path);
+    return {
+      status: 200,
+      async text () {
+        return source.toString();
+      },
+      async json () {
+        return JSON.parse(source.toString());
+      },
+      arrayBuffer () {
+        return source;
+      }
+    };
+  }
 }
