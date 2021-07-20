@@ -15,11 +15,5 @@ export function denoExec (map, source) {
   const tmpSrc = resolve(tmpDir, 'app.js');
   writeFileSync(tmpMap, JSON.stringify(map));
   writeFileSync(tmpSrc, source);
-  try {
-    execSync(`${process.env.DENO_BIN || 'deno'} run --unstable --no-check --allow-all --import-map=${tmpMap} ${tmpSrc}`);
-    unlinkSync(tmpMap);
-    unlinkSync(tmpSrc);
-  }
-  finally {
-  }
+  execSync(`${process.env.DENO_BIN || 'deno'} run --unstable --no-check --allow-all --import-map=${tmpMap} ${tmpSrc}`);
 }
