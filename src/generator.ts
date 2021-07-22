@@ -145,8 +145,14 @@ export class Generator {
   }
 
   getMap () {
-    const map = this.getMapInstance();
+    const map = this.traceMap.map.clone();
+    // this can be moved to the end on next update (using getMapInstance)
     map.flatten();
+    if (this.rootUrl)
+      map.rebase(this.rootUrl.href, true);
+    else
+      map.rebase();
+    map.sort();
     return map.toJSON();
   }
 }
