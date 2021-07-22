@@ -134,14 +134,19 @@ export class Generator {
     return resolved;
   }
 
-  getMap () {
+  getMapInstance () {
     const map = this.traceMap.map.clone();
-    map.flatten();
     if (this.rootUrl)
       map.rebase(this.rootUrl.href, true);
     else
       map.rebase();
     map.sort();
+    return map;
+  }
+
+  getMap () {
+    const map = this.getMapInstance();
+    map.flatten();
     return map.toJSON();
   }
 }

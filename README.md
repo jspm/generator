@@ -92,6 +92,11 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
  * }
  */
 
+// Returns the @jspm/import-map class for the map
+const map = generator.getMapInstance();
+map.resolve('lit/html.js');
+// -> https://ga.jspm.io/npm:lit@2.0.0-rc.1/html.js
+
 // Once packages are installed, the resolve function provides direct import map resolutions:
 
 // https://ga.jspm.io/npm:lit@2.0.0-rc.1/decorators.js

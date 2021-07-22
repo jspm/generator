@@ -1,3 +1,5 @@
+import { ImportMap } from '@jspm/import-map';
+
 export type LogStream = () => AsyncGenerator<{ type: string, message: string }, never, unknown>;
 
 export interface GeneratorOptions {
@@ -15,7 +17,7 @@ export interface Install {
   alias?: string;
 }
 
-export interface ImportMap {
+export interface IImportMap {
   imports: Record<string, string>;
   scopes?: Record<string, Record<string, string>>;
 }
@@ -27,7 +29,8 @@ export declare class Generator {
     staticDeps: string[];
     dynamicDeps: string[];
   }>;
-  getMap (): ImportMap;
+  getMap (): IImportMap;
+  getMapInstance (): ImportMap;
 }
 
 export interface LookupOptions {
