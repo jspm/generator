@@ -6,8 +6,9 @@ import { LockResolutions } from './install/installer.js';
 import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
 import { createLogger, LogStream } from './common/log.js';
 import { Resolver } from "./install/resolver.js";
-import { IImportMap } from "./tracemap/map";
+import { IImportMap } from "@jspm/import-map";
 import { Provider } from "./providers/index.js";
+import { JspmError } from "./common/err.js";
 
 export interface GeneratorOptions {
   mapUrl?: URL | string;
@@ -127,7 +128,10 @@ export class Generator {
   resolve (specifier: string, parentUrl: URL | string = baseUrl) {
     if (typeof parentUrl === 'string')
       parentUrl = new URL(parentUrl, baseUrl);
-    return this.traceMap.map.resolve(specifier, parentUrl).href;
+    const resolved = this.traceMap.map.resolve(specifier, parentUrl);
+    if (resolved === null)
+      throw new JspmError(`Unable to resolve "${specifier}" from ${parentUrl.href}`, 'MODULE_NOT_FOUND');
+    return resolved;
   }
 
   getMap () {

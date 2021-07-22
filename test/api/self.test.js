@@ -7,7 +7,7 @@ const generator = new Generator({
 
 const { staticDeps, dynamicDeps } = await generator.install('@jspm/generator');
 
-assert.strictEqual(staticDeps.length, 9);
+assert.strictEqual(staticDeps.length, 10);
 assert.strictEqual(dynamicDeps.length, 0);
 
 const json = generator.getMap();

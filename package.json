@@ -33,6 +33,7 @@
     "default": "./dist/generator.js"
   },
   "dependencies": {
+    "@jspm/import-map": "^0.1.4",
     "es-module-lexer": "^0.4.1",
     "kleur": "^4.1.4",
     "make-fetch-happen": "^8.0.3",

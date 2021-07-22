@@ -326,7 +326,7 @@ export class Resolver {
     try {
       if (resolvedUrl.endsWith('.ts') || resolvedUrl.endsWith('.tsx') || resolvedUrl.endsWith('.jsx'))
         source = await this.parseTs(source);
-      const [imports] = await parse(source);
+      const [imports] = await parse(source) as any as [string[]];
       return system ? createSystemAnalysis(source, imports, resolvedUrl) : createEsmAnalysis(imports, source, resolvedUrl);
     }
     catch (e) {
@@ -344,7 +344,7 @@ export class Resolver {
       }
       source = await res.text();
       try {
-        const [imports] = await parse(source);
+        const [imports] = await parse(source) as any as [string[]];
         return system ? createSystemAnalysis(source, imports, resolvedUrl) : createEsmAnalysis(imports, source, resolvedUrl);
       }
       catch (e) {
