@@ -3,7 +3,7 @@ import { importedFrom, isPlain } from "../common/url.js";
 import { Installer } from "../install/installer.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { parsePkg } from "../install/package.js";
-import { getMapMatch, getScopeMatches, IImportMap, ImportMap } from "./map.js";
+import { ImportMap, IImportMap, getMapMatch, getScopeMatches } from '@jspm/import-map';
 import { resolvePackageTarget, Resolver } from "../install/resolver.js";
 import { Log } from "../common/log.js";
 
@@ -140,12 +140,12 @@ export default class TraceMap {
           for (const dep of Object.keys(entry.dynamicDeps)) {
             const resolvedUrl = entry.dynamicDeps[dep][0];
             if (isPlain(dep))
-              this.map.addMapping(dep, resolvedUrl, parentPkgUrl);
+              this.map.set(dep, resolvedUrl, parentPkgUrl);
             discoveredDynamics.add(resolvedUrl);
           }
           for (const dep of Object.keys(entry.deps)) {
             if (isPlain(dep))
-              this.map.addMapping(dep, entry.deps[dep], parentPkgUrl);
+              this.map.set(dep, entry.deps[dep], parentPkgUrl);
           }
         }
         const seen = new Set<string>();
@@ -157,7 +157,7 @@ export default class TraceMap {
             continue;
           const [specifier, parentUrl] = trace.split('##');
           if (isPlain(specifier) && parentUrl === this.mapBase.href)
-            this.map.addMapping(specifier, url);
+            this.map.set(specifier, url);
           await this.visit(url, depVisitor, seen);
         }
 

@@ -10,3 +10,6 @@ const generator = new Generator({
 await generator.install('react@16');
 const json = generator.getMap();
 assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@16.14.0/index.js');
+
+const map = generator.getMapInstance();
+assert.strictEqual(map.resolve('react'), 'https://ga.jspm.io/npm:react@16.14.0/index.js');
