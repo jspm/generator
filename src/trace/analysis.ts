@@ -1,7 +1,7 @@
 export interface Analysis {
   deps: string[];
   dynamicDeps: string[];
-  cjsHoistedDeps: string[] | null;
+  cjsLazyDeps: string[] | null;
   format: 'esm' | 'commonjs' | 'system';
   size: number;
 }
@@ -40,7 +40,7 @@ export function createEsmAnalysis (imports: any[], source: string, url: string):
     }
   }
   const size = source.length;
-  return { deps, dynamicDeps, cjsHoistedDeps: null, size, format: 'esm' };
+  return { deps, dynamicDeps, cjsLazyDeps: null, size, format: 'esm' };
 }
 
 const registerRegEx = /^\s*(\/\*[^\*]*(\*(?!\/)[^\*]*)*\*\/|\s*\/\/[^\n]*)*\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
@@ -70,5 +70,5 @@ export function createSystemAnalysis (source: string, imports: string[], url: st
     }
   }
   const size = source.length;
-  return { deps, dynamicDeps, cjsHoistedDeps: null, size, format: 'system' };
+  return { deps, dynamicDeps, cjsLazyDeps: null, size, format: 'system' };
 }

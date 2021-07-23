@@ -12,3 +12,6 @@ const json = generator.getMap();
 
 assert.strictEqual(json.imports['localpkg/cjs'], './local/pkg/e.cjs');
 assert.strictEqual(json.scopes['./local/pkg/']['#cjsdep'], './local/pkg/f.cjs');
+
+const meta = generator.getAnalysis(new URL('./local/pkg/f.cjs', import.meta.url));
+assert.deepStrictEqual(meta.cjsLazyDeps, ['./a.js']);

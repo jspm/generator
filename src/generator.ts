@@ -24,6 +24,13 @@ export interface GeneratorOptions {
   customProviders?: Record<string, Provider>;
 }
 
+export interface ModuleAnalysis {
+  format: 'commonjs' | 'esm' | 'system';
+  staticDeps: string[];
+  dynamicDeps: string[];
+  cjsLazyDeps: string[] | null;
+}
+
 export interface Install {
   target: string;
   subpath?: '.' | `./${string}`;
@@ -136,6 +143,20 @@ export class Generator {
 
   get importMap () {
     return this.traceMap.map;
+  }
+
+  getAnalysis (url: string | URL): ModuleAnalysis {
+    if (typeof url !== 'string')
+      url = url.href;
+    const trace = this.traceMap.tracedUrls[url];
+    if (!trace)
+      throw new Error(`The URL ${url} has not been traced by this generator instance.`);
+    return {
+      format: trace.format,
+      staticDeps: Object.keys(trace.deps),
+      dynamicDeps: Object.keys(trace.dynamicDeps),
+      cjsLazyDeps: trace.cjsLazyDeps
+    };
   }
 
   getMap () {

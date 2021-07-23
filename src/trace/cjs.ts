@@ -4,7 +4,7 @@ export async function createCjsAnalysis (imports: any, source: string, url: stri
   const { default: babel } = await import(eval('"@babel/core"'));
 
   const requires = new Set<string>();
-  const hoisted = new Set<string>();
+  const lazy = new Set<string>();
 
   const { ast: _ast } = babel.transform(source, {
     ast: true,
@@ -37,7 +37,7 @@ export async function createCjsAnalysis (imports: any, source: string, url: stri
               const req = buildDynamicString(path.get('arguments.0').node, url);
               requires.add(req);
               if (state.functionDepth > 0)
-                hoisted.add(req);
+                lazy.add(req);
             }
           },
           Scope: {
@@ -61,7 +61,7 @@ export async function createCjsAnalysis (imports: any, source: string, url: stri
   return {
     deps: [...requires],
     dynamicDeps: imports.filter(impt => impt.n).map(impt => impt.n),
-    cjsHoistedDeps: [...hoisted],
+    cjsLazyDeps: [...lazy],
     size: source.length,
     format: 'commonjs'
   };

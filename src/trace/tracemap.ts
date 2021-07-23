@@ -39,7 +39,7 @@ interface TraceEntry {
   wasCJS: boolean;
   // For cjs modules, the list of hoisted deps
   // this is needed for proper cycle handling
-  cjsHoistedDeps: string[];
+  cjsLazyDeps: string[];
   format: 'esm' | 'commonjs' | 'system';
 }
 
@@ -308,7 +308,7 @@ export default class TraceMap {
       wasCJS: false,
       deps: Object.create(null),
       dynamicDeps: Object.create(null),
-      cjsHoistedDeps: null,
+      cjsLazyDeps: null,
       hasStaticParent: true,
       size: NaN,
       integrity: '',
@@ -327,11 +327,11 @@ export default class TraceMap {
     if (resolvedUrl.endsWith('/'))
       throw new JspmError(`Trailing "/" installs not yet supported installing ${resolvedUrl} for ${parentUrl.href}`);
     
-    const { deps, dynamicDeps, cjsHoistedDeps, size, format } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system);
+    const { deps, dynamicDeps, cjsLazyDeps, size, format } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system);
     traceEntry.format = format;
     traceEntry.size = size;
-    if (cjsHoistedDeps)
-      traceEntry.cjsHoistedDeps = cjsHoistedDeps;
+    if (cjsLazyDeps)
+      traceEntry.cjsLazyDeps = cjsLazyDeps;
     
     let allDeps: string[] = deps;
     if (dynamicDeps.length && !this.opts.static) {
