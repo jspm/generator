@@ -91,6 +91,30 @@ export class Generator {
     }, log, resolver);
   }
 
+  async traceInstall (specifier: string, parentUrl?: string | URL): Promise<{
+    staticDeps: string[];
+    dynamicDeps: string[];
+  }> {
+    if (typeof parentUrl === 'string')
+      parentUrl = new URL(parentUrl);
+    let error = false;
+    if (this.installCnt++ === 0)
+      this.finishInstall = await this.traceMap.startInstall();
+    try {
+      await this.traceMap.trace(specifier, parentUrl || this.mapUrl);
+    }
+    catch (e) {
+      error = true;
+      throw e;
+    }
+    finally {
+      if (--this.installCnt === 0)
+        await this.finishInstall(true);
+      if (!error)
+        return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+    }
+  }
+
   async install (install: string | Install | (string | Install)[]): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
     this.traceMap.clearLists();
     if (Array.isArray(install))

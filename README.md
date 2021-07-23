@@ -92,6 +92,10 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
  * }
  */
 
+// Instead of installing, an entry point module can be traced directly
+// Then all of its dependencies will be installed into the map only as needed
+await generator.traceInstall('./app.js');
+
 // generator.importMap returns the internal import map instance,
 // with API per the @jspm/import-map package
 const map = generator.importMap.resolve('lit/html.js);

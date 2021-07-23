@@ -39,6 +39,10 @@ export declare class Generator {
   importMap: ImportMap;
   getMap (): IImportMap;
   getAnalysis (url: string | URL): ModuleAnalysis;
+  traceInstall (specifier: string, parentUrl?: string | URL): Promise<{
+    staticDeps: string[];
+    dynamicDeps: string[];
+  }>;
 }
 
 export interface ModuleAnalysis {
