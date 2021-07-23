@@ -5,7 +5,7 @@ import sver from 'sver';
 // @ts-ignore
 import convertRange from 'sver/convert-range.js';
 import { InstallTarget } from "./installer.js";
-import { Resolver } from "./resolver.js";
+import { Resolver } from "../trace/resolver.js";
 import { urlToNiceStr } from "../common/url.js";
 
 const { SemverRange } = sver;

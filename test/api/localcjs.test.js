@@ -7,8 +7,8 @@ const generator = new Generator({
   env: ['production', 'browser']
 });
 
-await generator.install('react@16');
+await generator.install({ target: './local/pkg', subpath: './cjs' });
 const json = generator.getMap();
-assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@16.14.0/index.js');
 
-assert.strictEqual(generator.importMap.resolve('react'), 'https://ga.jspm.io/npm:react@16.14.0/index.js');
+assert.strictEqual(json.imports['localpkg/cjs'], './local/pkg/e.cjs');
+assert.strictEqual(json.scopes['./local/pkg/']['#cjsdep'], './local/pkg/f.cjs');

@@ -4,7 +4,7 @@ import { importedFrom } from "../common/url.js";
 import { LatestPackageTarget } from "../install/package.js";
 import { pkgToStr } from "../install/package.js";
 import { ExactPackage } from "../install/package.js";
-import { Resolver } from "../install/resolver.js";
+import { Resolver } from "../trace/resolver.js";
 // @ts-ignore
 import { fetch } from '#fetch';
 

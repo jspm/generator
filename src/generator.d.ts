@@ -22,6 +22,12 @@ export interface IImportMap {
   scopes?: Record<string, Record<string, string>>;
 }
 
+export interface ExactPackage {
+  registry: string;
+  name: string;
+  version: string;
+}
+
 export declare class Generator {
   logStream: LogStream;
   constructor ({ mapUrl, env, defaultProvider, cache, stdlib }?: GeneratorOptions);
@@ -29,8 +35,8 @@ export declare class Generator {
     staticDeps: string[];
     dynamicDeps: string[];
   }>;
+  importMap: ImportMap;
   getMap (): IImportMap;
-  getMapInstance (): ImportMap;
 }
 
 export interface LookupOptions {

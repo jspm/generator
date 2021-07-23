@@ -2,7 +2,7 @@
 import sver from 'sver';
 const { Semver } = sver;
 import { Log } from '../common/log.js';
-import { Resolver } from "./resolver.js";
+import { Resolver } from "../trace/resolver.js";
 import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
 import { isURL, importedFrom } from "../common/url.js";
 import { JspmError, throwInternalError } from "../common/err.js";

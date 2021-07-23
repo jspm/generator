@@ -4,8 +4,7 @@ import * as jsdelivr from './jsdelivr.js';
 import * as unpkg from './unpkg.js';
 import * as nodemodules from './nodemodules.js';
 import { PackageConfig, ExactPackage, LatestPackageTarget } from '../install/package.js';
-import { Resolver } from '../install/resolver.js';
-import { PackageTarget } from '../install/package.js';
+import { Resolver } from '../trace/resolver.js';
 
 export interface Provider {
   parseUrlPkg (this: Resolver, url: string): ExactPackage | { pkg: ExactPackage, layer: string } | undefined;

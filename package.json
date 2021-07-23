@@ -33,20 +33,21 @@
     "default": "./dist/generator.js"
   },
   "dependencies": {
+    "@babel/core": "^7.14.8",
     "@jspm/import-map": "^0.1.4",
     "es-module-lexer": "^0.4.1",
-    "kleur": "^4.1.4",
     "make-fetch-happen": "^8.0.3",
-    "mocha": "^9.0.0",
-    "open": "^8.2.0",
     "sver": "^1.8.3"
   },
   "devDependencies": {
     "chalk": "^4.1.1",
     "cross-env": "^7.0.2",
+    "kleur": "^4.1.4",
     "lit-element": "^2.5.1",
+    "mocha": "^9.0.0",
+    "open": "^8.2.0",
     "rollup": "^2.44.0",
-    "typescript": "^4.1.3"
+    "typescript": "^4.3.5"
   },
   "files": [
     "dist"
