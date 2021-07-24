@@ -270,6 +270,8 @@ export class Resolver {
         const exists = await this.exists(url);
         if (!exists)
           return false;
+        if (!parentIsCjs)
+          return exists;
         return !(await this.exists(url + '/'));
       };
       async function legacyResolve (subpath: string, pkgUrl: URL) {
