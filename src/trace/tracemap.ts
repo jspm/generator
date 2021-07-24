@@ -254,7 +254,7 @@ export default class TraceMap {
     // Own name import
     const pcfg = await this.resolver.getPackageConfig(parentPkgUrl) || {};
     if (pcfg.exports && pcfg.name === pkgName) {
-      const resolved = await this.resolver.resolveExport(parentPkgUrl, subpath, env, parentIsCjs, pkgName, parentUrl);
+      const resolved = await this.resolver.resolveExport(parentPkgUrl, subpath, env, parentIsCjs, specifier, parentUrl);
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;
@@ -265,7 +265,7 @@ export default class TraceMap {
       const match = getMapMatch(pkgName, pcfg.imports);
       if (!match)
         throw new JspmError(`No '${pkgName}' import defined in ${parentPkgUrl}${importedFrom(parentUrl)}.`);
-      const resolved = resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, subpath === '.' ? undefined : subpath.slice(2));
+      const resolved = resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, subpath === '.' ? '' : subpath.slice(2));
       setResolution(this.installer.installs, pkgName, parentPkgUrl, resolved);
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
@@ -279,7 +279,7 @@ export default class TraceMap {
       if (subpathBase)
         pkgUrl += '/';
       const key = subpathBase ? './' + subpathBase + subpath.slice(1) : subpath;
-      const resolved = await this.resolver.resolveExport(pkgUrl, key, env, parentIsCjs, pkgName, parentUrl);
+      const resolved = await this.resolver.resolveExport(pkgUrl, key, env, parentIsCjs, specifier, parentUrl);
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;
