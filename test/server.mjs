@@ -7,6 +7,7 @@ import open from "open";
 import kleur from 'kleur';
 import { spawn } from 'child_process';
 import glob from 'glob';
+import path from 'path';
 
 const port = 8080;
 
@@ -87,9 +88,18 @@ http.createServer(async function (req, res) {
     return;
   }
 
-  const fileStream = fs.createReadStream(filePath);
+  let fileStream;
   try {
+    fileStream = fs.createReadStream(filePath);
     await once(fileStream, 'readable');
+    if (filePath.endsWith(path.sep)) {
+      fileStream.close();
+      res.writeHead(404, {
+        'content-type': 'text/html'
+      });
+      res.end(`File not found.`);
+      return;
+    }
   }
   catch (e) {
     if (e.code === 'EISDIR') {
