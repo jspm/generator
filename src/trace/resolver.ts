@@ -189,14 +189,14 @@ export class Resolver {
       url = await (async () => {
         // subfolder checks before file checks because of fetch
         if (await this.exists(url + '/package.json')) {
-          const pcfg = await this.getPackageConfig(url);
+          const pcfg = await this.getPackageConfig(url) || {};
           if (env.includes('browser') && typeof pcfg.browser === 'string')
-            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl)), parentIsCjs, env, pkgUrl);
+            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(url)), parentIsCjs, env, pkgUrl);
           if (env.includes('module') && typeof pcfg.module === 'string')
-            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl)), parentIsCjs, env, pkgUrl);
+            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(url)), parentIsCjs, env, pkgUrl);
           if (typeof pcfg.main === 'string')
-            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl)), parentIsCjs, env, pkgUrl);
-          return this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl)), parentIsCjs, env, pkgUrl);
+            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(url)), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(url)), parentIsCjs, env, pkgUrl);
         }
         if (await this.exists(url + '/index.js'))
           return url + '/index.js';
@@ -219,11 +219,15 @@ export class Resolver {
       pkgUrl = pkgUrl || await this.getPackageBase(url);
       if (url.startsWith(pkgUrl)) {
         const pcfg = await this.getPackageConfig(pkgUrl);
-        if (typeof pcfg.browser === 'object' && pcfg.browser !== null) {
+        if (pcfg && typeof pcfg.browser === 'object' && pcfg.browser !== null) {
           const subpath = './' + url.slice(pkgUrl.length);
           if (pcfg.browser[subpath]) {
-            // TODO: browser object mapings
-            throw new Error('TODO: browser map of ' + subpath + ' with ' + JSON.stringify(pcfg.browser)); 
+            const target = pcfg.browser[subpath];
+            if (target === false)
+              throw new Error(`TODO: Empty browser map for ${subpath} in ${url}`);
+            if (!target.startsWith('./'))
+              throw new Error(`TODO: External browser map for ${subpath} to ${target} in ${url}`); 
+            return await this.finalizeResolve(pkgUrl + target.slice(2), parentIsCjs, env, pkgUrl);
           }
         }
       }
@@ -231,11 +235,11 @@ export class Resolver {
     return url;
   }
 
-  async resolveExport (pkgUrl: string, subpath: string, env: string[], parentIsCjs: boolean, pkgName: string, parentUrl?: URL): Promise<string> {
+  async resolveExport (pkgUrl: string, subpath: string, env: string[], parentIsCjs: boolean, originalSpecifier: string, parentUrl?: URL): Promise<string> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
 
     function throwExportNotDefined () {
-      throw new JspmError(`No '${subpath}' exports subpath defined in ${pkgUrl} resolving ${pkgName}${importedFrom(parentUrl)}.`, 'MODULE_NOT_FOUND');
+      throw new JspmError(`No '${subpath}' exports subpath defined in ${pkgUrl} resolving ${originalSpecifier}${importedFrom(parentUrl)}.`, 'MODULE_NOT_FOUND');
     }
 
     if (pcfg.exports !== undefined && pcfg.exports !== null) {
@@ -254,17 +258,17 @@ export class Resolver {
       }
       else if (!allDotKeys(pcfg.exports)) {
         if (subpath === '.')
-          return this.finalizeResolve(resolvePackageTarget(pcfg.exports, pkgUrl, env), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(resolvePackageTarget(pcfg.exports, pkgUrl, env, ''), parentIsCjs, env, pkgUrl);
         else
           throwExportNotDefined();
       }
       else {
         const match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
-        if (match) {        
-          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env);
+        if (match) {
+          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)));
           if (resolved === null)
             throwExportNotDefined();
-          return this.finalizeResolve(resolved + subpath.slice(match.length), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(resolved, parentIsCjs, env, pkgUrl);
         }
         throwExportNotDefined();
       }
@@ -272,12 +276,12 @@ export class Resolver {
     else {
       if (subpath === '.') {
         if (env.includes('browser') && typeof pcfg.browser === 'string')
-          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl)), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, pkgUrl);
         if (env.includes('module') && typeof pcfg.module === 'string')
-          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl)), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, pkgUrl);
         if (typeof pcfg.main === 'string')
-          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl)), parentIsCjs, env, pkgUrl);
-        return this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl)), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, pkgUrl);
+        return this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, pkgUrl);
       }
       else {
         return this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, parentIsCjs, env, pkgUrl);
@@ -388,9 +392,9 @@ export class Resolver {
   }
 }
 
-export function resolvePackageTarget (target: ExportsTarget, packageUrl: string, env: string[], subpath?: string | undefined): string | null {
+export function resolvePackageTarget (target: ExportsTarget, packageUrl: string, env: string[], subpath: string): string | null {
   if (typeof target === 'string') {
-    if (subpath === undefined)
+    if (subpath === '')
       return new URL(target, packageUrl).href;
     if (target.indexOf('*') !== -1) {
       return new URL(target.replace(/\*/g, subpath), packageUrl).href;
@@ -420,7 +424,7 @@ export function resolvePackageTarget (target: ExportsTarget, packageUrl: string,
   return null;
 }
 
-async function legacyMainResolve (this: Resolver, main: string | null, pkgUrl: URL, specifier: string, parentUrl?: URL) {
+async function legacyMainResolve (this: Resolver, main: string | null, pkgUrl: URL, originalSpecifier: string, parentUrl?: URL) {
   let guess: string;
   if (main) {
     if (await this.exists(guess = new URL(`./${main}/index.js`, pkgUrl).href))
@@ -447,5 +451,5 @@ async function legacyMainResolve (this: Resolver, main: string | null, pkgUrl: U
       return guess;
   }
   // Not found.
-  throw new JspmError(`Unable to resolve ${main ? main + ' in ' : ''}${pkgUrl} resolving ${specifier}${importedFrom(parentUrl)}.`, 'MODULE_NOT_FOUND');
+  throw new JspmError(`Unable to resolve ${main ? main + ' in ' : ''}${pkgUrl} resolving ${originalSpecifier}${importedFrom(parentUrl)}.`, 'MODULE_NOT_FOUND');
 }

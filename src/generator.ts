@@ -241,9 +241,9 @@ async function installToTarget (this: Generator, install: Install | string) {
   if (typeof install === 'string')
     install = { target: install };
   if (typeof install.target !== 'string')
-    throw new Error('All installs require a "target".');
+    throw new Error('All installs require a "target" string.');
   if (install.subpath !== undefined && (typeof install.subpath !== 'string' || (install.subpath !== '.' && !install.subpath.startsWith('./'))))
-    throw new Error(`Install subpath "${install.subpath}" must be equal to "." or start with "./".`);
+    throw new Error(`Install subpath "${install.subpath}" must be a string equal to "." or starting with "./".${typeof install.subpath === 'string' ? `\nTry setting the subpath to "./${install.subpath}"` : ''}`);
   const { alias, target, subpath } = await toPackageTarget(this.traceMap.resolver, install.target, this.mapUrl.href);
   return {
     alias: install.alias || alias,
