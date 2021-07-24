@@ -106,7 +106,7 @@ http.createServer(async function (req, res) {
       res.writeHead(200, { 'content-type': 'text/plain' });
       res.end('Directory');
     }
-    else if (e.code === 'ENOENT') {
+    else if (e.code === 'ENOENT' || e.code === 'ENOTDIR') {
       res.writeHead(404, {
         'content-type': 'text/html'
       });
