@@ -9,6 +9,7 @@ import { getProvider, defaultProviders, Provider } from '../providers/index.js';
 import { Analysis, parseTs } from './analysis.js';
 import { createEsmAnalysis } from './analysis.js';
 import { createCjsAnalysis } from './cjs.js';
+import { getMapMatch, resolveConditional } from '@jspm/import-map';
 
 export class Resolver {
   log: Log;
@@ -182,19 +183,57 @@ export class Resolver {
     return pcfg?.exports?.[subpath + '!cjs'] ? true : false;
   }
 
-  async resolveExports (pkgUrl: string, env: string[]): Promise<Record<string, string>> {
+  async finalizeResolve (url: string, parentIsCjs: boolean, isBrowser: boolean, pkgUrl?: string): Promise<string> {
+    // Only CJS modules do extension searching for relative resolved paths
+    if (parentIsCjs)
+      url = await (async () => {
+        if (await this.exists(url))
+          return url;
+        if (await this.exists(url + '.js'))
+          return url + '.js';
+        if (await this.exists(url + '.json'))
+          return url + '.json';
+        if (await this.exists(url + '.node'))
+          return url + '.node';
+        if (await this.exists(url + '/package.json')) {
+          const pcfg = await this.getPackageConfig(url);
+          if (isBrowser && typeof pcfg.browser === 'string')
+            return this.finalizeResolve(new URL(pcfg.browser, url + '/').href, true, isBrowser, pkgUrl);
+          if (typeof pcfg.main === 'string')
+            return this.finalizeResolve(new URL(pcfg.main, url + '/').href, true, isBrowser, pkgUrl);
+        }
+        if (await this.exists(url + '/index.js'))
+          return url + '/index.js';
+        if (await this.exists(url + '/index.json'))
+          return url + '/index.json';
+        if (await this.exists(url + '/index.node'))
+          return url + '/index.node';
+        return url;
+      })();
+    // Only browser maps apply to relative resolved paths
+    if (isBrowser) {
+      pkgUrl = pkgUrl || await this.getPackageBase(url);
+      if (url.startsWith(pkgUrl)) {
+        const pcfg = await this.getPackageConfig(pkgUrl);
+        if (typeof pcfg.browser === 'object' && pcfg.browser !== null) {
+          const subpath = './' + url.slice(pkgUrl.length);
+          if (pcfg.browser[subpath]) {
+            // TODO: browser object mapings
+            throw new Error('TODO: browser map of ' + subpath + ' with ' + JSON.stringify(pcfg.browser)); 
+          }
+        }
+      }
+    }
+    return url;
+  }
+
+  async resolveExport (pkgUrl: string, subpath: string, env: string[], parentIsCjs: boolean, pkgName: string, parentUrl?: URL): Promise<string> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
 
-    // conditional resolution from conditions
-    // does in-browser package resolution
-    // index.js | index.json
-    // main[.js|.json|.node|'']
-    // 
-    // Because of extension checks on CDN, we do .js|.json|.node FIRST (if not already one of those extensions)
-    // all works out
-    // exports are exact files
-    // done
-    const exports = Object.create(null);
+    function throwExportNotDefined () {
+      throw new JspmError(`No '${subpath}' exports subpath defined in ${pkgUrl} resolving ${pkgName}${importedFrom(parentUrl)}.`, 'MODULE_NOT_FOUND');
+    }
+
     if (pcfg.exports !== undefined && pcfg.exports !== null) {
       function allDotKeys (exports: Record<string, any>) {
         for (let p in exports) {
@@ -204,43 +243,68 @@ export class Resolver {
         return true;
       }
       if (typeof pcfg.exports === 'string') {
-        exports['.'] = pcfg.exports;
+        if (subpath === '.')
+          return this.finalizeResolve(new URL(pcfg.exports, pkgUrl).href, parentIsCjs, env.includes('browser'), pkgUrl);
+        else
+          throwExportNotDefined();
       }
       else if (!allDotKeys(pcfg.exports)) {
-        exports['.'] = resolvePackageTarget(pcfg.exports, pkgUrl, env);
+        if (subpath === '.')
+          return this.finalizeResolve(resolvePackageTarget(pcfg.exports, pkgUrl, env), parentIsCjs, env.includes('browser'), pkgUrl);
+        else
+          throwExportNotDefined();
       }
       else {
-        for (const expt of Object.keys(pcfg.exports)) {
-          exports[expt] = resolvePackageTarget((pcfg.exports as Record<string, ExportsTarget>)[expt], pkgUrl, env);
+        const match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
+        if (match) {        
+          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env);
+          if (resolved === null)
+            throwExportNotDefined();
+          return this.finalizeResolve(resolved + subpath.slice(match.length), parentIsCjs, env.includes('browser'), pkgUrl);
         }
+        throwExportNotDefined();
       }
     }
     else {
-      if (typeof pcfg.browser === 'string') {
-        exports['.'] = pcfg.browser.startsWith('./') ? pcfg.browser : './' + pcfg.browser;
-      }
-      else if (typeof pcfg.main === 'string') {
-        exports['.'] = pcfg.main.startsWith('./') ? pcfg.main : './' + pcfg.main;
-      }
-      if (typeof pcfg.browser === 'object') {
-        for (const subpath of Object.keys(pcfg.browser)) {
-          if (subpath.startsWith('./')) {
-            if (exports['.'] === subpath)
-              exports['.'] = pcfg.browser[subpath];
-            exports[subpath] = pcfg.browser[subpath];
-          }
-          else {
-            this.log('todo', `Non ./ subpaths in browser field: ${pcfg.name}.browser['${subpath}'] = ${pcfg.browser[subpath]}`);
-          }
+      const fileExists = async (url: string) => {
+        const exists = await this.exists(url);
+        if (!exists)
+          return false;
+        return !(await this.exists(url + '/'));
+      };
+      async function legacyResolve (subpath: string, pkgUrl: URL) {
+        let guess: string;
+        if (subpath !== undefined) {
+          if (await fileExists(guess = new URL(`./${subpath}`, pkgUrl).href)) {}
+          else if (await fileExists(guess = new URL(`./${subpath}.js`, pkgUrl).href)) {}
+          else if (await fileExists(guess = new URL(`./${subpath}.json`, pkgUrl).href)) {}
+          else if (await fileExists(guess = new URL(`./${subpath}.node`, pkgUrl).href)) {}
+          else if (await fileExists(guess = new URL(`./${subpath}/index.js`, pkgUrl).href)) {}
+          else if (await fileExists(guess = new URL(`./${subpath}/index.json`, pkgUrl).href)) {}
+          else if (await fileExists(guess = new URL(`./${subpath}/index.node`, pkgUrl).href)) {}
+          else guess = undefined;
+          if (guess) return guess;
+          // Fallthrough.
         }
+        if (await fileExists(guess = new URL('./index.js', pkgUrl).href)) {}
+        else if (await fileExists(guess = new URL('./index.json', pkgUrl).href)) {}
+        else if (await fileExists(guess = new URL('./index.node', pkgUrl).href)) {}
+        else guess = undefined;
+        if (guess) return guess;
+        // Not found.
+        throw new JspmError(`Unable to resolve ${subpath} in ${pkgUrl} resolving ${pkgName}${importedFrom(parentUrl)}.`, 'MODULE_NOT_FOUND');
       }
-      if (!exports['./'])
-        exports['./'] = './';
-      if (!exports['.'])
-        exports['.'] = '.';
+      if (subpath === '.') {
+        if (env.includes('browser') && typeof pcfg.browser === 'string')
+          return this.finalizeResolve(await legacyResolve(pcfg.browser, new URL(pkgUrl)), parentIsCjs, env.includes('browser'), pkgUrl);
+        if (typeof pcfg.main === 'string')
+          return this.finalizeResolve(await legacyResolve(pcfg.main, new URL(pkgUrl)), parentIsCjs, env.includes('browser'), pkgUrl);
+        return this.finalizeResolve(await legacyResolve('index', new URL(pkgUrl)), parentIsCjs, env.includes('browser'), pkgUrl);
+      }
+      else {
+        return this.finalizeResolve(await legacyResolve(subpath, new URL(pkgUrl)), parentIsCjs, env.includes('browser'), pkgUrl);
+      }
     }
-
-    return exports;
   }
 
   // async dlPackage (pkgUrl: string, outDirPath: string, beautify = false) {

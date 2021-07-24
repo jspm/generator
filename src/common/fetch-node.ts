@@ -35,6 +35,29 @@ export const fetch = async function (url: URL, ...args: any[]) {
     try {
       let source: string;
       if (urlString.startsWith('file:')) {
+        if (urlString.endsWith('/')) {
+          try {
+            readFileSync(new URL(urlString));
+            return { status: 404, statusText: 'Directory does not exist' };
+          }
+          catch (e) {
+            if (e.code === 'EISDIR') {
+              return {
+                status: 200,
+                async text () {
+                  return '';
+                },
+                async json () {
+                  throw new Error('Not JSON');
+                },
+                arrayBuffer () {
+                  return new ArrayBuffer(0);
+                }
+              };
+            }
+            throw e;
+          }
+        }
         source = readFileSync(new URL(urlString));
       }
       else if (urlString.startsWith('node:')) {

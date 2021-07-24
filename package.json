@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@babel/core": "^7.14.8",
-    "@jspm/import-map": "^0.1.4",
+    "@jspm/import-map": "^0.1.5",
     "es-module-lexer": "^0.4.1",
     "make-fetch-happen": "^8.0.3",
     "sver": "^1.8.3"
