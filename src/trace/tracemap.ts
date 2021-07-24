@@ -265,7 +265,7 @@ export default class TraceMap {
       const match = getMapMatch(pkgName, pcfg.imports);
       if (!match)
         throw new JspmError(`No '${pkgName}' import defined in ${parentPkgUrl}${importedFrom(parentUrl)}.`);
-      const resolved = resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, subpath === '.' ? undefined : subpath.slice(2));
+      const resolved = resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, subpath === '.' ? '' : subpath.slice(2));
       setResolution(this.installer.installs, pkgName, parentPkgUrl, resolved);
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
