@@ -266,31 +266,23 @@ export class Resolver {
       }
     }
     else {
-      const fileExists = async (url: string) => {
-        const exists = await this.exists(url);
-        if (!exists)
-          return false;
-        if (!parentIsCjs)
-          return exists;
-        return !(await this.exists(url + '/'));
-      };
-      async function legacyResolve (subpath: string, pkgUrl: URL) {
+      const legacyResolve = async (subpath: string, pkgUrl: URL) => {
         let guess: string;
         if (subpath !== undefined) {
-          if (await fileExists(guess = new URL(`./${subpath}`, pkgUrl).href)) {}
-          else if (await fileExists(guess = new URL(`./${subpath}.js`, pkgUrl).href)) {}
-          else if (await fileExists(guess = new URL(`./${subpath}.json`, pkgUrl).href)) {}
-          else if (await fileExists(guess = new URL(`./${subpath}.node`, pkgUrl).href)) {}
-          else if (await fileExists(guess = new URL(`./${subpath}/index.js`, pkgUrl).href)) {}
-          else if (await fileExists(guess = new URL(`./${subpath}/index.json`, pkgUrl).href)) {}
-          else if (await fileExists(guess = new URL(`./${subpath}/index.node`, pkgUrl).href)) {}
+          if (await this.exists(guess = new URL(`./${subpath}/index.js`, pkgUrl).href)) {}
+          else if (await this.exists(guess = new URL(`./${subpath}/index.json`, pkgUrl).href)) {}
+          else if (await this.exists(guess = new URL(`./${subpath}/index.node`, pkgUrl).href)) {}
+          else if (await this.exists(guess = new URL(`./${subpath}`, pkgUrl).href)) {}
+          else if (await this.exists(guess = new URL(`./${subpath}.js`, pkgUrl).href)) {}
+          else if (await this.exists(guess = new URL(`./${subpath}.json`, pkgUrl).href)) {}
+          else if (await this.exists(guess = new URL(`./${subpath}.node`, pkgUrl).href)) {}
           else guess = undefined;
           if (guess) return guess;
           // Fallthrough.
         }
-        if (await fileExists(guess = new URL('./index.js', pkgUrl).href)) {}
-        else if (await fileExists(guess = new URL('./index.json', pkgUrl).href)) {}
-        else if (await fileExists(guess = new URL('./index.node', pkgUrl).href)) {}
+        if (await this.exists(guess = new URL('./index.js', pkgUrl).href)) {}
+        else if (await this.exists(guess = new URL('./index.json', pkgUrl).href)) {}
+        else if (await this.exists(guess = new URL('./index.node', pkgUrl).href)) {}
         else guess = undefined;
         if (guess) return guess;
         // Not found.
