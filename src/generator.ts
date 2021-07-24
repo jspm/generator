@@ -1,11 +1,11 @@
 import { baseUrl } from "./common/url.js";
 import { ExactPackage, toPackageTarget } from "./install/package.js";
-import TraceMap from './tracemap/tracemap.js';
+import TraceMap from './trace/tracemap.js';
 import { LockResolutions } from './install/installer.js';
 // @ts-ignore
 import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
 import { createLogger, LogStream } from './common/log.js';
-import { Resolver } from "./install/resolver.js";
+import { Resolver } from "./trace/resolver.js";
 import { IImportMap } from "@jspm/import-map";
 import { Provider } from "./providers/index.js";
 import { JspmError } from "./common/err.js";
@@ -22,6 +22,13 @@ export interface GeneratorOptions {
   cache?: 'offline' | boolean;
   stdlib?: string;
   customProviders?: Record<string, Provider>;
+}
+
+export interface ModuleAnalysis {
+  format: 'commonjs' | 'esm' | 'system';
+  staticDeps: string[];
+  dynamicDeps: string[];
+  cjsLazyDeps: string[] | null;
 }
 
 export interface Install {
@@ -84,6 +91,30 @@ export class Generator {
     }, log, resolver);
   }
 
+  async traceInstall (specifier: string, parentUrl?: string | URL): Promise<{
+    staticDeps: string[];
+    dynamicDeps: string[];
+  }> {
+    if (typeof parentUrl === 'string')
+      parentUrl = new URL(parentUrl);
+    let error = false;
+    if (this.installCnt++ === 0)
+      this.finishInstall = await this.traceMap.startInstall();
+    try {
+      await this.traceMap.trace(specifier, parentUrl || this.mapUrl);
+    }
+    catch (e) {
+      error = true;
+      throw e;
+    }
+    finally {
+      if (--this.installCnt === 0)
+        await this.finishInstall(true);
+      if (!error)
+        return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+    }
+  }
+
   async install (install: string | Install | (string | Install)[]): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
     this.traceMap.clearLists();
     if (Array.isArray(install))
@@ -134,14 +165,22 @@ export class Generator {
     return resolved;
   }
 
-  getMapInstance () {
-    const map = this.traceMap.map.clone();
-    if (this.rootUrl)
-      map.rebase(this.rootUrl.href, true);
-    else
-      map.rebase();
-    map.sort();
-    return map;
+  get importMap () {
+    return this.traceMap.map;
+  }
+
+  getAnalysis (url: string | URL): ModuleAnalysis {
+    if (typeof url !== 'string')
+      url = url.href;
+    const trace = this.traceMap.tracedUrls[url];
+    if (!trace)
+      throw new Error(`The URL ${url} has not been traced by this generator instance.`);
+    return {
+      format: trace.format,
+      staticDeps: Object.keys(trace.deps),
+      dynamicDeps: Object.keys(trace.dynamicDeps),
+      cjsLazyDeps: trace.cjsLazyDeps
+    };
   }
 
   getMap () {

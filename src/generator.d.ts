@@ -1,4 +1,5 @@
 import { ImportMap } from '@jspm/import-map';
+import { NonRelativeModuleNameResolutionCache } from 'typescript';
 
 export type LogStream = () => AsyncGenerator<{ type: string, message: string }, never, unknown>;
 
@@ -22,6 +23,12 @@ export interface IImportMap {
   scopes?: Record<string, Record<string, string>>;
 }
 
+export interface ExactPackage {
+  registry: string;
+  name: string;
+  version: string;
+}
+
 export declare class Generator {
   logStream: LogStream;
   constructor ({ mapUrl, env, defaultProvider, cache, stdlib }?: GeneratorOptions);
@@ -29,8 +36,20 @@ export declare class Generator {
     staticDeps: string[];
     dynamicDeps: string[];
   }>;
+  importMap: ImportMap;
   getMap (): IImportMap;
-  getMapInstance (): ImportMap;
+  getAnalysis (url: string | URL): ModuleAnalysis;
+  traceInstall (specifier: string, parentUrl?: string | URL): Promise<{
+    staticDeps: string[];
+    dynamicDeps: string[];
+  }>;
+}
+
+export interface ModuleAnalysis {
+  format: 'commonjs' | 'esm' | 'system';
+  staticDeps: string[];
+  dynamicDeps: string[];
+  cjsLazyDeps: string[] | null;
 }
 
 export interface LookupOptions {

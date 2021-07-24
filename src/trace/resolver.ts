@@ -1,14 +1,14 @@
-import { ExactPackage, PackageConfig, PackageTarget, ExportsTarget } from './package.js';
+import { ExactPackage, PackageConfig, PackageTarget, ExportsTarget } from '../install/package.js';
 import { JspmError } from '../common/err.js';
 import { Log } from '../common/log.js';
 // @ts-ignore
 import { fetch } from '#fetch';
-import { baseUrl, importedFrom } from "../common/url.js";
-import { computeIntegrity } from "../common/integrity.js";
-// @ts-ignore
+import { importedFrom } from "../common/url.js";
 import { parse } from 'es-module-lexer';
-// @ts-ignore
 import { getProvider, defaultProviders, Provider } from '../providers/index.js';
+import { Analysis, parseTs } from './analysis.js';
+import { createEsmAnalysis } from './analysis.js';
+import { createCjsAnalysis } from './cjs.js';
 
 export class Resolver {
   log: Log;
@@ -243,16 +243,6 @@ export class Resolver {
     return exports;
   }
 
-  async getIntegrity (url: string) {
-    const res = await fetch(url, this.fetchOpts);
-    switch (res.status) {
-      case 200: case 304: break;
-      case 404: throw new Error(`URL ${url} not found.`);
-      default: throw new Error(`Invalid status code ${res.status} requesting ${url}. ${res.statusText}`);
-    }
-    return computeIntegrity(await res.text());
-  }
-
   // async dlPackage (pkgUrl: string, outDirPath: string, beautify = false) {
   //   if (existsSync(outDirPath))
   //     throw new JspmError(`Checkout directory ${outDirPath} already exists.`);
@@ -302,18 +292,7 @@ export class Resolver {
   //   }
   // }
 
-  private async parseTs (source: string) {
-    // @ts-ignore
-    const { default: ts } = await import(eval('"typescript"'));
-    return ts.transpileModule(source, {
-      compilerOptions: {
-        jsx: ts.JsxEmit.React,
-        module: ts.ModuleKind.ESNext
-      }
-    }).outputText;
-  }
-
-  async analyze (resolvedUrl: string, parentUrl?: URL, system = false): Promise<Analysis> {
+  async analyze (resolvedUrl: string, parentUrl?: URL, system = false, retry = false): Promise<Analysis> {
     const res = await fetch(resolvedUrl, this.fetchOpts);
     switch (res.status) {
       case 200:
@@ -325,8 +304,15 @@ export class Resolver {
     let source = await res.text();
     try {
       if (resolvedUrl.endsWith('.ts') || resolvedUrl.endsWith('.tsx') || resolvedUrl.endsWith('.jsx'))
-        source = await this.parseTs(source);
-      const [imports] = await parse(source) as any as [string[]];
+        source = await parseTs(source);
+      const [imports, exports] = await parse(source) as any as [any[], string[]];
+      if (imports.every(impt => impt.d > 0) && !exports.length && resolvedUrl.startsWith('file:')) {
+        // Support CommonJS package boundary checks for non-ESM on file: protocol only
+        if (!(resolvedUrl.endsWith('.js') || resolvedUrl.endsWith('.json') || resolvedUrl.endsWith('.node')) ||
+            resolvedUrl.endsWith('.js') && (await this.getPackageConfig(await this.getPackageBase(resolvedUrl))).type !== 'module') {
+          return createCjsAnalysis(imports, source, resolvedUrl);
+        }
+      }
       return system ? createSystemAnalysis(source, imports, resolvedUrl) : createEsmAnalysis(imports, source, resolvedUrl);
     }
     catch (e) {
@@ -334,37 +320,28 @@ export class Resolver {
         throw e;
       // fetch is _unstable_!!!
       // so we retry the fetch first
-      const res = await fetch(resolvedUrl, this.fetchOpts);
-      switch (res.status) {
-        case 200:
-        case 304:
-          break;
-        case 404: throw new JspmError(`Module not found: ${resolvedUrl}${importedFrom(parentUrl)}`);
-        default: throw new JspmError(`Invalid status code ${res.status} loading ${resolvedUrl}. ${res.statusText}`);
-      }
-      source = await res.text();
-      try {
-        const [imports] = await parse(source) as any as [string[]];
-        return system ? createSystemAnalysis(source, imports, resolvedUrl) : createEsmAnalysis(imports, source, resolvedUrl);
-      }
-      catch (e) {
-        // TODO: better parser errors
-        if (e.message && e.message.startsWith('Parse error @:')) {
-          const [topline] = e.message.split('\n', 1);
-          const pos = topline.slice(14);
-          let [line, col] = pos.split(':');
-          const lines = source.split('\n');
-          // console.log(source);
-          if (line > 1)
-            console.log('  ' + lines[line - 2]);
-          console.log('> ' + lines[line - 1]);
-          console.log('  ' + ' '.repeat(col - 1) + '^');
-          if (lines.length > 1)
-            console.log('  ' + lines[line]);
-          throw new JspmError(`Error parsing ${resolvedUrl}:${pos}`);
+      if (retry) {
+        try {
+          return this.analyze(resolvedUrl, parentUrl, system, false);
         }
-        throw e;
+        catch {}
       }
+      // TODO: better parser errors
+      if (e.message && e.message.startsWith('Parse error @:')) {
+        const [topline] = e.message.split('\n', 1);
+        const pos = topline.slice(14);
+        let [line, col] = pos.split(':');
+        const lines = source.split('\n');
+        // console.log(source);
+        if (line > 1)
+          console.log('  ' + lines[line - 2]);
+        console.log('> ' + lines[line - 1]);
+        console.log('  ' + ' '.repeat(col - 1) + '^');
+        if (lines.length > 1)
+          console.log('  ' + lines[line]);
+        throw new JspmError(`Error parsing ${resolvedUrl}:${pos}`);
+      }
+      throw e;
     }
   }
 }
@@ -400,68 +377,7 @@ export function resolvePackageTarget (target: ExportsTarget, packageUrl: string,
   }
   return null;
 }
-
-interface Analysis {
-  deps: string[],
-  dynamicDeps: string[],
-  size: number,
-  integrity: string,
-  system?: boolean
+function createSystemAnalysis(source: any, imports: any[], resolvedUrl: string): any {
+  throw new Error('Function not implemented.');
 }
 
-function createEsmAnalysis (imports: any, source: string, url: string): Analysis {
-  if (!imports.length && registerRegEx.test(source))
-    return createSystemAnalysis(source, imports, url);
-  const deps: string[] = [];
-  const dynamicDeps: string[] = [];
-  for (const impt of imports) {
-    if (impt.d === -1) {
-      deps.push(source.slice(impt.s, impt.e));
-      continue;
-    }
-    // dynamic import -> deoptimize trace all dependencies (and all their exports)
-    if (impt.d >= 0) {
-      const dynExpression = source.slice(impt.s, impt.e);
-      if (dynExpression.startsWith('"') || dynExpression.startsWith('\'')) {
-        try {
-          dynamicDeps.push(JSON.parse('"' + dynExpression.slice(1, -1) + '"'));
-        }
-        catch (e) {
-          console.warn('TODO: Dynamic import custom expression tracing.');
-        }
-      }
-    }
-  }
-  const size = source.length;
-  return { deps, dynamicDeps, size, integrity: computeIntegrity(source), system: false };
-}
-
-const registerRegEx = /^\s*(\/\*[^\*]*(\*(?!\/)[^\*]*)*\*\/|\s*\/\/[^\n]*)*\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
-function createSystemAnalysis (source: string, imports: string[], url: string): Analysis {
-  const [, , , rawDeps, , , contextId] = source.match(registerRegEx) || [];
-  if (!rawDeps)
-    return createEsmAnalysis(imports, source, url);
-  const deps = JSON.parse(rawDeps.replace(/'/g, '"'));
-  const dynamicDeps: string[] = [];
-  if (contextId) {
-    const dynamicImport = `${contextId}.import(`;
-    let i = -1;
-    while ((i = source.indexOf(dynamicImport, i + 1)) !== -1) {
-      const importStart = i + dynamicImport.length + 1;
-      const quote = source[i + dynamicImport.length];
-      if (quote === '"' || quote === '\'') {
-        const importEnd = source.indexOf(quote, i + dynamicImport.length + 1);
-        if (importEnd !== -1) {
-          try {
-            dynamicDeps.push(JSON.parse('"' + source.slice(importStart, importEnd) + '"'));
-            continue;
-          }
-          catch (e) {}
-        }
-      }
-      console.warn('TODO: Dynamic import custom expression tracing.');
-    }
-  }
-  const size = source.length;
-  return { deps, dynamicDeps, size, integrity: computeIntegrity(source), system: true };
-}

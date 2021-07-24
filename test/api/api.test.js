@@ -11,5 +11,12 @@ await generator.install('react@16');
 const json = generator.getMap();
 assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@16.14.0/index.js');
 
-const map = generator.getMapInstance();
-assert.strictEqual(map.resolve('react'), 'https://ga.jspm.io/npm:react@16.14.0/index.js');
+assert.strictEqual(generator.importMap.resolve('react'), 'https://ga.jspm.io/npm:react@16.14.0/index.js');
+
+const meta = generator.getAnalysis('https://ga.jspm.io/npm:react@16.14.0/index.js');
+assert.deepStrictEqual(meta, {
+  format: 'esm',
+  staticDeps: ['./cjs/react.production.min.js', 'object-assign'],
+  dynamicDeps: [],
+  cjsLazyDeps: null
+});

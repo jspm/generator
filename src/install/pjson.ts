@@ -1,7 +1,7 @@
 import * as json from "../common/json.js";
 // @ts-ignore
 import { readFileSync, writeFileSync } from "fs";
-import { Resolver } from "../install/resolver.js";
+import { Resolver } from "../trace/resolver.js";
 import { PackageConfig } from "../install/package.js";
 
 export type DependenciesField = 'dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies';

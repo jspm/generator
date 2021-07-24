@@ -4,7 +4,7 @@ import { Installer } from "../install/installer.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { parsePkg } from "../install/package.js";
 import { ImportMap, IImportMap, getMapMatch, getScopeMatches } from '@jspm/import-map';
-import { resolvePackageTarget, Resolver } from "../install/resolver.js";
+import { resolvePackageTarget, Resolver } from "./resolver.js";
 import { Log } from "../common/log.js";
 
 // TODO: options as trace-specific / stored as top-level per top-level load
@@ -37,8 +37,10 @@ interface TraceEntry {
   size: number;
   integrity: string;
   wasCJS: boolean;
-  system: boolean;
-  babel: boolean;
+  // For cjs modules, the list of hoisted deps
+  // this is needed for proper cycle handling
+  cjsLazyDeps: string[];
+  format: 'esm' | 'commonjs' | 'system';
 }
 
 // The tracemap fully drives the installer
@@ -97,7 +99,7 @@ export default class TraceMap {
     let system = false, esm = false;
     for (const url of [...this.staticList, ...this.dynamicList]) {
       const trace = this.tracedUrls[url];
-      if (trace.system)
+      if (trace.format === 'system')
         system = true;
       else
         esm = true;
@@ -306,11 +308,11 @@ export default class TraceMap {
       wasCJS: false,
       deps: Object.create(null),
       dynamicDeps: Object.create(null),
+      cjsLazyDeps: null,
       hasStaticParent: true,
       size: NaN,
       integrity: '',
-      system: false,
-      babel: false
+      format: undefined
     };
 
     const wasCJS = await this.resolver.wasCommonJS(resolvedUrl);
@@ -325,10 +327,11 @@ export default class TraceMap {
     if (resolvedUrl.endsWith('/'))
       throw new JspmError(`Trailing "/" installs not yet supported installing ${resolvedUrl} for ${parentUrl.href}`);
     
-    const { deps, dynamicDeps, integrity, size, system } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system);
-    traceEntry.integrity = integrity;
-    traceEntry.system = !!system;
+    const { deps, dynamicDeps, cjsLazyDeps, size, format } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system);
+    traceEntry.format = format;
     traceEntry.size = size;
+    if (cjsLazyDeps)
+      traceEntry.cjsLazyDeps = cjsLazyDeps;
     
     let allDeps: string[] = deps;
     if (dynamicDeps.length && !this.opts.static) {
