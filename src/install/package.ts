@@ -24,6 +24,7 @@ export interface PackageConfig {
   version?: string;
   main?: string;
   files?: string[];
+  module?: string;
   browser?: string | Record<string, string>;
   imports?: Record<string, ExportsTarget>;
   exports?: ExportsTarget | Record<string, ExportsTarget>;

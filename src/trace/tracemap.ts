@@ -209,7 +209,7 @@ export default class TraceMap {
       if (resolvedUrl.protocol !== 'file:' && resolvedUrl.protocol !== 'https:' && resolvedUrl.protocol !== 'http:' && resolvedUrl.protocol !== 'node:' && resolvedUrl.protocol !== 'data:')
         throw new JspmError(`Found unexpected protocol ${resolvedUrl.protocol}${importedFrom(parentUrl)}`);
       const resolvedHref = resolvedUrl.href;
-      const finalized = await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env.includes('browser'));
+      const finalized = await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env);
       if (finalized !== resolvedHref) {
         this.map.set(resolvedHref, finalized);
         resolvedUrl = new URL(finalized);
