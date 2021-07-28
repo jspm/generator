@@ -273,10 +273,10 @@ export default class TraceMap {
     }
 
     // @ts-ignore
-    const installed = this.opts.freeze ? this.installer?.installs[parentPkgUrl]?.[pkgName] : await this.installer?.install(pkgName, parentPkgUrl, parentUrl.href);
+    const installed = this.opts.freeze ? this.installer?.installs[parentPkgUrl]?.[pkgName] : await this.installer?.install(pkgName, parentPkgUrl, subpath === './' ? false : true, parentUrl.href);
     if (installed) {
       let [pkgUrl, subpathBase] = installed.split('|');
-      if (subpathBase)
+      if (subpathBase && !pkgUrl.endsWith('/'))
         pkgUrl += '/';
       const key = subpathBase ? './' + subpathBase + subpath.slice(1) : subpath;
       const resolved = await this.resolver.resolveExport(pkgUrl, key, env, parentIsCjs, specifier, parentUrl);
@@ -310,15 +310,6 @@ export default class TraceMap {
       integrity: '',
       format: undefined
     };
-
-    const wasCJS = await this.resolver.wasCommonJS(resolvedUrl);
-    if (wasCJS)
-      traceEntry.wasCJS = true;
-
-    if (wasCJS && env.includes('import'))
-      env = env.map(e => e === 'import' ? 'require' : e);
-    else if (!wasCJS && env.includes('require'))
-      env = env.map(e => e === 'require' ? 'import' : e);
     
     if (resolvedUrl.endsWith('/'))
       throw new JspmError(`Trailing "/" installs not yet supported installing ${resolvedUrl} for ${parentUrl.href}`);
@@ -328,7 +319,24 @@ export default class TraceMap {
     traceEntry.size = size;
     if (cjsLazyDeps)
       traceEntry.cjsLazyDeps = cjsLazyDeps;
-    
+
+    // wasCJS distinct from CJS because it applies to CJS transformed into ESM
+    // from the resolver perspective
+    const wasCJS = format === 'commonjs' || await this.resolver.wasCommonJS(resolvedUrl);
+    if (wasCJS)
+      traceEntry.wasCJS = true;
+
+    if (wasCJS && env.includes('import'))
+      env = env.map(e => e === 'import' ? 'require' : e);
+    else if (!wasCJS && env.includes('require'))
+      env = env.map(e => e === 'require' ? 'import' : e);
+
+    // all real commonjs packages get "process" and "Buffer" dependencies
+    if (format === 'commonjs' && !deps.includes('process') && !deps.includes('process/'))
+      deps.push('process');
+    if (format === 'commonjs' && !deps.includes('buffer') && !deps.includes('buffer/'))
+      deps.push('buffer');
+
     let allDeps: string[] = deps;
     if (dynamicDeps.length && !this.opts.static) {
       allDeps = [...deps];

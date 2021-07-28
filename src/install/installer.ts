@@ -314,7 +314,7 @@ export class Installer {
     return pkgUrl;
   }
 
-  async install (pkgName: string, pkgUrl: string, parentUrl: string = this.installBaseUrl): Promise<string> {
+  async install (pkgName: string, pkgUrl: string, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<string> {
     if (!this.installing)
       throwInternalError('Not installing');
     if (!this.opts.reset) {
@@ -324,6 +324,14 @@ export class Installer {
     }
 
     const pcfg = await this.resolver.getPackageConfig(pkgUrl) || {};
+
+    // node.js core
+    if (nodeBuiltins && builtinSet.has(pkgName)) {
+      const target = this.stdlibTarget;
+      const resolution = (await this.installTarget(pkgName, target, pkgUrl, false, parentUrl)).slice(0, -1) + '|nodelibs/' + pkgName;
+      setResolution(this.installs, pkgName, pkgUrl, resolution);
+      return resolution;
+    }
 
     // package dependencies
     const installTarget = pcfg.dependencies?.[pkgName] || pcfg.peerDependencies?.[pkgName] || pcfg.optionalDependencies?.[pkgName] || pcfg.devDependencies?.[pkgName];
@@ -335,14 +343,6 @@ export class Installer {
     // import map "imports"
     if (this.installs[this.installBaseUrl]?.[pkgName])
       return this.installs[this.installBaseUrl][pkgName];
-
-    // node.js core
-    if (builtinSet.has(pkgName)) {
-      const target = this.stdlibTarget;
-      const resolution = (await this.installTarget(pkgName, target, pkgUrl, false, parentUrl)).slice(0, -1) + '|nodelibs/' + pkgName;
-      setResolution(this.installs, pkgName, pkgUrl, resolution);
-      return resolution;
-    }
 
     // global install fallback
     const target = newPackageTarget('*', pkgUrl, pkgName);
