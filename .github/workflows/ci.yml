@@ -17,6 +17,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: true
+      - run: ls jspm-core
       - name: Setup Node.js ${{ matrix.node }}
         uses: actions/setup-node@v2
         with:
@@ -26,6 +27,7 @@ jobs:
         with:
           firefox-version: ${{ matrix.firefox }}
       - run: npm install
+      - run: cd jspm-core && npm install
       - run: npm run build
       - run: npm run test:browser
         env:
