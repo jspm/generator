@@ -331,12 +331,6 @@ export default class TraceMap {
     else if (!wasCJS && env.includes('require'))
       env = env.map(e => e === 'require' ? 'import' : e);
 
-    // all real commonjs packages get "process" and "Buffer" dependencies
-    if (format === 'commonjs' && !deps.includes('process') && !deps.includes('process/'))
-      deps.push('process');
-    if (format === 'commonjs' && !deps.includes('buffer') && !deps.includes('buffer/'))
-      deps.push('buffer');
-
     let allDeps: string[] = deps;
     if (dynamicDeps.length && !this.opts.static) {
       allDeps = [...deps];

@@ -21,28 +21,14 @@ if (typeof document === 'undefined') {
     },
     scopes: {
       '../../node_modules/ansi-styles/': {
-        buffer: '../../node_modules/@jspm/core/nodelibs/buffer.js',
-        'color-convert': '../../node_modules/color-convert/index.js',
-        process: '../../node_modules/@jspm/core/nodelibs/process.js'
+        'color-convert': '../../node_modules/color-convert/index.js'
       },
       '../../node_modules/chalk/': {
         'ansi-styles': '../../node_modules/ansi-styles/index.js',
-        buffer: '../../node_modules/@jspm/core/nodelibs/buffer.js',
-        process: '../../node_modules/@jspm/core/nodelibs/process.js',
         'supports-color': '../../node_modules/supports-color/browser.js'
       },
       '../../node_modules/color-convert/': {
-        buffer: '../../node_modules/@jspm/core/nodelibs/buffer.js',
-        'color-name': '../../node_modules/color-name/index.js',
-        process: '../../node_modules/@jspm/core/nodelibs/process.js'
-      },
-      '../../node_modules/color-name/': {
-        buffer: '../../node_modules/@jspm/core/nodelibs/buffer.js',
-        process: '../../node_modules/@jspm/core/nodelibs/process.js'
-      },
-      '../../node_modules/supports-color/': {
-        buffer: '../../node_modules/@jspm/core/nodelibs/buffer.js',
-        process: '../../node_modules/@jspm/core/nodelibs/process.js'
+        'color-name': '../../node_modules/color-name/index.js'
       }
     }
   });
