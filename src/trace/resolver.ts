@@ -274,7 +274,7 @@ export class Resolver {
       }
     }
     else {
-      if (subpath === '.') {
+      if (subpath === '.' || parentIsCjs && subpath === './') {
         if (env.includes('browser') && typeof pcfg.browser === 'string')
           return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, pkgUrl);
         if (env.includes('module') && typeof pcfg.module === 'string')
@@ -355,7 +355,7 @@ export class Resolver {
       if (imports.every(impt => impt.d > 0) && !exports.length && resolvedUrl.startsWith('file:')) {
         // Support CommonJS package boundary checks for non-ESM on file: protocol only
         if (!(resolvedUrl.endsWith('.js') || resolvedUrl.endsWith('.json') || resolvedUrl.endsWith('.node')) ||
-            resolvedUrl.endsWith('.js') && (await this.getPackageConfig(await this.getPackageBase(resolvedUrl))).type !== 'module') {
+            resolvedUrl.endsWith('.js') && (await this.getPackageConfig(await this.getPackageBase(resolvedUrl)))?.type !== 'module') {
           return createCjsAnalysis(imports, source, resolvedUrl);
         }
       }

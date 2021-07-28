@@ -20,12 +20,16 @@ if (typeof document === 'undefined') {
       chalk: '../../node_modules/chalk/source/index.js'
     },
     scopes: {
-      '../../node_modules/ansi-styles/': { 'color-convert': '../../node_modules/color-convert/index.js' },      
+      '../../node_modules/ansi-styles/': {
+        'color-convert': '../../node_modules/color-convert/index.js'
+      },
       '../../node_modules/chalk/': {
         'ansi-styles': '../../node_modules/ansi-styles/index.js',
         'supports-color': '../../node_modules/supports-color/browser.js'
       },
-      '../../node_modules/color-convert/': { 'color-name': '../../node_modules/color-name/index.js' }
+      '../../node_modules/color-convert/': {
+        'color-name': '../../node_modules/color-name/index.js'
+      }
     }
   });
 }
