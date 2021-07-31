@@ -348,15 +348,21 @@ export class Resolver {
       default: throw new JspmError(`Invalid status code ${res.status} loading ${resolvedUrl}. ${res.statusText}`);
     }
     let source = await res.text();
+    // TODO: headers over extensions for non-file
     try {
       if (resolvedUrl.endsWith('.ts') || resolvedUrl.endsWith('.tsx') || resolvedUrl.endsWith('.jsx'))
         source = await parseTs(source);
+      if (resolvedUrl.endsWith('.json')) {
+        try {
+          JSON.parse(source);
+          return { deps: [], dynamicDeps: [], cjsLazyDeps: null, size: source.length, format: 'json' };
+        }
+        catch {}
+      }
       const [imports, exports] = await parse(source) as any as [any[], string[]];
       if (imports.every(impt => impt.d > 0) && !exports.length && resolvedUrl.startsWith('file:')) {
         // Support CommonJS package boundary checks for non-ESM on file: protocol only
         if (isRequire) {
-          if (resolvedUrl.endsWith('.json'))
-            return { deps: [], dynamicDeps: [], cjsLazyDeps: null, size: source.length, format: 'json' };
           if (!(resolvedUrl.endsWith('.mjs') || resolvedUrl.endsWith('.js') && (await this.getPackageConfig(await this.getPackageBase(resolvedUrl)))?.type === 'module'))
             return createCjsAnalysis(imports, source, resolvedUrl);
         }
