@@ -18,5 +18,5 @@ assert.deepStrictEqual(meta, {
   format: 'esm',
   staticDeps: ['./cjs/react.production.min.js', 'object-assign'],
   dynamicDeps: [],
-  cjsLazyDeps: null
+  cjsLazyDeps: []
 });
