@@ -25,7 +25,7 @@ export interface GeneratorOptions {
 }
 
 export interface ModuleAnalysis {
-  format: 'commonjs' | 'esm' | 'system';
+  format: 'commonjs' | 'esm' | 'system' | 'json';
   staticDeps: string[];
   dynamicDeps: string[];
   cjsLazyDeps: string[] | null;
@@ -179,7 +179,7 @@ export class Generator {
       format: trace.format,
       staticDeps: Object.keys(trace.deps),
       dynamicDeps: Object.keys(trace.dynamicDeps),
-      cjsLazyDeps: trace.cjsLazyDeps
+      cjsLazyDeps: Object.keys(trace.cjsLazyDeps || {})
     };
   }
 

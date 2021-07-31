@@ -30,8 +30,8 @@ interface TraceGraph {
 }
 
 interface TraceEntry {
-  deps: Record<string, string>;
-  dynamicDeps: Record<string, string[]>;
+  deps: Record<string, string | string[]>;
+  dynamicDeps: Record<string, string | string[]>;
   // assetDeps: { expr: string, start: number, end: number, assets: string[] }
   hasStaticParent: boolean;
   size: number;
@@ -39,8 +39,8 @@ interface TraceEntry {
   wasCJS: boolean;
   // For cjs modules, the list of hoisted deps
   // this is needed for proper cycle handling
-  cjsLazyDeps: string[];
-  format: 'esm' | 'commonjs' | 'system';
+  cjsLazyDeps: Record<string, string | string[]>;
+  format: 'esm' | 'commonjs' | 'system' | 'json';
 }
 
 // The tracemap fully drives the installer
@@ -90,7 +90,9 @@ export default class TraceMap {
     if (!entry)
       return;
     for (const dep of Object.keys(entry.deps)) {
-      await this.visit(entry.deps[dep], visitor, seen);
+      if (dep.indexOf('*') !== -1)
+        continue;
+      await this.visit(entry.deps[dep] as string, visitor, seen);
     }
     await visitor(url, entry);
   }
@@ -140,14 +142,26 @@ export default class TraceMap {
           list.add(url);
           const parentPkgUrl = await this.resolver.getPackageBase(url);
           for (const dep of Object.keys(entry.dynamicDeps)) {
-            const resolvedUrl = entry.dynamicDeps[dep][0];
+            if (dep.indexOf('*') !== -1)
+              continue;
+            const resolvedUrl = entry.dynamicDeps[dep] as string;
             if (isPlain(dep))
               this.map.set(dep, resolvedUrl, parentPkgUrl);
             discoveredDynamics.add(resolvedUrl);
           }
           for (const dep of Object.keys(entry.deps)) {
+            if (dep.indexOf('*') !== -1)
+              continue;
+            const resolvedUrl = entry.deps[dep] as string;
             if (isPlain(dep))
-              this.map.set(dep, entry.deps[dep], parentPkgUrl);
+              this.map.set(dep, resolvedUrl, parentPkgUrl);
+          }
+          for (const dep of Object.keys(entry.cjsLazyDeps || {})) {
+            if (dep.indexOf('*') !== -1)
+              continue;
+            const resolvedUrl = entry.cjsLazyDeps[dep] as string;
+            if (isPlain(dep))
+              this.map.set(dep, resolvedUrl, parentPkgUrl);
           }
         }
         const seen = new Set<string>();
@@ -211,7 +225,7 @@ export default class TraceMap {
       const resolvedHref = resolvedUrl.href;
       const finalized = await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env);
       if (finalized !== resolvedHref) {
-        this.map.set(resolvedHref, finalized);
+        this.map.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized);
         resolvedUrl = new URL(finalized);
       }
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolvedUrl}`);
@@ -314,38 +328,49 @@ export default class TraceMap {
     if (resolvedUrl.endsWith('/'))
       throw new JspmError(`Trailing "/" installs not yet supported installing ${resolvedUrl} for ${parentUrl.href}`);
     
-    const { deps, dynamicDeps, cjsLazyDeps, size, format } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system);
+    const { deps, dynamicDeps, cjsLazyDeps, size, format } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system, env.includes('require'));
     traceEntry.format = format;
     traceEntry.size = size;
-    if (cjsLazyDeps)
-      traceEntry.cjsLazyDeps = cjsLazyDeps;
 
     // wasCJS distinct from CJS because it applies to CJS transformed into ESM
     // from the resolver perspective
     const wasCJS = format === 'commonjs' || await this.resolver.wasCommonJS(resolvedUrl);
-    if (wasCJS)
+    if (wasCJS) {
       traceEntry.wasCJS = true;
+      traceEntry.cjsLazyDeps = Object.create(null);
+    }
 
     if (wasCJS && env.includes('import'))
       env = env.map(e => e === 'import' ? 'require' : e);
     else if (!wasCJS && env.includes('require'))
       env = env.map(e => e === 'require' ? 'import' : e);
 
-    let allDeps: string[] = deps;
+    let allDeps: string[] = [...deps];
     if (dynamicDeps.length && !this.opts.static) {
-      allDeps = [...deps];
       for (const dep of dynamicDeps) {
+        if (!allDeps.includes(dep))
+          allDeps.push(dep);
+      }
+    }
+    if (cjsLazyDeps && !this.opts.static) {
+      for (const dep of cjsLazyDeps) {
         if (!allDeps.includes(dep))
           allDeps.push(dep);
       }
     }
     const resolvedUrlObj = new URL(resolvedUrl);
     await Promise.all(allDeps.map(async dep => {
+      if (dep.indexOf('*') !== -1) {
+        this.log('todo', 'Handle wildcard trace ' + dep + ' in ' + resolvedUrl);
+        return;
+      }
       const resolved = await this.trace(dep, resolvedUrlObj, env);
       if (deps.includes(dep))
         traceEntry.deps[dep] = resolved;
       if (dynamicDeps.includes(dep))
-        traceEntry.dynamicDeps[dep] = [resolved];
+        traceEntry.dynamicDeps[dep] = resolved;
+      if (cjsLazyDeps && cjsLazyDeps.includes(dep))
+        traceEntry.cjsLazyDeps[dep] = resolved;
     }));
   }
 }

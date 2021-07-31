@@ -6,31 +6,7 @@ import { Resolver } from "../trace/resolver.js";
 import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
 import { isURL, importedFrom } from "../common/url.js";
 import { JspmError, throwInternalError } from "../common/err.js";
-
-export const builtinSet = new Set<string>([
-  '_http_agent',         '_http_client',        '_http_common',
-  '_http_incoming',      '_http_outgoing',      '_http_server',
-  '_stream_duplex',      '_stream_passthrough', '_stream_readable',
-  '_stream_transform',   '_stream_wrap',        '_stream_writable',
-  '_tls_common',         '_tls_wrap',           'assert',
-  'assert/strict',       'async_hooks',         'buffer',
-  'child_process',       'cluster',             'console',
-  'constants',           'crypto',              'dgram',
-  'diagnostics_channel', 'dns',                 'dns/promises',
-  'domain',              'events',              'fs',
-  'fs/promises',         'http',                'http2',
-  'https',               'inspector',           'module',
-  'net',                 'os',                  'path',
-  'path/posix',          'path/win32',          'perf_hooks',
-  'process',             'punycode',            'querystring',
-  'readline',            'repl',                'stream',
-  'stream/promises',     'string_decoder',      'sys',
-  'timers',              'timers/promises',     'tls',
-  'trace_events',        'tty',                 'url',
-  'util',                'util/types',          'v8',
-  'vm',                  'wasi',                'worker_threads',
-  'zlib'
-]);
+import { nodeBuiltinSet } from '../providers/node.js';
 
 export interface PackageInstall {
   name: string;
@@ -198,7 +174,7 @@ export class Installer {
         // if (this.opts.prune || pjsonChanged) {
         //   const deps = await this.resolver.getDepList(this.installBaseUrl, true);
         //   // existing deps is any existing builtin resolutions
-        //   const existingBuiltins = new Set(Object.keys(this.installs[this.installBaseUrl] || {}).filter(name => builtinSet.has(name)));
+        //   const existingBuiltins = new Set(Object.keys(this.installs[this.installBaseUrl] || {}).filter(name => nodeBuiltinSet.has(name)));
         //   await this.lockInstall([...new Set([...deps, ...existingBuiltins])], this.installBaseUrl, true);
         // }
 
@@ -326,7 +302,7 @@ export class Installer {
     const pcfg = await this.resolver.getPackageConfig(pkgUrl) || {};
 
     // node.js core
-    if (nodeBuiltins && builtinSet.has(pkgName)) {
+    if (nodeBuiltins && nodeBuiltinSet.has(pkgName)) {
       const target = this.stdlibTarget;
       const resolution = (await this.installTarget(pkgName, target, pkgUrl, false, parentUrl)).slice(0, -1) + '|nodelibs/' + pkgName;
       setResolution(this.installs, pkgName, pkgUrl, resolution);

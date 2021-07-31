@@ -50,9 +50,6 @@ export class Resolver {
     const pkg = this.parseUrlPkg(url);
     if (pkg)
       return this.pkgToUrl(pkg.pkg, pkg.source);
-  
-    if (url.startsWith('node:'))
-      return url;
     
     let testUrl: URL;
     try {
@@ -74,11 +71,12 @@ export class Resolver {
 
   // TODO split this into getPackageDependencyConfig and getPackageResolutionConfig
   // since "dependencies" come from package base, while "imports" come from local pjson
+
   async getPackageConfig (pkgUrl: string): Promise<PackageConfig | null> {
-    if (!pkgUrl.endsWith('/'))
-      throw new Error(`Internal Error: Package URL must end in "/". Got ${pkgUrl}`);
     if (!pkgUrl.startsWith('file:') && !pkgUrl.startsWith('http:') && !pkgUrl.startsWith('https:'))
       return null;
+    if (!pkgUrl.endsWith('/'))
+      throw new Error(`Internal Error: Package URL must end in "/". Got ${pkgUrl}`);
     let cached = this.pcfgs[pkgUrl];
     if (cached) return cached;
     if (!this.pcfgPromises[pkgUrl])
@@ -184,6 +182,8 @@ export class Resolver {
   }
 
   async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], pkgUrl?: string): Promise<string> {
+    if (parentIsCjs && url.endsWith('/'))
+      url = url.slice(0, -1);
     // Only CJS modules do extension searching for relative resolved paths
     if (parentIsCjs)
       url = await (async () => {
@@ -338,7 +338,7 @@ export class Resolver {
   //   }
   // }
 
-  async analyze (resolvedUrl: string, parentUrl?: URL, system = false, retry = false): Promise<Analysis> {
+  async analyze (resolvedUrl: string, parentUrl: URL, system: boolean, isRequire: boolean, retry = true): Promise<Analysis> {
     const res = await fetch(resolvedUrl, this.fetchOpts);
     switch (res.status) {
       case 200:
@@ -354,7 +354,13 @@ export class Resolver {
       const [imports, exports] = await parse(source) as any as [any[], string[]];
       if (imports.every(impt => impt.d > 0) && !exports.length && resolvedUrl.startsWith('file:')) {
         // Support CommonJS package boundary checks for non-ESM on file: protocol only
-        if (!(resolvedUrl.endsWith('.js') || resolvedUrl.endsWith('.json') || resolvedUrl.endsWith('.node')) ||
+        if (isRequire) {
+          if (resolvedUrl.endsWith('.json'))
+            return { deps: [], dynamicDeps: [], cjsLazyDeps: null, size: source.length, format: 'json' };
+          if (!(resolvedUrl.endsWith('.mjs') || resolvedUrl.endsWith('.js') && (await this.getPackageConfig(await this.getPackageBase(resolvedUrl)))?.type === 'module'))
+            return createCjsAnalysis(imports, source, resolvedUrl);
+        }
+        else if (resolvedUrl.endsWith('.cjs') ||
             resolvedUrl.endsWith('.js') && (await this.getPackageConfig(await this.getPackageBase(resolvedUrl)))?.type !== 'module') {
           return createCjsAnalysis(imports, source, resolvedUrl);
         }
@@ -368,7 +374,7 @@ export class Resolver {
       // so we retry the fetch first
       if (retry) {
         try {
-          return this.analyze(resolvedUrl, parentUrl, system, false);
+          return this.analyze(resolvedUrl, parentUrl, system, isRequire, false);
         }
         catch {}
       }
@@ -378,14 +384,14 @@ export class Resolver {
         const pos = topline.slice(14);
         let [line, col] = pos.split(':');
         const lines = source.split('\n');
-        // console.log(source);
+        let errStack = '';
         if (line > 1)
-          console.log('  ' + lines[line - 2]);
-        console.log('> ' + lines[line - 1]);
-        console.log('  ' + ' '.repeat(col - 1) + '^');
+         errStack += '\n  ' + lines[line - 2];
+        errStack += '\n> ' + lines[line - 1];
+        errStack += '\n  ' + ' '.repeat(col - 1) + '^';
         if (lines.length > 1)
-          console.log('  ' + lines[line]);
-        throw new JspmError(`Error parsing ${resolvedUrl}:${pos}`);
+          errStack += '\n  ' + lines[line];
+        throw new JspmError(`${errStack}\n\nError parsing ${resolvedUrl}:${pos}`);
       }
       throw e;
     }
