@@ -3,6 +3,7 @@ import * as skypack from './skypack.js';
 import * as jsdelivr from './jsdelivr.js';
 import * as unpkg from './unpkg.js';
 import * as nodemodules from './nodemodules.js';
+import * as node from './node.js';
 import { PackageConfig, ExactPackage, LatestPackageTarget } from '../install/package.js';
 import { Resolver } from '../trace/resolver.js';
 
@@ -18,6 +19,7 @@ export interface Provider {
 export const defaultProviders: Record<string, Provider> = {
   jsdelivr,
   jspm,
+  node,
   nodemodules,
   skypack,
   unpkg
