@@ -190,11 +190,11 @@ export class Resolver {
       return url;
     if (!realpath) {
       [{ realpath }, { pathToFileURL }] = await Promise.all([
-        import('fs/promises' as any),
+        import('fs' as any),
         import('url' as any)
       ]);
     }
-    return pathToFileURL(await realpath(new URL(url))).href;
+    return pathToFileURL(await new Promise((resolve, reject) => realpath(new URL(url), (err, result) => err ? reject(err) : resolve(result)))).href;
   }
 
   async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], pkgUrl?: string): Promise<string> {
