@@ -25,7 +25,7 @@ export interface GeneratorOptions {
 }
 
 export interface ModuleAnalysis {
-  format: 'commonjs' | 'esm' | 'system' | 'json';
+  format: 'commonjs' | 'esm' | 'system' | 'json' | 'typescript';
   staticDeps: string[];
   dynamicDeps: string[];
   cjsLazyDeps: string[] | null;
