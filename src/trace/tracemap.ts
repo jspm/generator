@@ -223,7 +223,7 @@ export default class TraceMap {
       if (resolvedUrl.protocol !== 'file:' && resolvedUrl.protocol !== 'https:' && resolvedUrl.protocol !== 'http:' && resolvedUrl.protocol !== 'node:' && resolvedUrl.protocol !== 'data:')
         throw new JspmError(`Found unexpected protocol ${resolvedUrl.protocol}${importedFrom(parentUrl)}`);
       const resolvedHref = resolvedUrl.href;
-      const finalized = await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env);
+      const finalized = await this.resolver.realPath(await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env));
       if (finalized !== resolvedHref) {
         this.map.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized);
         resolvedUrl = new URL(finalized);
@@ -244,7 +244,7 @@ export default class TraceMap {
       for (const [scope] of pkgSubscopes) {
         const mapMatch = getMapMatch(specifier, this.map.scopes[scope]);
         if (mapMatch) {
-          const resolved = new URL(this.map.scopes[scope][mapMatch] + specifier.slice(mapMatch.length), this.map.baseUrl).href;
+          const resolved = await this.resolver.realPath(new URL(this.map.scopes[scope][mapMatch] + specifier.slice(mapMatch.length), this.map.baseUrl).href);
           this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
           await this.traceUrl(resolved, parentUrl, env);
           return resolved;
@@ -257,7 +257,7 @@ export default class TraceMap {
     if (userScopeMatch) {
       const imports = this.map.scopes[userScopeMatch[0]];
       const userImportsMatch = getMapMatch(specifier, imports);
-      const userImportsResolved = userImportsMatch ? new URL(imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.map.baseUrl).href : null;
+      const userImportsResolved = userImportsMatch ? await this.resolver.realPath(new URL(imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.map.baseUrl).href) : null;
       if (userImportsResolved) {
         this.log('trace', `${specifier} ${parentUrl.href} -> ${userImportsResolved}`);
         await this.traceUrl(userImportsResolved, parentUrl, env);
@@ -268,7 +268,7 @@ export default class TraceMap {
     // Own name import
     const pcfg = await this.resolver.getPackageConfig(parentPkgUrl) || {};
     if (pcfg.exports && pcfg.name === pkgName) {
-      const resolved = await this.resolver.resolveExport(parentPkgUrl, subpath, env, parentIsCjs, specifier, parentUrl);
+      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(parentPkgUrl, subpath, env, parentIsCjs, specifier, parentUrl));
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;
@@ -279,7 +279,7 @@ export default class TraceMap {
       const match = getMapMatch(pkgName, pcfg.imports);
       if (!match)
         throw new JspmError(`No '${pkgName}' import defined in ${parentPkgUrl}${importedFrom(parentUrl)}.`);
-      const resolved = resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, subpath === '.' ? '' : subpath.slice(2));
+      const resolved = await this.resolver.realPath(resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, subpath === '.' ? '' : subpath.slice(2)));
       setResolution(this.installer.installs, pkgName, parentPkgUrl, resolved);
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
@@ -293,7 +293,7 @@ export default class TraceMap {
       if (subpathBase && !pkgUrl.endsWith('/'))
         pkgUrl += '/';
       const key = subpathBase ? './' + subpathBase + subpath.slice(1) : subpath;
-      const resolved = await this.resolver.resolveExport(pkgUrl, key, env, parentIsCjs, specifier, parentUrl);
+      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(pkgUrl, key, env, parentIsCjs, specifier, parentUrl));
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;
@@ -301,7 +301,7 @@ export default class TraceMap {
   
     // User import overrides
     const userImportsMatch = getMapMatch(specifier, this.map.imports);
-    const userImportsResolved = userImportsMatch ? new URL(this.map.imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.map.baseUrl).href : null;
+    const userImportsResolved = userImportsMatch ? await this.resolver.realPath(new URL(this.map.imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.map.baseUrl).href) : null;
     if (userImportsResolved) {
       this.log('trace', `${specifier} ${parentUrl.href} -> ${userImportsResolved}`);
       await this.traceUrl(userImportsResolved, parentUrl, env);
@@ -313,7 +313,7 @@ export default class TraceMap {
 
   private async traceUrl (resolvedUrl: string, parentUrl: URL, env: string[]): Promise<void> {
     if (resolvedUrl in this.tracedUrls) return;
-    
+
     const traceEntry: TraceEntry = this.tracedUrls[resolvedUrl] = {
       wasCJS: false,
       deps: Object.create(null),
@@ -324,10 +324,10 @@ export default class TraceMap {
       integrity: '',
       format: undefined
     };
-    
+
     if (resolvedUrl.endsWith('/'))
       throw new JspmError(`Trailing "/" installs not yet supported installing ${resolvedUrl} for ${parentUrl.href}`);
-    
+
     const parentIsCjs = this.tracedUrls[parentUrl.href]?.format === 'commonjs';
 
     const { deps, dynamicDeps, cjsLazyDeps, size, format } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system, parentIsCjs);
