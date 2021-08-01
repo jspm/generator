@@ -40,7 +40,7 @@ interface TraceEntry {
   // For cjs modules, the list of hoisted deps
   // this is needed for proper cycle handling
   cjsLazyDeps: Record<string, string | string[]>;
-  format: 'esm' | 'commonjs' | 'system' | 'json';
+  format: 'esm' | 'commonjs' | 'system' | 'json' | 'typescript';
 }
 
 // The tracemap fully drives the installer

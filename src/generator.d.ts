@@ -1,5 +1,4 @@
 import { ImportMap } from '@jspm/import-map';
-import { NonRelativeModuleNameResolutionCache } from 'typescript';
 
 export type LogStream = () => AsyncGenerator<{ type: string, message: string }, never, unknown>;
 
@@ -46,7 +45,7 @@ export declare class Generator {
 }
 
 export interface ModuleAnalysis {
-  format: 'commonjs' | 'esm' | 'system';
+  format: 'commonjs' | 'esm' | 'system' | 'json' | 'typescript';
   staticDeps: string[];
   dynamicDeps: string[];
   cjsLazyDeps: string[] | null;

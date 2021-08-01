@@ -2,7 +2,7 @@ export interface Analysis {
   deps: string[];
   dynamicDeps: string[];
   cjsLazyDeps: string[] | null;
-  format: 'esm' | 'commonjs' | 'system' | 'json';
+  format: 'esm' | 'commonjs' | 'system' | 'json' | 'typescript';
   size: number;
 }
 
