@@ -9,17 +9,21 @@ import { getProvider, defaultProviders, Provider } from '../providers/index.js';
 import { Analysis, createSystemAnalysis, parseTs } from './analysis.js';
 import { createEsmAnalysis } from './analysis.js';
 import { createCjsAnalysis } from './cjs.js';
-import { getMapMatch, resolveConditional } from '@jspm/import-map';
+import { getMapMatch } from '@jspm/import-map';
+
+let realpath, pathToFileURL;
 
 export class Resolver {
   log: Log;
   pcfgPromises: Record<string, Promise<void>> = Object.create(null);
   pcfgs: Record<string, PackageConfig | null> = Object.create(null);
   fetchOpts: any;
+  preserveSymlinks = false;
   providers = defaultProviders;
-  constructor (log: Log, fetchOpts?: any) {
+  constructor (log: Log, fetchOpts?: any, preserveSymlinks = false) {
     this.log = log;
     this.fetchOpts = fetchOpts;
+    this.preserveSymlinks = preserveSymlinks;
   }
 
   addCustomProvider (name: string, provider: Provider) {
@@ -179,6 +183,18 @@ export class Resolver {
       return false;
     const subpath = './' + url.slice(pkgUrl.length);
     return pcfg?.exports?.[subpath + '!cjs'] ? true : false;
+  }
+
+  async realPath (url: string): Promise<string> {
+    if (!url.startsWith('file:') || this.preserveSymlinks)
+      return url;
+    if (!realpath) {
+      [{ realpath }, { pathToFileURL }] = await Promise.all([
+        import('fs' as any),
+        import('url' as any)
+      ]);
+    }
+    return pathToFileURL(await new Promise((resolve, reject) => realpath(new URL(url), (err, result) => err ? reject(err) : resolve(result)))).href;
   }
 
   async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], pkgUrl?: string): Promise<string> {
