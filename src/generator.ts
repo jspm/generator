@@ -87,7 +87,7 @@ export class Generator {
       stdlib,
       env,
       defaultProvider,
-      inputMap,
+      inputMap
     }, log, resolver);
   }
 

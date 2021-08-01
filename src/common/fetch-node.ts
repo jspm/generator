@@ -99,33 +99,5 @@ export const fetch = async function (url: URL, ...args: any[]) {
     }
   }
   // @ts-ignore
-  if (typeof Deno !== 'undefined' /*&& args[0]?.cache === 'only-if-cached' */) {
-    const { cache } = await import(eval('"../../deps/cache/mod.ts"'));
-    try {
-      const file = await cache(urlString);
-      return {
-        status: 200,
-        async text () {
-          // @ts-ignore
-          return (await Deno.readTextFile(file.path)).toString();
-        },
-        async json () {
-          // @ts-ignore
-          return JSON.parse((await Deno.readTextFile(file.path)).toString());
-        },
-        async arrayBuffer () {
-          // @ts-ignore
-          return (await Deno.readTextFile(file.path));
-        }
-      };
-    }
-    catch (e) {
-      if (e.name === 'CacheError' && e.message.indexOf('Not Found !== -1')) {
-        return { status: 404, statusText: e.toString() };
-      }
-      throw e;
-    }
-  }
-  // @ts-ignore
   return _fetch(url, ...args);
 }
