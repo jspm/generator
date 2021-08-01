@@ -328,7 +328,9 @@ export default class TraceMap {
     if (resolvedUrl.endsWith('/'))
       throw new JspmError(`Trailing "/" installs not yet supported installing ${resolvedUrl} for ${parentUrl.href}`);
     
-    const { deps, dynamicDeps, cjsLazyDeps, size, format } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system, env.includes('require'));
+    const parentIsCjs = this.tracedUrls[parentUrl.href]?.format === 'commonjs';
+
+    const { deps, dynamicDeps, cjsLazyDeps, size, format } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system, parentIsCjs);
     traceEntry.format = format;
     traceEntry.size = size;
 
