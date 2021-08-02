@@ -19,11 +19,19 @@ export class Resolver {
   pcfgs: Record<string, PackageConfig | null> = Object.create(null);
   fetchOpts: any;
   preserveSymlinks = false;
+  resolutions = undefined
   providers = defaultProviders;
-  constructor (log: Log, fetchOpts?: any, preserveSymlinks = false) {
+  constructor (log: Log, fetchOpts?: any, resolutions?: Record<string, string>, preserveSymlinks = false) {
     this.log = log;
     this.fetchOpts = fetchOpts;
     this.preserveSymlinks = preserveSymlinks;
+    if (resolutions)
+      Object.values(resolutions).every((resolution) => {
+        if (!resolution.startsWith('../')) {
+          throw new Error(`A Resolution should start with a relative URL, received ${resolution}`)
+        }
+      })
+      this.resolutions = resolutions
   }
 
   addCustomProvider (name: string, provider: Provider) {
@@ -167,7 +175,7 @@ export class Resolver {
 
     const latestTarget = { registry: target.registry, name: target.name, range };
 
-    const pkg = await getProvider(provider, this.providers).resolveLatestTarget.call(this, latestTarget, unstable, layer, parentUrl);
+    let pkg = await getProvider(provider, this.providers).resolveLatestTarget.call(this, latestTarget, unstable, layer, parentUrl, this.resolutions);
     if (pkg)
       return pkg;
     throw new JspmError(`Unable to resolve package ${latestTarget.registry}:${latestTarget.name} to "${latestTarget.range}"${importedFrom(parentUrl)}`);

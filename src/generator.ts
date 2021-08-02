@@ -22,6 +22,7 @@ export interface GeneratorOptions {
   cache?: 'offline' | boolean;
   stdlib?: string;
   customProviders?: Record<string, Provider>;
+  resolutions?: Record<string, string>
 }
 
 export interface ModuleAnalysis {
@@ -46,6 +47,7 @@ export class Generator {
   traceMap: TraceMap;
   mapUrl: URL;
   rootUrl: URL | null;
+  resolutions: Record<string, string>;
   finishInstall: (success: boolean) => Promise<boolean | { pjsonChanged: boolean, lock: LockResolutions }> | null = null;
   installCnt = 0;
 
@@ -59,7 +61,8 @@ export class Generator {
     defaultProvider = 'jspm',
     customProviders = undefined,
     cache = true,
-    stdlib = '@jspm/core'
+    stdlib = '@jspm/core',
+    resolutions = undefined
   }: GeneratorOptions = {}) {
     let fetchOpts = undefined;
     if (cache === 'offline')
@@ -67,7 +70,7 @@ export class Generator {
     else if (!cache)
       fetchOpts = { cache: 'no-store' };
     const { log, logStream } = createLogger();
-    const resolver = new Resolver(log, fetchOpts);
+    const resolver = new Resolver(log, fetchOpts, resolutions);
     if (customProviders) {
       for (const provider of Object.keys(customProviders)) {
         resolver.addCustomProvider(provider, customProviders[provider]);
