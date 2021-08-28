@@ -41,7 +41,8 @@
     "@jspm/import-map": "^0.1.5",
     "es-module-lexer": "^0.4.1",
     "make-fetch-happen": "^8.0.3",
-    "sver": "^1.8.3"
+    "sver": "^1.8.3",
+    "typescript": "^4.3.5"
   },
   "devDependencies": {
     "chalk": "^4.1.1",
@@ -50,8 +51,7 @@
     "lit-element": "^2.5.1",
     "mocha": "^9.0.0",
     "open": "^8.2.0",
-    "rollup": "^2.44.0",
-    "typescript": "^4.3.5"
+    "rollup": "^2.44.0"
   },
   "files": [
     "dist"
