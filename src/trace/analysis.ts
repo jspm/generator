@@ -6,18 +6,8 @@ export interface Analysis {
   size: number;
 }
 
-export async function parseTs (source: string) {
-  // @ts-ignore
-  if (typeof Deno !== 'undefined')
-    return '';
-  const { default: ts } = await import(eval('"typescript"'));
-  return ts.transpileModule(source, {
-    compilerOptions: {
-      jsx: ts.JsxEmit.React,
-      module: ts.ModuleKind.ESNext
-    }
-  }).outputText;
-}
+export { createTsAnalysis } from './ts.js';
+export { createCjsAnalysis } from './cjs.js';
 
 export function createEsmAnalysis (imports: any[], source: string, url: string): Analysis {
   if (!imports.length && registerRegEx.test(source))

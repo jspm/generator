@@ -1,13 +1,16 @@
 import { Analysis } from "./analysis";
 
+let babel;
+
 export async function createCjsAnalysis (imports: any, source: string, url: string): Promise<Analysis> {
-  const { default: babel } = await import(eval('"@babel/core"'));
+  if (!babel)
+    ({ default: babel } = await import('@babel/core'));
 
   const requires = new Set<string>();
   const lazy = new Set<string>();
 
-  const { ast: _ast } = babel.transform(source, {
-    ast: true,
+  babel.transform(source, {
+    ast: false,
     sourceMaps: false,
     inputSourceMap: false,
     babelrc: false,
