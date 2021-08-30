@@ -38,5 +38,5 @@ await denoExec(generator.getMap(), `
   await generator.install({ alias: '@jspm/generator', target: ${JSON.stringify(targetUrl)} });
   const map = generator.getMap();
 
-  assertEquals(map, ${JSON.stringify(map)})
+  assertEquals(map.imports, ${JSON.stringify(map.imports)})
 `);

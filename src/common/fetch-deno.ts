@@ -3,7 +3,8 @@ import { fetch as _fetch } from './fetch-native.js';
 // @ts-ignore
 import { fileURLToPath } from 'url';
 // @ts-ignore
-import { cache } from "https://deno.land/x/cache/mod.ts";
+// Caching disabled due to not respecting cache headers...
+// import { cache } from "https://deno.land/x/cache/mod.ts";
 
 export function clearCache () {
 };
@@ -56,34 +57,35 @@ export const fetch = async function (url: URL, ...args: any[]) {
     }
   }
   else {
-    let file;
-    try {
-      file = await cache(urlString);
-    }
-    catch (e) {
-      if (e.name === 'SyntaxError') {
-        // Weird bug in Deno cache...
-        // @ts-ignore
-        return _fetch(url, ...args);
-      }
-      if (e.name === 'CacheError' && e.message === 'Not Found') {
-        return { status: 404, statusText: e.toString() };
-      }
-      throw e;
-    }
+    return _fetch(urlString, ...args);
+    // let file;
+    // try {
+    //   file = await cache(urlString);
+    // }
+    // catch (e) {
+    //   if (e.name === 'SyntaxError') {
+    //     // Weird bug in Deno cache...
+    //     // @ts-ignore
+    //     return _fetch(url, ...args);
+    //   }
+    //   if (e.name === 'CacheError' && e.message === 'Not Found') {
+    //     return { status: 404, statusText: e.toString() };
+    //   }
+    //   throw e;
+    // }
     // @ts-ignore
-    const source = await Deno.readTextFile(file.path);
-    return {
-      status: 200,
-      async text () {
-        return source.toString();
-      },
-      async json () {
-        return JSON.parse(source.toString());
-      },
-      arrayBuffer () {
-        return source;
-      }
-    };
+    // const source = await Deno.readTextFile(fromFileUrl(urlString));
+    // return {
+    //   status: 200,
+    //   async text () {
+    //     return source.toString();
+    //   },
+    //   async json () {
+    //     return JSON.parse(source.toString());
+    //   },
+    //   arrayBuffer () {
+    //     return source;
+    //   }
+    // };
   }
 }
