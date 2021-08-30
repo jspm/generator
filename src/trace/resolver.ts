@@ -6,9 +6,7 @@ import { fetch } from '#fetch';
 import { importedFrom } from "../common/url.js";
 import { parse } from 'es-module-lexer';
 import { getProvider, defaultProviders, Provider } from '../providers/index.js';
-import { Analysis, createSystemAnalysis, parseTs } from './analysis.js';
-import { createEsmAnalysis } from './analysis.js';
-import { createCjsAnalysis } from './cjs.js';
+import { Analysis, createSystemAnalysis, createCjsAnalysis, createEsmAnalysis, createTsAnalysis } from './analysis.js';
 import { getMapMatch } from '@jspm/import-map';
 
 let realpath, pathToFileURL;
@@ -366,15 +364,10 @@ export class Resolver {
     let source = await res.text();
     // TODO: headers over extensions for non-file URLs
     try {
-      if (resolvedUrl.endsWith('.ts') || resolvedUrl.endsWith('.tsx') || resolvedUrl.endsWith('.jsx')) {
-        source = await parseTs(source);
-        const [imports] = await parse(source) as any as [any[], string[]];
-        const esmAnalysis = createEsmAnalysis(imports, source, resolvedUrl);
-        esmAnalysis.format = 'typescript';
-        return esmAnalysis;
+      if (resolvedUrl.endsWith('.ts') || resolvedUrl.endsWith('.tsx') || resolvedUrl.endsWith('.jsx'))
+        return await createTsAnalysis(source, resolvedUrl);
 
-      }
-      else if (resolvedUrl.endsWith('.json')) {
+      if (resolvedUrl.endsWith('.json')) {
         try {
           JSON.parse(source);
           return { deps: [], dynamicDeps: [], cjsLazyDeps: null, size: source.length, format: 'json' };
