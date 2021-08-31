@@ -11,6 +11,7 @@
     "build": "npm run tsc && npm run rollup",
     "cache-clear": "node cache-clear.js",
     "self-generate": "node self-generate.js",
+    "self-generate-ts": "cross-env TS=1 node self-generate.js",
     "test": "npm run test:node && npm run test:browser",
     "test:node": "node test/test.js",
     "test:browser": "node test/server.mjs",
