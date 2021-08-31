@@ -2,7 +2,7 @@
   "name": "@jspm/generator",
   "description": "Package Import Map Generation Tool",
   "license": "MIT",
-  "version": "1.0.0-beta.12",
+  "version": "1.0.0-beta.13",
   "types": "dist/generator.d.ts",
   "scripts": {
     "tsc": "tsc -p .",
@@ -10,6 +10,7 @@
     "rollup": "rollup -c && cp src/generator.d.ts dist/generator.d.ts",
     "build": "npm run tsc && npm run rollup",
     "cache-clear": "node cache-clear.js",
+    "self-generate": "node self-generate.js",
     "test": "npm run test:node && npm run test:browser",
     "test:node": "node test/test.js",
     "test:browser": "node test/server.mjs",

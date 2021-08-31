@@ -22,17 +22,21 @@ Browser:
 ```html
 <script type="importmap">
 {
-  "imports": {
-    "@jspm/generator": "https://ga.jspm.io/npm:@jspm/generator@1.0.0-beta.3/dist/generator.js",
-    "es-module-lexer": "https://ga.jspm.io/npm:es-module-lexer@0.4.1/dist/lexer.cjs",
-    "sver": "https://ga.jspm.io/npm:sver@1.8.3/sver.js",
-    "sver/convert-range.js": "https://ga.jspm.io/npm:sver@1.8.3/convert-range.js"
+  imports: {
+    '@jspm/generator': 'https://ga.jspm.io/npm:@jspm/generator@1.0.0-beta.13/dist/generator.js'
   },
-  "scopes": {
-    "https://ga.jspm.io/": {
-      "buffer": "https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.7/nodelibs/buffer.js",
-      "process": "https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.7/nodelibs/process.js",
-      "semver": "https://ga.jspm.io/npm:semver@6.3.0/semver.js"
+  scopes: {
+    'https://ga.jspm.io/': {
+      '#fetch': 'https://ga.jspm.io/npm:@jspm/generator@1.0.0-beta.12/dist/fetch-native.js',
+      '@jspm/import-map': 'https://ga.jspm.io/npm:@jspm/import-map@0.1.5/dist/map.js',
+      buffer: 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.8/nodelibs/browser/buffer.js',
+      'es-module-lexer': 'https://ga.jspm.io/npm:es-module-lexer@0.4.1/dist/lexer.cjs',
+      fs: 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.8/nodelibs/browser/fs.js',
+      process: 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.8/nodelibs/browser/process.js',
+      semver: 'https://ga.jspm.io/npm:semver@6.3.0/semver.js',
+      sver: 'https://ga.jspm.io/npm:sver@1.8.3/sver.js',
+      'sver/convert-range.js': 'https://ga.jspm.io/npm:sver@1.8.3/convert-range.js',
+      url: 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.8/nodelibs/browser/url.js'
     }
   }
 }
