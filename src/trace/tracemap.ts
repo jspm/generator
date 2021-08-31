@@ -265,6 +265,15 @@ export default class TraceMap {
       }
     }
 
+    // User import overrides
+    const userImportsMatch = getMapMatch(specifier, this.map.imports);
+    const userImportsResolved = userImportsMatch ? await this.resolver.realPath(new URL(this.map.imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.map.baseUrl).href) : null;
+    if (userImportsResolved) {
+      this.log('trace', `${specifier} ${parentUrl.href} -> ${userImportsResolved}`);
+      await this.traceUrl(userImportsResolved, parentUrl, env);
+      return userImportsResolved;
+    }
+
     // Own name import
     const pcfg = await this.resolver.getPackageConfig(parentPkgUrl) || {};
     if (pcfg.exports && pcfg.name === pkgName) {
@@ -297,15 +306,6 @@ export default class TraceMap {
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;
-    }
-  
-    // User import overrides
-    const userImportsMatch = getMapMatch(specifier, this.map.imports);
-    const userImportsResolved = userImportsMatch ? await this.resolver.realPath(new URL(this.map.imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.map.baseUrl).href) : null;
-    if (userImportsResolved) {
-      this.log('trace', `${specifier} ${parentUrl.href} -> ${userImportsResolved}`);
-      await this.traceUrl(userImportsResolved, parentUrl, env);
-      return userImportsResolved;
     }
 
     throw new JspmError(`No resolution in map for ${specifier}${importedFrom(parentUrl)}`);
