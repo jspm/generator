@@ -5,9 +5,9 @@ const generator = new Generator({
   mapUrl: import.meta.url
 });
 
-const { staticDeps, dynamicDeps } = await generator.install('@jspm/generator');
+const { staticDeps, dynamicDeps } = await generator.install('@jspm/generator@1.0.0-beta.13');
 
-assert.strictEqual(staticDeps.length, 106);
+assert.strictEqual(staticDeps.length, 112);
 assert.strictEqual(dynamicDeps.length, 0);
 
 const json = generator.getMap();
