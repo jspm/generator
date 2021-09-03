@@ -1,4 +1,5 @@
 import { Generator } from '@jspm/generator';
+import { readFile } from 'fs/promises';
 
 const noTs = !process.env.TS;
 
@@ -12,7 +13,9 @@ const generator = new Generator({
   } : {}
 });
 
-await generator.install('@jspm/generator');
+const { version } = JSON.parse(await readFile(new URL('package.json', import.meta.url)));
+
+await generator.install(`@jspm/generator@${version}`);
 
 
 const json = generator.getMap();
