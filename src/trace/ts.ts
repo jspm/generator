@@ -34,7 +34,7 @@ export async function createTsAnalysis (source: string, url: string): Promise<An
       compact: false,
       sourceType: 'module',
       parserOpts: {
-        // plugins: stage3Syntax,
+        plugins: ['jsx'],
         errorRecovery: true
       },
       presets: [[babelPresetTs, {
