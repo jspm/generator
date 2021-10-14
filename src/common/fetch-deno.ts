@@ -1,6 +1,4 @@
 // @ts-ignore
-import { fetch as _fetch } from './fetch-native.js';
-// @ts-ignore
 import { fileURLToPath } from 'url';
 // @ts-ignore
 // Caching disabled due to not respecting cache headers...
@@ -57,7 +55,7 @@ export const fetch = async function (url: URL, ...args: any[]) {
     }
   }
   else {
-    return _fetch(urlString, ...args);
+    return globalThis.fetch(urlString, ...args);
     // let file;
     // try {
     //   file = await cache(urlString);
