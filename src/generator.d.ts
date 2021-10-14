@@ -8,6 +8,7 @@ export interface GeneratorOptions {
   env?: string[];
   cache?: 'offline' | boolean;
   stdlib?: string;
+  providers?: Record<string, string>;
 }
 
 export interface Install {

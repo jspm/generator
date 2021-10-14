@@ -7,6 +7,12 @@ import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
 import { isURL, importedFrom } from "../common/url.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { nodeBuiltinSet } from '../providers/node.js';
+import { Provider } from '../providers/index.js';
+
+export interface PackageProvider {
+  provider: string;
+  layer: string;
+}
 
 export interface PackageInstall {
   name: string;
@@ -55,6 +61,7 @@ export interface InstallOptions {
   saveOptional?: boolean;
 
   defaultProvider?: string;
+  providers?: Record<string, string>;
 }
 
 function pruneResolutions (resolutions: LockResolutions, to: [string, string][]): LockResolutions {
@@ -93,6 +100,7 @@ export class Installer {
   added = new Map<string, InstallTarget>();
   hasLock = false;
   defaultProvider = { provider: 'jspm', layer: 'default' };
+  providers: Record<string, string>;
   log: Log;
   resolver: Resolver;
 
@@ -109,6 +117,7 @@ export class Installer {
         provider: opts.defaultProvider.split('.')[0],
         layer: opts.defaultProvider.split('.')[1] || 'default'
       };
+    this.providers = opts.providers || {};
 
     this.installs = resolutions;
 
@@ -208,7 +217,7 @@ export class Installer {
     }
   }
 
-  replace (target: InstallTarget, replacePkgUrl: string): boolean {
+  replace (target: InstallTarget, replacePkgUrl: string, provider: PackageProvider): boolean {
     let targetUrl: string;
     if (target instanceof URL) {
       targetUrl = target.href;
@@ -220,7 +229,7 @@ export class Installer {
           return false;
         throw new Error('No installation found to replace.');
       }
-      targetUrl = this.resolver.pkgToUrl(pkg, this.defaultProvider);
+      targetUrl = this.resolver.pkgToUrl(pkg, provider);
     }
 
     let replaced = false;
@@ -262,30 +271,43 @@ export class Installer {
       return pkgUrl;
     }
 
+    let provider = this.defaultProvider;
+    for (const name of Object.keys(this.providers)) {
+      if (target.name.startsWith(name) && (target.name.length === name.length || target.name[name.length] === '/')) {
+        provider = { provider: this.providers[name], layer: 'default' };
+        const layerIndex = provider.provider.indexOf('.');
+        if (layerIndex !== -1) {
+          provider.layer = provider.provider.slice(layerIndex + 1);
+          provider.provider = provider.provider.slice(0, layerIndex);
+        }
+        break;
+      }
+    }
+
     if (this.opts.freeze) {
       const existingInstall = this.getBestMatch(target);
       if (existingInstall) {
         this.log('install', `${pkgName} ${pkgScope} -> ${existingInstall.registry}:${existingInstall.name}@${existingInstall.version}`);
-        const pkgUrl = this.resolver.pkgToUrl(existingInstall, this.defaultProvider);
+        const pkgUrl = this.resolver.pkgToUrl(existingInstall, provider);
         setResolution(this.installs, pkgName, pkgScope, pkgUrl);
         return pkgUrl;
       }
     }
 
-    const latest = await this.resolver.resolveLatestTarget(target, false, this.defaultProvider, parentUrl);
+    const latest = await this.resolver.resolveLatestTarget(target, false, provider, parentUrl);
     const installed = await this.getInstalledPackages(target);
-    const restrictedToPkg = await this.tryUpgradePackagesTo(latest, installed);
+    const restrictedToPkg = await this.tryUpgradePackagesTo(latest, installed, provider);
 
     // cannot upgrade to latest -> stick with existing resolution (if compatible)
     if (restrictedToPkg && !this.opts.latest) {
       this.log('install', `${pkgName} ${pkgScope} -> ${restrictedToPkg.registry}:${restrictedToPkg.name}@${restrictedToPkg.version}`);
-      const pkgUrl = this.resolver.pkgToUrl(restrictedToPkg, this.defaultProvider);
+      const pkgUrl = this.resolver.pkgToUrl(restrictedToPkg, provider);
       setResolution(this.installs, pkgName, pkgScope, pkgUrl);
       return pkgUrl;
     }
 
     this.log('install', `${pkgName} ${pkgScope} -> ${latest.registry}:${latest.name}@${latest.version}`);
-    const pkgUrl = this.resolver.pkgToUrl(latest, this.defaultProvider);
+    const pkgUrl = this.resolver.pkgToUrl(latest, provider);
     setResolution(this.installs, pkgName, pkgScope, pkgUrl);
     return pkgUrl;
   }
@@ -354,7 +376,7 @@ export class Installer {
   }
 
   // upgrade any existing packages to this package if possible
-  private tryUpgradePackagesTo (pkg: ExactPackage, installed: PackageInstallRange[]): ExactPackage | undefined {
+  private tryUpgradePackagesTo (pkg: ExactPackage, installed: PackageInstallRange[], provider: PackageProvider): ExactPackage | undefined {
     if (this.opts.freeze) return;
     const pkgVersion = new Semver(pkg.version);
     let hasUpgrade = false;
@@ -376,7 +398,7 @@ export class Installer {
       if (hasUpgrade || this.opts.latest) {
         for (const { pkg, install } of installed) {
           if (pkg.version !== version) continue;
-          setResolution(this.installs, install.name, install.pkgUrl, this.resolver.pkgToUrl(pkg, this.defaultProvider));
+          setResolution(this.installs, install.name, install.pkgUrl, this.resolver.pkgToUrl(pkg, provider));
         }
       }
     }

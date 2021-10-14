@@ -21,8 +21,6 @@ export interface TraceMapOptions extends InstallOptions {
   // or an exact trace for the provided entry points
   // (currently unused)
   fullMap?: boolean;
-
-  defaultProvider?: string;
 }
 
 interface TraceGraph {

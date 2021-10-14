@@ -8,6 +8,7 @@ import { parse } from 'es-module-lexer';
 import { getProvider, defaultProviders, Provider } from '../providers/index.js';
 import { Analysis, createSystemAnalysis, createCjsAnalysis, createEsmAnalysis, createTsAnalysis } from './analysis.js';
 import { getMapMatch } from '@jspm/import-map';
+import { PackageProvider } from '../install/installer.js';
 
 let realpath, pathToFileURL;
 
@@ -44,7 +45,7 @@ export class Resolver {
     return null;
   }
 
-  pkgToUrl (pkg: ExactPackage, { provider, layer }: { provider: string, layer: string }): string {
+  pkgToUrl (pkg: ExactPackage, { provider, layer }: PackageProvider): string {
     return getProvider(provider, this.providers).pkgToUrl.call(this, pkg, layer);
   }
 
@@ -151,7 +152,7 @@ export class Resolver {
     }
   }
 
-  async resolveLatestTarget (target: PackageTarget, unstable: boolean, { provider, layer }: { provider: string, layer: string }, parentUrl?: string): Promise<ExactPackage> {
+  async resolveLatestTarget (target: PackageTarget, unstable: boolean, { provider, layer }: PackageProvider, parentUrl?: string): Promise<ExactPackage> {
     // find the range to resolve latest
     let range: any;
     for (const possibleRange of target.ranges.sort(target.ranges[0].constructor.compare)) {
