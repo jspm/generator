@@ -22,6 +22,7 @@ export interface GeneratorOptions {
   cache?: 'offline' | boolean;
   stdlib?: string;
   customProviders?: Record<string, Provider>;
+  providers?: Record<string, string>;
 }
 
 export interface ModuleAnalysis {
@@ -58,6 +59,7 @@ export class Generator {
     env = ['browser', 'development', 'module'],
     defaultProvider = 'jspm',
     customProviders = undefined,
+    providers = {},
     cache = true,
     stdlib = '@jspm/core'
   }: GeneratorOptions = {}) {
@@ -87,6 +89,7 @@ export class Generator {
       stdlib,
       env,
       defaultProvider,
+      providers,
       inputMap
     }, log, resolver);
   }

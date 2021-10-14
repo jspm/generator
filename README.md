@@ -58,6 +58,9 @@ const generator = new Generator({
     }
   },
   defaultProvider: 'jspm',
+  providers: {
+    '@orgscope': 'nodemodules'
+  },
   customProviders: {},
   env: ['production', 'browser'],
   cache: false,
@@ -276,6 +279,25 @@ These hooks include version resolution and converting package versions into URLs
 See `src/providers/[name].ts` for how to define a custom provider.
 
 New providers can be provided via the `customProviders` option. PRs to merge in providers are welcome as well.
+
+#### providers
+
+> Type: Object | undefined<br/>
+Default: {}<br/>
+_A map of custom scoped providers._
+
+The provider map allows setting custom providers for specific package names or package scopes.
+
+For example, an organization with private packages with names like `npmpackage` and `@orgscope/...` can define the custom providers to reference these from a custom source:
+
+```js
+  providers: {
+    'npmpackage': 'nodemodules',
+    '@orgscope': 'nodemodules'
+  }
+```
+
+Alternatively a custom provider can be referenced this way for eg private CDN / registry support.
 
 #### customProviders
 

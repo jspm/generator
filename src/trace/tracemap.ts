@@ -1,4 +1,4 @@
-import { InstallOptions, InstallTarget, setResolution } from "../install/installer.js";
+import { InstallOptions, InstallTarget, PackageProvider, setResolution } from "../install/installer.js";
 import { importedFrom, isPlain } from "../common/url.js";
 import { Installer } from "../install/installer.js";
 import { JspmError, throwInternalError } from "../common/err.js";
@@ -21,8 +21,6 @@ export interface TraceMapOptions extends InstallOptions {
   // or an exact trace for the provided entry points
   // (currently unused)
   fullMap?: boolean;
-
-  defaultProvider?: string;
 }
 
 interface TraceGraph {
@@ -78,8 +76,8 @@ export default class TraceMap {
     this.traces = new Set();
   }
 
-  replace (target: InstallTarget, pkgUrl: string): boolean {
-    return this.installer!.replace(target, pkgUrl);
+  replace (target: InstallTarget, pkgUrl: string, provider: PackageProvider): boolean {
+    return this.installer!.replace(target, pkgUrl, provider);
   }
 
   async visit (url: string, visitor: (url: string, entry: TraceEntry) => Promise<boolean | void>, seen = new Set()) {
