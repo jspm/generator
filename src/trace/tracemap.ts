@@ -21,6 +21,9 @@ export interface TraceMapOptions extends InstallOptions {
   // or an exact trace for the provided entry points
   // (currently unused)
   fullMap?: boolean;
+
+  // List of module specifiers to ignore during tracing
+  ignore?: string[]
 }
 
 interface TraceGraph {
@@ -125,7 +128,7 @@ export default class TraceMap {
             const [specifier, parentUrl] = trace.split('##');
             try {
               const resolved = await this.trace(specifier, new URL(parentUrl), this.tracedUrls?.[parentUrl]?.wasCJS ? ['require', ...this.env] : ['import', ...this.env]);
-              traceResolutions[trace] = resolved;
+              if (resolved) traceResolutions[trace] = resolved;
             }
             catch (e) {
               throw e;
@@ -207,7 +210,13 @@ export default class TraceMap {
   //   }
   // }
 
-  async trace (specifier: string, parentUrl = this.mapBase, env = ['import', ...this.env]): Promise<string> {
+  /**
+   * @returns `resolved` - either a URL `string` pointing to the module or `null` if the specifier should be ignored.
+   */
+  async trace (specifier: string, parentUrl = this.mapBase, env = ['import', ...this.env]): Promise<string | null> {
+    // TODO: support ignoring prefixes?
+    if (this.opts.ignore?.includes(specifier)) return null
+
     const parentPkgUrl = await this.resolver.getPackageBase(parentUrl.href);
     if (!parentPkgUrl)
       throwInternalError();
@@ -365,6 +374,8 @@ export default class TraceMap {
         return;
       }
       const resolved = await this.trace(dep, resolvedUrlObj, env);
+      if (resolved === null) return
+
       if (deps.includes(dep))
         traceEntry.deps[dep] = resolved;
       if (dynamicDeps.includes(dep))
