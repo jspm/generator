@@ -23,6 +23,10 @@ export interface GeneratorOptions {
   stdlib?: string;
   customProviders?: Record<string, Provider>;
   providers?: Record<string, string>;
+  /**
+   * List of module specifiers to ignore during tracing.
+   */
+  ignore?: string[];
 }
 
 export interface ModuleAnalysis {
@@ -61,7 +65,8 @@ export class Generator {
     customProviders = undefined,
     providers = {},
     cache = true,
-    stdlib = '@jspm/core'
+    stdlib = '@jspm/core',
+    ignore = []
   }: GeneratorOptions = {}) {
     let fetchOpts = undefined;
     if (cache === 'offline')
@@ -90,7 +95,8 @@ export class Generator {
       env,
       defaultProvider,
       providers,
-      inputMap
+      inputMap,
+      ignore
     }, log, resolver);
   }
 

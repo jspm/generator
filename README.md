@@ -266,6 +266,32 @@ _The import map to extend._
 
 An initial import map to start with - can be from a previous install or provide custom mappings.
 
+#### ignore
+
+> Type: string[] | undefined<br/>
+Default: []
+
+Allows ignoring certain module specifiers during the tracing process.
+It can be useful, for example, when you provide an `inputMap` that contains a mapping that can't be traced in current context,
+but you know it will work in the context where the generated map is going to be used.
+
+```js
+const generator = new Generator({
+  inputMap: {
+      imports: {
+          "react": "./my/own/react.js",
+      }
+  },
+  ignore: ["react"]
+});
+
+// Even though `@react-three/fiber@7` depends upon `react`,
+// `generator` will not try to trace and resolve `react`,
+// so the mapping provided in `inputMap` will end up in the resulting import map. 
+await generator.install("@react-three/fiber@7")
+```
+
+
 #### defaultProvider
 
 > Type: 'jspm' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg'<br/>
