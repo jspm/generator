@@ -1,5 +1,5 @@
 import { Generator } from '@jspm/generator';
-import { denoExec } from '#test/deno.js';
+import { denoExec } from '#test/deno';
 
 const generator = new Generator({
   env: ['node', 'deno'],
