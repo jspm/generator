@@ -12,14 +12,14 @@
     "cache-clear": "node cache-clear.js",
     "self-generate": "node self-generate.js",
     "test": "npm run test:node && npm run test:browser",
-    "test:node": "node test/test.js",
+    "test:node": "node -C source test/test.js",
     "test:browser": "node test/server.mjs",
     "test:watch": "cross-env WATCH_MODE=1 node test/server.mjs"
   },
   "type": "module",
   "imports": {
     "#fetch": {
-      "test": {
+      "source": {
         "deno": "./lib/common/fetch-deno.js",
         "node": "./lib/common/fetch-node.js",
         "default": "./lib/common/fetch-native.js"
@@ -30,14 +30,14 @@
         "default": "./dist/fetch-native.js"
       }
     },
-    "#test/*": "./test/*.js"
+    "#test/*.js": "./test/*.js"
   },
   "exports": {
-    "test": "./lib/generator.js",
+    "source": "./lib/generator.js",
     "default": "./dist/generator.js"
   },
   "dependencies": {
-    "@babel/core": "^7.15.0",
+    "@babel/core": "^7.15.8",
     "@babel/preset-typescript": "^7.15.0",
     "@jspm/core": "^2.0.0-beta.8",
     "@jspm/import-map": "^0.1.5",
@@ -56,7 +56,8 @@
     "rollup": "^2.44.0"
   },
   "files": [
-    "dist"
+    "dist",
+    "lib"
   ],
   "repository": {
     "type": "git",

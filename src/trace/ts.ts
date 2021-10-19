@@ -23,7 +23,7 @@ export async function createTsAnalysis (source: string, url: string): Promise<An
   globalThis.console = dummyConsole;
   try {
     babel.transform(source, {
-      filename: url.slice(url.lastIndexOf('/') + 1),
+      filename: '/' + url,
       ast: false,
       sourceMaps: false,
       inputSourceMap: false,

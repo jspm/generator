@@ -1,5 +1,5 @@
 import { Generator } from '@jspm/generator';
-import { denoExec } from '#test/deno';
+import { denoExec } from '#test/deno.js';
 
 function replaceAll (str, pattern, replacement) {
   let last;
