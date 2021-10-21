@@ -9,6 +9,8 @@ import { Resolver } from "./trace/resolver.js";
 import { IImportMap } from "@jspm/import-map";
 import { Provider } from "./providers/index.js";
 import { JspmError } from "./common/err.js";
+import { init } from 'es-module-lexer';
+import { analyzeHtml } from "./html/analyze.js";
 
 export interface GeneratorOptions {
   /**
@@ -384,6 +386,7 @@ export class Generator {
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
+    await init;
     if (typeof parentUrl === 'string')
       parentUrl = new URL(parentUrl);
     let error = false;
@@ -401,6 +404,34 @@ export class Generator {
         await this.finishInstall(true);
       if (!error)
         return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+    }
+  }
+  
+  async traceHtml (html: string, url?: string | URL): Promise<HtmlInjector> {
+    await init;
+    const htmlUrl = typeof url === 'string' ? new URL(url) : url || this.mapUrl;
+    let error = false;
+    if (this.installCnt++ === 0)
+      this.finishInstall = await this.traceMap.startInstall();
+    const analysis = analyzeHtml(html, htmlUrl);
+    try {
+      await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
+        if (isPlain(impt))
+          await this.traceMap.trace(impt, htmlUrl);
+        else
+          await this.install(impt);
+      }));
+    }
+    catch (e) {
+      error = true;
+      throw e;
+    }
+    finally {
+      if (--this.installCnt === 0)
+        await this.finishInstall(true);
+      if (!error)
+        return;
+        //return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
     }
   }
 
@@ -430,6 +461,7 @@ export class Generator {
    * 
    */
   async install (install: string | Install | (string | Install)[]): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
+    await init;
     this.traceMap.clearLists();
     if (Array.isArray(install))
       return await Promise.all(install.map(install => this.install(install))).then(() => ({
@@ -519,6 +551,13 @@ export class Generator {
     map.sort();
     return map.toJSON();
   }
+}
+
+export interface HtmlInjector {
+  setMap: (map: any) => void;
+  clearPreloads: () => void;
+  
+  toString: () => string;
 }
 
 export interface LookupOptions {
