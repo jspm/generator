@@ -30,7 +30,12 @@
         "default": "./dist/fetch-native.js"
       }
     },
-    "#test/*": "./test/*.js"
+    "#test/*": {
+      "source": "./test/*.js"
+    },
+    "#*": {
+      "source": "./lib/*.js"
+    }
   },
   "exports": {
     "source": "./lib/generator.js",
