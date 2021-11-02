@@ -376,7 +376,7 @@ export class Resolver {
         catch {}
       }
 
-      const [imports, exports] = parse(source) as any as [any[], string[]];
+      const [imports, exports] = await parse(source) as any as [any[], string[]];
       if (imports.every(impt => impt.d > 0) && !exports.length && resolvedUrl.startsWith('file:')) {
         // Support CommonJS package boundary checks for non-ESM on file: protocol only
         if (isRequire) {
