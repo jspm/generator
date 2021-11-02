@@ -10,4 +10,4 @@ const generator = new Generator({
 await generator.traceInstall('./local/pkg/b.js');
 
 const json = generator.getMap();
-assert.strictEqual(json.scopes['./local/pkg/'].dep, './local/dep/main.js');
+assert.strictEqual(json.scopes['./'].dep, './local/dep/main.js');

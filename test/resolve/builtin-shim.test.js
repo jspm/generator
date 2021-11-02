@@ -15,7 +15,7 @@ if (typeof document === 'undefined') {
 
   assert.deepStrictEqual(json, {
     scopes: {
-      './cjspkg/': {
+      './': {
         'process/': './cjspkg/node_modules/process/index.js',
       }
     }

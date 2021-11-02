@@ -1,4 +1,4 @@
-import { baseUrl } from "./common/url.js";
+import { baseUrl, isPlain } from "./common/url.js";
 import { ExactPackage, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 import { LockResolutions } from './install/installer.js';
@@ -194,13 +194,12 @@ export class Generator {
 
   getMap () {
     const map = this.traceMap.map.clone();
-    // this can be moved to the end on next update (using getMapInstance)
-    map.flatten();
     if (this.rootUrl)
       map.rebase(this.rootUrl.href, true);
     else
       map.rebase();
     map.sort();
+    map.flatten();
     return map.toJSON();
   }
 }
