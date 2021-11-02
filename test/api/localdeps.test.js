@@ -10,4 +10,4 @@ const generator = new Generator({
 await generator.install({ target: './local/pkg', subpath: './withdep' });
 const json = generator.getMap();
 assert.strictEqual(json.imports['localpkg/withdep'], './local/pkg/b.js');
-assert.strictEqual(json.scopes['./local/pkg/'].dep, './local/dep/main.js');
+assert.strictEqual(json.scopes['./'].dep, './local/dep/main.js');
