@@ -233,6 +233,17 @@ Note that the log messages are for debugging and not currently part of the semve
 
 ### Options
 
+* [mapURL](#mapUrl)
+* [rootURL](#rootUrl)
+* [resolutions](#resolutions)
+* [inputMap](#inputMap)
+* [ignore](#ignore)
+* [defaultProvider](#defaultProvider)
+* [providers](#providers)
+* [customProviders](#customProviders)
+* [env](#env)
+* [cache](#caches)
+
 #### mapUrl
 
 > Type: URL | String Absolute URL | String URL relative to CWD<br/>
@@ -257,6 +268,44 @@ as absolute paths against this URL.
 
 E.g. for `rootUrl: 'file:///path/to/project/public'`, any local module `public/local/mod.js` within the `public` folder
 will be normalized to `/local/mod.js` in the output map.
+
+#### resolutions
+
+> Type: Object | undefined</br>
+Default: {}<br/>
+_Custom dependency resolution overrides for all installs._
+
+The resolutions option allows configuring a specific dependency version to always be used overriding all version resolution
+logic for that dependency for all nestings.
+
+It is a map from package name to package version target just like the package.json "dependencies" map, but that applies and overrides universally.
+
+For example to lock a specific package version:
+
+```js
+const generator = new Generator({
+  resolutions: {
+    dep: '1.2.3'
+  }
+});
+```
+
+It is also useful for local monorepo patterns where all local packages should be located locally:
+
+```js
+const pkgBaseUrl = new URL('./packages', import.meta.url).href;
+
+const generator = new Generator({
+  resolutions: {
+    '@company/pkgA': `${pkgBaseUrl}/pkgA`,
+    '@company/pkgB': `${pkgBaseUrl}/pkgB`
+    '@company/pkgC': `${pkgBaseUrl}/pkgC`
+  }
+})
+```
+
+All subpath and main resolution logic will follow the package.json definitions of the resolved package, unlike `inputMap`
+which only maps specific specifiers.
 
 #### inputMap
 
