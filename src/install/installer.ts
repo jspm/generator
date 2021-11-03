@@ -60,6 +60,9 @@ export interface InstallOptions {
   savePeer?: boolean;
   saveOptional?: boolean;
 
+  // dependency resolutions overrides
+  resolutions?: Record<string, string>;
+
   defaultProvider?: string;
   providers?: Record<string, string>;
 }
@@ -101,12 +104,14 @@ export class Installer {
   hasLock = false;
   defaultProvider = { provider: 'jspm', layer: 'default' };
   providers: Record<string, string>;
+  resolutions: Record<string, string>;
   log: Log;
   resolver: Resolver;
 
   constructor (baseUrl: URL, opts: InstallOptions, log: Log, resolver: Resolver) {
     this.log = log;
     this.resolver = resolver;
+    this.resolutions = opts.resolutions || {};
     this.installBaseUrl = baseUrl.href;
     this.opts = opts;
     let resolutions: LockResolutions = {};
@@ -320,6 +325,9 @@ export class Installer {
       if (existingUrl && !this.opts.reset)
         return existingUrl;
     }
+
+    if (this.resolutions[pkgName])
+      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], pkgUrl, pkgName), pkgUrl, false, parentUrl);
 
     const pcfg = await this.resolver.getPackageConfig(pkgUrl) || {};
 

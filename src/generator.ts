@@ -24,6 +24,10 @@ export interface GeneratorOptions {
   customProviders?: Record<string, Provider>;
   providers?: Record<string, string>;
   /**
+   * Custom package resolution overrides
+   */
+  resolutions?: Record<string, string>;
+  /**
    * List of module specifiers to ignore during tracing.
    */
   ignore?: string[];
@@ -64,6 +68,7 @@ export class Generator {
     defaultProvider = 'jspm',
     customProviders = undefined,
     providers = {},
+    resolutions = {},
     cache = true,
     stdlib = '@jspm/core',
     ignore = []
@@ -96,7 +101,8 @@ export class Generator {
       defaultProvider,
       providers,
       inputMap,
-      ignore
+      ignore,
+      resolutions
     }, log, resolver);
   }
 

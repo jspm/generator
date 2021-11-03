@@ -3,11 +3,11 @@
   "description": "Package Import Map Generation Tool",
   "license": "MIT",
   "version": "1.0.0-beta.17",
-  "types": "dist/generator.d.ts",
+  "types": "lib/generator.d.ts",
   "scripts": {
     "tsc": "tsc -p .",
     "tsc:watch": "tsc -p . --watch",
-    "rollup": "rollup -c && cp src/generator.d.ts dist/generator.d.ts",
+    "rollup": "rollup -c",
     "build": "npm run tsc && npm run rollup",
     "cache-clear": "node cache-clear.js",
     "self-generate": "node self-generate.js",
