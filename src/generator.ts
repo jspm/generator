@@ -333,7 +333,7 @@ export class Generator {
     }
     this.baseUrl = typeof baseUrl === 'string' ? new URL(baseUrl, _baseUrl) : baseUrl;
     if (!this.baseUrl.pathname.endsWith('/')) {
-      this.baseUrl = new URL(this.baseUrl);
+      this.baseUrl = new URL(this.baseUrl.href);
       this.baseUrl.pathname += '/';
     }
     this.mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl, this.baseUrl) : mapUrl;
@@ -497,7 +497,7 @@ export class Generator {
 
   getMap () {
     const map = this.traceMap.map.clone();
-    map.flatten(this.rootUrl ? this.rootUrl : this.baseUrl, !!this.rootUrl);
+    map.flatten(this.rootUrl ? this.rootUrl : this.baseUrl);
     if (this.rootUrl)
       map.rebase(this.rootUrl.href, true);
     map.sort();
