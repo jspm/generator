@@ -53,6 +53,7 @@ jobs:
     - run: npm install
     - run: cd jspm-core && npm install
     - run: npm run build
+    - run: npm run typedoc
     - run: npm run test:node
       env:
         DENO_BIN: /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64/deno

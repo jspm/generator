@@ -7,6 +7,7 @@
   "scripts": {
     "tsc": "tsc -p .",
     "tsc:watch": "tsc -p . --watch",
+    "typedoc": "typedoc src/generator.ts",
     "rollup": "rollup -c",
     "build": "npm run tsc && npm run rollup",
     "cache-clear": "node cache-clear.js",
@@ -58,7 +59,8 @@
     "lit-element": "^2.5.1",
     "mocha": "^9.0.0",
     "open": "^8.2.0",
-    "rollup": "^2.44.0"
+    "rollup": "^2.44.0",
+    "typedoc": "^0.22.8"
   },
   "files": [
     "dist",

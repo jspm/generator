@@ -1,4 +1,4 @@
-import { baseUrl, isPlain } from "./common/url.js";
+import { baseUrl } from "./common/url.js";
 import { ExactPackage, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 import { LockResolutions } from './install/installer.js';
@@ -11,24 +11,209 @@ import { Provider } from "./providers/index.js";
 import { JspmError } from "./common/err.js";
 
 export interface GeneratorOptions {
+  /**
+   * The URL of the import map itself, used to construct relative
+   * import map URLs.
+   * Default: pathTofileURL(process.cwd() + '/')
+   * 
+   * The `mapUrl` is used in order to output relative URLs for modules located on the same
+   * host as the import map.
+   * 
+   * E.g. for `mapUrl: 'file:///path/to/project/map.importmap'`, installing local file packages
+   * will be output as relative URLs to their file locations from the map location, since all URLs in an import
+   * map are relative to the URL of the import map.
+   */
   mapUrl?: URL | string;
+
+  /**
+   * The URL to treat as the root of the serving protocol of the
+   * import map, used to construct absolute import map URLs.
+   * 
+   * When set, `rootUrl` takes precendence over `mapUrl` and is used to normalize all import map URLs
+   * as absolute paths against this URL.
+   *
+   * E.g. for `rootUrl: 'file:///path/to/project/public'`, any local module `public/local/mod.js` within the `public` folder
+   * will be normalized to `/local/mod.js` in the output map.
+   */
   rootUrl?: URL | string;
   /**
-   * The initial state of the import map that generator operations work on top of.
+   * An authoritative initial import map.
+   * 
+   * An initial import map to start with - can be from a previous
+   * install or to provide custom mappings.
    */
   inputMap?: IImportMap;
+  /**
+   * The default provider to use for a new install, defaults to 'jspm'.
+   * 
+   * Supports: 'jspm' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg';
+   * 
+   * Providers are responsible for resolution from abstract package names and version ranges to exact URL locations.
+   * 
+   * Providers resolve package names and semver ranges to exact CDN package URL paths using provider hooks.
+   *
+   * These hooks include version resolution and converting package versions into URLs and back again.
+   * 
+   * See `src/providers/[name].ts` for how to define a custom provider.
+   * 
+   * New providers can be provided via the `customProviders` option. PRs to merge in providers are welcome as well.
+   */
   defaultProvider?: string;
+  /**
+   * The conditional environment resolutions to apply.
+   * 
+   * The conditions passed to the `env` option are environment conditions, as [supported by Node.js](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_conditions_definitions) in the package exports field.
+   *
+   * By default the `"default"`, `"require"` and `"import"` conditions are always supported regardless of what `env` conditions are provided.
+   * 
+   * In addition the default conditions applied if no `env` option is set are `"browser"`, `"development"` and `"module"`.
+   * 
+   * Webpack and RollupJS support a custom `"module"` condition as a bundler-specific solution to the [dual package hazard](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_dual_package_hazard), which is by default included in the JSPM resolution as well although
+   * can be turned off if needed.
+   * 
+   * Note when providing custom conditions like setting `env: ["production"]` that the `"browser"` and `"module"` conditions still need to be
+   * applied as well via `env: ["production", "browser", "module"]`. Ordering does not matter though.
+   * 
+   * Any other custom condition strings can also be provided.
+   */
   env?: string[];
+  /**
+   * Whether to use a local FS cache for fetched modules. Set to 'offline' to use the offline cache.
+   * 
+   * By default a global fetch cache is maintained between runs on the file system.
+   * 
+   * This caching can be disabled by setting `cache: false`.
+   * 
+   * When running offline, setting `cache: 'offline'` will only use the local cache and not touch the network at all,
+   * making fully offline workflows possible provided the modules have been seen before.
+   */
   cache?: 'offline' | boolean;
+  /**
+   * Package to use for JSPM Core std library.
+   * 
+   * Defaults to '@jspm/core'
+   * 
+   * Any package dependency target is supported, including local folders.
+   */
   stdlib?: string;
+  /**
+   * Custom provider definitions.
+   * 
+   * When installing from a custom CDN it can be advisable to define a custom provider in order to be able to get version deduping against that CDN.
+   * 
+   * Custom provider definitions define a provider name, and the provider instance consisting of three main hooks:
+   * 
+   * * `pkgToUrl({ registry: string, name: string, version: string }, layer: string) -> String URL`: Returns the URL for a given exact package registry, name and version to use for this provider. If the provider is using layers, the `layer` string can be used to determine the URL layer (where the `defaultProvider: '[name].[layer]'` form is used to determine the layer, eg minified v unminified etc). It is important that package URLs always end in `/`, because packages must be treated as folders not files. An error will be thrown for package URLs returned not ending in `/`.
+   * * `parsePkgUrl(url: string) -> { { registry: string, name: string, version: string }, layer: string } | undefined`: Defines the converse operation to `pkgToUrl`, converting back from a string URL
+   * into the exact package registry, name and version, as well as the layer. Should always return `undefined` for unknown URLs as the first matching provider is treated as authoritative when dealing with
+   * multi-provider installations.
+   * * `resolveLatestTarget(target: { registry: string, name: string, range: SemverRange }, unstable: boolean, layer: string, parentUrl: string) -> Promise<{ registry: string, name: string, version: string } | null>`: Resolve the latest version to use for a given package target. `unstable` indicates that prerelease versions can be matched. The definition of `SemverRange` is as per the [sver package](https://www.npmjs.com/package/sver#semverrange). Returning `null` corresponds to a package not found error.
+   * 
+   * The use of `pkgToUrl` and `parsePkgUrl` is what allows the JSPM Generator to dedupe package versions internally based on their unique internal identifier `[registry]:[name]@[version]` regardless of what CDN location is used. URLs that do not support `parsePkgUrl` can still be installed and used fine, they just do not participate in version deduping operations.
+   * 
+   * For example, a custom unpkg provider can be defined as:
+   * 
+   * ```js
+   * const unpkgUrl = 'https://unpkg.com/';
+   * const exactPkgRegEx = /^((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
+   * 
+   * const generator = new Generator({
+   *   defaultProvider: 'custom',
+   *   customProviders: {
+   *     custom: {
+   *       pkgToUrl ({ registry, name, version }) {
+   *         return `${unpkgUrl}${name}@${version}/`;
+   *       },
+   *       parseUrlPkg (url) {
+   *         if (url.startsWith(unpkgUrl)) {
+   *           const [, name, version] = url.slice(unpkgUrl.length).match(exactPkgRegEx) || [];
+   *           return { registry: 'npm', name, version };
+   *         }
+   *       },
+   *       resolveLatestTarget ({ registry, name, range }, unstable, layer, parentUrl) {
+   *         return { registry, name, version: '3.6.0' };
+   *       }
+   *     }
+   *   }
+   * });
+   * 
+   * await generator.install('custom:jquery');
+   * ```
+   */
   customProviders?: Record<string, Provider>;
+  /**
+   * A map of custom scoped providers.
+   * 
+   * The provider map allows setting custom providers for specific package names or package scopes.
+   * For example, an organization with private packages with names like `npmpackage` and `@orgscope/...` can define the custom providers to reference these from a custom source:
+   * 
+   * ```js
+   *   providers: {
+   *     'npmpackage': 'nodemodules',
+   *     '@orgscope': 'nodemodules'
+   *   }
+   * ```
+   * 
+   * Alternatively a custom provider can be referenced this way for eg private CDN / registry support.
+   */
   providers?: Record<string, string>;
   /**
-   * Custom package resolution overrides
+   * Custom dependency resolution overrides for all installs.
+   * 
+   * The resolutions option allows configuring a specific dependency version to always be used overriding all version resolution
+   * logic for that dependency for all nestings.
+   * 
+   * It is a map from package name to package version target just like the package.json "dependencies" map, but that applies and overrides universally.
+   * 
+   * For example to lock a specific package version:
+   * 
+   * ```js
+   * const generator = new Generator({
+   *   resolutions: {
+   *     dep: '1.2.3'
+   *   }
+   * });
+   * ```
+   * 
+   * It is also useful for local monorepo patterns where all local packages should be located locally:
+   * 
+   * ```js
+   * const pkgBaseUrl = new URL('./packages', import.meta.url).href;
+   * 
+   * const generator = new Generator({
+   *   resolutions: {
+   *     '@company/pkgA': `${pkgBaseUrl}/pkgA`,
+   *     '@company/pkgB': `${pkgBaseUrl}/pkgB`
+   *     '@company/pkgC': `${pkgBaseUrl}/pkgC`
+   *   }
+   * })
+   * ```
+   * 
+   * All subpath and main resolution logic will follow the package.json definitions of the resolved package, unlike `inputMap`
+   * which only maps specific specifiers.
    */
   resolutions?: Record<string, string>;
   /**
-   * List of module specifiers to ignore during tracing.
+   * Allows ignoring certain module specifiers during the tracing process.
+   * It can be useful, for example, when you provide an `inputMap`
+   * that contains a mapping that can't be traced in current context,
+   * but you know it will work in the context where the generated map
+   * is going to be used.
+   * ```js
+   * const generator = new Generator({
+   *   inputMap: {
+   *       imports: {
+   *           "react": "./my/own/react.js",
+   *       }
+   *   },
+   *   ignore: ["react"]
+   * });
+   * 
+   * // Even though `@react-three/fiber@7` depends upon `react`,
+   * // `generator` will not try to trace and resolve `react`,
+   * // so the mapping provided in `inputMap` will end up in the resulting import map. 
+   * await generator.install("@react-three/fiber@7")
+   * ```
    */
   ignore?: string[];
 }
@@ -47,6 +232,16 @@ export interface Install {
   alias?: string;
 }
 
+/**
+ * Supports clearing the global fetch cache in Node.js.
+ * 
+ * Example:
+ * 
+ * ```js
+ * import { clearCache } from '@jspm/generator';
+ * clearCache();
+ * ```
+ */
 export function clearCache () {
   clearFetchCache();
 }
@@ -60,6 +255,29 @@ export class Generator {
 
   logStream: LogStream;
 
+  /**
+   * @param options GeneratorOptions
+   * 
+   * For example:
+   * 
+   * ```js
+   * const generator = new Generator({
+   *   mapUrl: import.meta.url,
+   *   inputMap: {
+   *     "imports": {
+   *       "react": "https://cdn.skypack.dev/react"
+   *     }
+   *   },
+   *   defaultProvider: 'jspm',
+   *   providers: {
+   *     '@orgscope': 'nodemodules'
+   *   },
+   *   customProviders: {},
+   *   env: ['production', 'browser'],
+   *   cache: false,
+   * });
+   * ```
+   */
   constructor ({
     mapUrl = baseUrl,
     rootUrl = undefined,
@@ -106,6 +324,13 @@ export class Generator {
     }, log, resolver);
   }
 
+  /**
+   * Trace a module and install all dependencies necessary into the map
+   * to support its execution including static and dynamic module imports.
+   * 
+   * @param specifier Import specifier to trace
+   * @param parentUrl Parent URL to trace this specifier from
+   */
   async traceInstall (specifier: string, parentUrl?: string | URL): Promise<{
     staticDeps: string[];
     dynamicDeps: string[];
@@ -130,6 +355,31 @@ export class Generator {
     }
   }
 
+  /**
+   * Install a package target into the import map, including all its dependency resolutions via tracing.
+   * @param install Package to install
+   * 
+   * For example:
+   * 
+   * ```js
+   * // Install a new package into the import map
+   * await generator.install('react-dom');
+   * 
+   * // Install a package version and subpath into the import map (installs lit/decorators.js)
+   * await generator.install('lit@2/decorators.js');
+   * 
+   * // Install a package version to a custom alias
+   * await generator.install({ alias: 'react16', target: 'react@16' });
+   * 
+   * // Install a specific subpath of a package
+   * await generator.install({ target: 'lit@2', subpath: './html.js' });
+   * 
+   * // Install an export from a locally located package folder into the map
+   * // The package.json is used to determine the exports and dependencies.
+   * await generator.install({ alias: 'mypkg', target: './packages/local-pkg', subpath: './feature' });
+   * ```
+   * 
+   */
   async install (install: string | Install | (string | Install)[]): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
     this.traceMap.clearLists();
     if (Array.isArray(install))
@@ -170,7 +420,13 @@ export class Generator {
     }
   }
 
-  // resolver that uses the internal import map
+  /**
+   * Resolve a specifier using the import map.
+   * 
+   * @param specifier Module to resolve
+   * @param parentUrl ParentURL of module to resolve
+   * @returns Resolved URL string
+   */
   resolve (specifier: string, parentUrl: URL | string = baseUrl) {
     if (typeof parentUrl === 'string')
       parentUrl = new URL(parentUrl, baseUrl);
@@ -180,10 +436,18 @@ export class Generator {
     return resolved;
   }
 
+  /**
+   * Get the import map JSON
+   */
   get importMap () {
     return this.traceMap.map;
   }
 
+  /**
+   * 
+   * @param url 
+   * @returns 
+   */
   getAnalysis (url: string | URL): ModuleAnalysis {
     if (typeof url !== 'string')
       url = url.href;
@@ -215,11 +479,30 @@ export interface LookupOptions {
   cache?: 'offline' | boolean;
 }
 
+/**
+ * _Use the internal fetch implementation, useful for hooking into the same shared local fetch cache._
+ * 
+ * ```js
+ * import { fetch } from '@jspm/generator';
+ * 
+ * const res = await fetch(url);
+ * console.log(await res.text());
+ * ```
+ * 
+ * Use the `{ cache: 'no-store' }` option to disable the cache, and the `{ cache: 'force-cache' }` option to enforce the offline cache.
+ */
 export async function fetch (url: string, opts: any) {
   // @ts-ignore
   return _fetch(url, opts);
 }
 
+/**
+ * Get the lookup resolution information for a specific install.
+ * 
+ * @param install The install object
+ * @param lookupOptions Provider and cache defaults for lookup
+ * @returns The resolved install and exact package { install, resolved }
+ */
 export async function lookup (install: string | Install, { provider, cache }: LookupOptions = {}) {
   const generator = new Generator({ cache: !cache, defaultProvider: provider });
   const { target, subpath, alias } = await installToTarget.call(generator, install);
@@ -240,6 +523,28 @@ export async function lookup (install: string | Install, { provider, cache }: Lo
   };
 }
 
+/**
+ * Get the package.json configuration for a specific URL or package.
+ * 
+ * @param pkg Package to lookup configuration for
+ * @param lookupOptions Provider and cache defaults for lookup
+ * @returns Package JSON configuration
+ * 
+ * Example:
+ * ```js
+ * import { getPackageConfig } from '@jspm/generator';
+ * 
+ * // Supports a resolved package
+ * {
+ *   const packageJson = await getPackageConfig({ registry: 'npm', name: 'lit-element', version: '2.5.1' });
+ * }
+ * 
+ * // Or alternatively provide any URL
+ * {
+ *   const packageJson = await getPackageConfig('https://ga.jspm.io/npm:lit-element@2.5.1/lit-element.js');
+ * }
+ * ```
+ */
 export async function getPackageConfig (pkg: string | URL | ExactPackage, { provider, cache }: LookupOptions = {}) {
   const generator = new Generator({ cache: !cache, defaultProvider: provider });
   if (typeof pkg === 'object' && 'name' in pkg)
