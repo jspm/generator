@@ -1,4 +1,4 @@
-import { baseUrl } from "./common/url.js";
+import { baseUrl as _baseUrl } from "./common/url.js";
 import { ExactPackage, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 import { LockResolutions } from './install/installer.js';
@@ -12,9 +12,18 @@ import { JspmError } from "./common/err.js";
 
 export interface GeneratorOptions {
   /**
-   * The URL of the import map itself, used to construct relative
-   * import map URLs.
-   * Default: pathTofileURL(process.cwd() + '/')
+   * The URL to use for resolutions without a parent context.
+   * 
+   * Defaults to mapUrl or the process base URL.
+   * 
+   * Also determines the default scoping base for the import map when flattening.
+   */
+  baseUrl?: URL | string;
+
+  /**
+   * The URL of the import map itself, used to construct relative import map URLs.
+   * 
+   * Defaults to the base URL.
    * 
    * The `mapUrl` is used in order to output relative URLs for modules located on the same
    * host as the import map.
@@ -175,16 +184,17 @@ export interface GeneratorOptions {
    * });
    * ```
    * 
-   * It is also useful for local monorepo patterns where all local packages should be located locally:
+   * It is also useful for local monorepo patterns where all local packages should be located locally.
+   * When referencing local paths, the baseUrl configuration option is used as the URL parent.
    * 
    * ```js
-   * const pkgBaseUrl = new URL('./packages', import.meta.url).href;
-   * 
    * const generator = new Generator({
+   *   mapUrl: new URL('./app.html', import.meta.url),
+   *   baseUrl: new URL('../', import.meta.url),
    *   resolutions: {
-   *     '@company/pkgA': `${pkgBaseUrl}/pkgA`,
-   *     '@company/pkgB': `${pkgBaseUrl}/pkgB`
-   *     '@company/pkgC': `${pkgBaseUrl}/pkgC`
+   *     '@company/pkgA': `./pkgA`,
+   *     '@company/pkgB': `./pkgB`
+   *     '@company/pkgC': `./pkgC`
    *   }
    * })
    * ```
@@ -248,6 +258,7 @@ export function clearCache () {
 
 export class Generator {
   traceMap: TraceMap;
+  baseUrl: URL;
   mapUrl: URL;
   rootUrl: URL | null;
   finishInstall: (success: boolean) => Promise<boolean | { pjsonChanged: boolean, lock: LockResolutions }> | null = null;
@@ -279,7 +290,8 @@ export class Generator {
    * ```
    */
   constructor ({
-    mapUrl = baseUrl,
+    baseUrl,
+    mapUrl,
     rootUrl = undefined,
     inputMap = undefined,
     env = ['browser', 'development', 'module'],
@@ -304,8 +316,28 @@ export class Generator {
       }
     }
     this.logStream = logStream;
-    this.mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl, baseUrl) : mapUrl;
-    this.rootUrl = typeof rootUrl === 'string' ? new URL(rootUrl, baseUrl) : rootUrl || null;
+
+    if (mapUrl && !baseUrl) {
+      mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl, _baseUrl) : mapUrl;
+      try {
+        baseUrl = new URL('./', mapUrl);
+      } catch {
+        baseUrl = new URL(mapUrl + '/');
+      }
+    }
+    else if (baseUrl && !mapUrl) {
+      mapUrl = baseUrl;
+    }
+    else if (!mapUrl && !baseUrl) {
+      baseUrl = mapUrl = _baseUrl;
+    }
+    this.baseUrl = typeof baseUrl === 'string' ? new URL(baseUrl, _baseUrl) : baseUrl;
+    if (!this.baseUrl.pathname.endsWith('/')) {
+      this.baseUrl = new URL(this.baseUrl.href);
+      this.baseUrl.pathname += '/';
+    }
+    this.mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl, this.baseUrl) : mapUrl;
+    this.rootUrl = typeof rootUrl === 'string' ? new URL(rootUrl, this.baseUrl) : rootUrl || null;
     if (!this.mapUrl.pathname.endsWith('/')) {
       try {
         this.mapUrl = new URL('./', this.mapUrl);
@@ -314,6 +346,7 @@ export class Generator {
       }
     }
     this.traceMap = new TraceMap(this.mapUrl, {
+      baseUrl: this.baseUrl,
       stdlib,
       env,
       defaultProvider,
@@ -341,7 +374,7 @@ export class Generator {
     if (this.installCnt++ === 0)
       this.finishInstall = await this.traceMap.startInstall();
     try {
-      await this.traceMap.trace(specifier, parentUrl || this.mapUrl);
+      await this.traceMap.trace(specifier, parentUrl || this.baseUrl);
     }
     catch (e) {
       error = true;
@@ -427,9 +460,9 @@ export class Generator {
    * @param parentUrl ParentURL of module to resolve
    * @returns Resolved URL string
    */
-  resolve (specifier: string, parentUrl: URL | string = baseUrl) {
+  resolve (specifier: string, parentUrl: URL | string = this.baseUrl) {
     if (typeof parentUrl === 'string')
-      parentUrl = new URL(parentUrl, baseUrl);
+      parentUrl = new URL(parentUrl, this.baseUrl);
     const resolved = this.traceMap.map.resolve(specifier, parentUrl);
     if (resolved === null)
       throw new JspmError(`Unable to resolve "${specifier}" from ${parentUrl.href}`, 'MODULE_NOT_FOUND');
@@ -464,12 +497,10 @@ export class Generator {
 
   getMap () {
     const map = this.traceMap.map.clone();
+    map.flatten(this.rootUrl ? this.rootUrl : this.baseUrl);
     if (this.rootUrl)
       map.rebase(this.rootUrl.href, true);
-    else
-      map.rebase();
     map.sort();
-    map.flatten();
     return map.toJSON();
   }
 }
@@ -563,7 +594,7 @@ async function installToTarget (this: Generator, install: Install | string) {
     throw new Error('All installs require a "target" string.');
   if (install.subpath !== undefined && (typeof install.subpath !== 'string' || (install.subpath !== '.' && !install.subpath.startsWith('./'))))
     throw new Error(`Install subpath "${install.subpath}" must be a string equal to "." or starting with "./".${typeof install.subpath === 'string' ? `\nTry setting the subpath to "./${install.subpath}"` : ''}`);
-  const { alias, target, subpath } = await toPackageTarget(this.traceMap.resolver, install.target, this.mapUrl.href);
+  const { alias, target, subpath } = await toPackageTarget(this.traceMap.resolver, install.target, this.baseUrl.href);
   return {
     alias: install.alias || alias,
     target,
