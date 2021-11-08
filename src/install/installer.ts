@@ -54,6 +54,8 @@ function getInstalledRanges (installedRanges: InstalledRanges, target: PackageTa
 }
 
 export interface InstallOptions {
+  // default base for relative installs
+  baseUrl: URL;
   // create a lockfile if it does not exist
   lock?: LockFile;
   // do not modify the lockfile
@@ -350,8 +352,9 @@ export class Installer {
         return existingUrl;
     }
 
-    if (this.resolutions[pkgName])
-      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], pkgUrl, pkgName), pkgUrl, false, parentUrl);
+    if (this.resolutions[pkgName]) {
+      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, pkgName), pkgUrl, false, parentUrl);
+    }
 
     const pcfg = await this.resolver.getPackageConfig(pkgUrl) || {};
 
