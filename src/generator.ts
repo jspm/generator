@@ -192,9 +192,9 @@ export class Generator {
       throw new Error(`The URL ${url} has not been traced by this generator instance.`);
     return {
       format: trace.format,
-      staticDeps: Object.keys(trace.deps),
-      dynamicDeps: Object.keys(trace.dynamicDeps),
-      cjsLazyDeps: Object.keys(trace.cjsLazyDeps || {})
+      staticDeps: trace.deps,
+      dynamicDeps: trace.dynamicDeps,
+      cjsLazyDeps: trace.cjsLazyDeps || []
     };
   }
 

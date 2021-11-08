@@ -320,12 +320,15 @@ export class Installer {
 
     const latest = await this.resolver.resolveLatestTarget(target, false, provider, parentUrl);
     const installed = getInstalledRanges(this.installedRanges, target);
-    const restrictedToPkg = await this.tryUpgradePackagesTo(latest, installed, provider);
+    const restrictedToPkg = this.tryUpgradePackagesTo(latest, target, installed, provider);
 
     // cannot upgrade to latest -> stick with existing resolution (if compatible)
     if (restrictedToPkg && !this.opts.latest) {
-      this.log('install', `${pkgName} ${pkgScope} -> ${restrictedToPkg.registry}:${restrictedToPkg.name}@${restrictedToPkg.version}`);
-      const pkgUrl = this.resolver.pkgToUrl(restrictedToPkg, provider);
+      if (restrictedToPkg instanceof URL)
+        this.log('install', `${pkgName} ${pkgScope} -> ${restrictedToPkg.href}`);
+      else
+        this.log('install', `${pkgName} ${pkgScope} -> ${restrictedToPkg.registry}:${restrictedToPkg.name}@${restrictedToPkg.version}`);
+      const pkgUrl = restrictedToPkg instanceof URL ? restrictedToPkg.href : this.resolver.pkgToUrl(restrictedToPkg, provider);
       setResolution(this.installs, pkgName, pkgScope, pkgUrl);
       addInstalledRange(this.installedRanges, pkgName, pkgScope, target);
       return pkgUrl;
@@ -396,7 +399,7 @@ export class Installer {
   }
 
   // upgrade any existing packages to this package if possible
-  private tryUpgradePackagesTo (pkg: ExactPackage, installed: PackageInstallRange[], provider: PackageProvider): ExactPackage | undefined {
+  private tryUpgradePackagesTo (pkg: ExactPackage, target: PackageTarget, installed: PackageInstallRange[], provider: PackageProvider): ExactPackage | URL | undefined {
     if (this.opts.freeze) return;
     const pkgVersion = new Semver(pkg.version);
 
@@ -408,16 +411,31 @@ export class Installer {
 
     if (compatible) {
       for (const { name, pkgUrl } of installed) {
-        const { pkg: { version } } = parseUrlPkg(getResolution(this.installs, name, pkgUrl));
-        if (version !== pkg.version)
-          setResolution(this.installs, name, pkgUrl, this.resolver.pkgToUrl(pkg, provider));
+        const resolution = getResolution(this.installs, name, pkgUrl).split('|')[0];
+        const parsed = parseUrlPkg(resolution);
+        if (parsed) {
+          const { pkg: { version } } = parseUrlPkg(resolution);
+          if (version !== pkg.version)
+            setResolution(this.installs, name, pkgUrl, this.resolver.pkgToUrl(pkg, provider));
+        }
+        else {
+          setResolution(this.installs, name, pkgUrl, resolution);
+        }
       }
     }
     else {
-      // get the latest installed version instead (TODO: sort)
+      // get the latest installed version instead that fulfills target (TODO: sort)
       for (const { name, pkgUrl } of installed) {
-        const { pkg: { version } } = parseUrlPkg(getResolution(this.installs, name, pkgUrl));
-        return { registry: pkg.registry, name: pkg.name, version };
+        const resolution = getResolution(this.installs, name, pkgUrl).split('|')[0];
+        const parsed = parseUrlPkg(resolution);
+        if (parsed) {
+          const { pkg: { version } } = parseUrlPkg(resolution);
+          if (target.ranges.some(range => range.has(version)))
+            return { registry: pkg.registry, name: pkg.name, version };
+        }
+        else {
+          return new URL(resolution);
+        }
       }
     }
   }

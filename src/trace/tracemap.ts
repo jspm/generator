@@ -374,11 +374,11 @@ export default class TraceMap {
       const resolved = await this.trace(dep, resolvedUrlObj, env);
       if (resolved === null) return
 
-      if (deps.includes(dep))
+      if (deps.includes(dep) && !traceEntry.deps.includes(dep))
         traceEntry.deps.push(dep);
-      if (dynamicDeps.includes(dep))
+      if (dynamicDeps.includes(dep) && !traceEntry.dynamicDeps.includes(dep))
         traceEntry.dynamicDeps.push(dep);
-      if (cjsLazyDeps && cjsLazyDeps.includes(dep))
+      if (cjsLazyDeps && cjsLazyDeps.includes(dep) && !traceEntry.cjsLazyDeps.includes(dep))
         traceEntry.cjsLazyDeps.push(dep);
     }));
   }
