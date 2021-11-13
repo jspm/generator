@@ -1,18 +1,19 @@
 import { create } from 'ipfs-client';
 import { Buffer } from 'buffer';
 
-let client;
+let client, clientAPI;
 
-function initClient () {
-  if (client)
+function initClient (api = '/ip4/127.0.0.1/tcp/45005/http') {
+  if (client && clientAPI === api)
     return;
   client = create({
-    http: '/ip4/127.0.0.1/tcp/45005/http'
+    http: api
   });
+  clientAPI = api;
 }
 
-export async function get (id) {
-  initClient();
+export async function get (id, api) {
+  initClient(api);
 
   const chunks = [];
 
@@ -31,8 +32,8 @@ export async function get (id) {
   return Buffer.concat(chunks);
 }
 
-export async function ls (cid) {
-  initClient();
+export async function ls (cid, api) {
+  initClient(api);
 
   const result = await client.ls(cid);
 
@@ -43,15 +44,15 @@ export async function ls (cid) {
   return files;
 }
 
-export async function add (content) {
-  initClient();
+export async function add (content, api) {
+  initClient(api);
   
   const result = await client.add(content, { cidVersion: 1 });
   return result.cid.toString();
 }
 
-export async function addAll (files) {
-  initClient();
+export async function addAll (files, api) {
+  initClient(api);
   
   const result = await client.addAll(files, { wrapWithDirectory: true, cidVersion: 1 });
   let lastCid;

@@ -63,14 +63,16 @@ const dirResponse = {
   }
 };
 
-export const fetch = async function (url: URL, ...args: any[]) {
+export const fetch = async function (url: URL, opts?: Record<string, any>) {
+  if (!opts)
+    throw new Error('Always expect fetch options to be passed');
   const urlString = url.toString();
   const protocol = urlString.slice(0, urlString.indexOf(':') + 1);
   let source: string | Buffer;
   switch (protocol) {
     case 'ipfs:':
       const { get } = await import('./ipfs.js');
-      source = await get(urlString.slice(7));
+      source = await get(urlString.slice(7), opts.ipfsAPI);
       if (source === null)
         return dirResponse;
       if (source === undefined)
@@ -105,6 +107,6 @@ export const fetch = async function (url: URL, ...args: any[]) {
     case 'http:':
     case 'https:':
       // @ts-ignore
-      return _fetch(url, ...args);
+      return _fetch(url, opts);
   }
 }

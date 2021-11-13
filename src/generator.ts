@@ -226,6 +226,12 @@ export interface GeneratorOptions {
    * ```
    */
   ignore?: string[];
+  /**
+   * When installing packages over IPFS, sets the IPFS node API HTTP interface to use
+   * Defaults to the Brave Browser interface at /ip4/127.0.0.1/tcp/45005, when IPFS is
+   * enabled in Brave Browser via brave://ipfs-internals/
+   */
+  ipfsAPI?: string;
 }
 
 export interface ModuleAnalysis {
@@ -301,13 +307,18 @@ export class Generator {
     resolutions = {},
     cache = true,
     stdlib = '@jspm/core',
-    ignore = []
+    ignore = [],
+    ipfsAPI
   }: GeneratorOptions = {}) {
     let fetchOpts = undefined;
     if (cache === 'offline')
       fetchOpts = { cache: 'force-cache' };
     else if (!cache)
       fetchOpts = { cache: 'no-store' };
+    else
+      fetchOpts = {};
+    if (ipfsAPI)
+      fetchOpts.ipfsAPI = ipfsAPI;
     const { log, logStream } = createLogger();
     const resolver = new Resolver(log, fetchOpts);
     if (customProviders) {
