@@ -25,7 +25,7 @@ jobs:
         uses: browser-actions/setup-firefox@latest
         with:
           firefox-version: ${{ matrix.firefox }}
-      - run: npm ci
+      - run: npm install
       - run: npm run build
       - run: npm run test:browser
         env:
@@ -59,7 +59,7 @@ jobs:
         ipfs init
         ipfs daemon &
 
-    - run: npm ci
+    - run: npm install
     - run: cd jspm-core && npm install
     - run: npm run build
     - run: npm run typedoc
