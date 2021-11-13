@@ -238,6 +238,7 @@ Note that the log messages are for debugging and not currently part of the semve
 * [resolutions](#resolutions)
 * [inputMap](#inputMap)
 * [ignore](#ignore)
+* [ipfsAPI](#ipfsAPI)
 * [defaultProvider](#defaultProvider)
 * [providers](#providers)
 * [customProviders](#customProviders)
@@ -340,6 +341,14 @@ const generator = new Generator({
 await generator.install("@react-three/fiber@7")
 ```
 
+#### ipfsAPI
+
+> Type: String</br/>
+Default: '/ip4/127.0.0.1/tcp/45005'
+
+When installing IPFS URLs, this configures the IPFS Node API multiaddress string to use.
+
+Defaults to the Brave IPFS Node API which can be enabled from brave://ipfs-internals/ in the Brave Browser.
 
 #### defaultProvider
 
