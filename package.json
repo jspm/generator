@@ -49,8 +49,6 @@
     "@jspm/import-map": "^0.3.1",
     "es-module-lexer": "^0.9.3",
     "ipfs-client": "^0.7.1",
-    "ipfs-unixfs-exporter": "^7.0.6",
-    "ipfs-unixfs-importer": "^9.0.6",
     "make-fetch-happen": "^8.0.3",
     "sver": "^1.8.3",
     "typescript": "^4.3.5"
