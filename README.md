@@ -343,12 +343,12 @@ await generator.install("@react-three/fiber@7")
 
 #### ipfsAPI
 
-> Type: String</br/>
-Default: '/ip4/127.0.0.1/tcp/45005'
+> Type: String | String[]</br/>
+Default: ['/ip4/127.0.0.1/tcp/45005', '/ip4/127.0.0.1/tcp/5001']
 
-When installing IPFS URLs, this configures the IPFS Node API multiaddress string to use.
+When installing IPFS URLs, this configures the IPFS Node API multiaddress or list of fallback addresses to connect to.
 
-Defaults to the Brave IPFS Node API which can be enabled from brave://ipfs-internals/ in the Brave Browser.
+Defaults to trying the Brave IPFS node then the local IPFS node. The API which can be enabled from brave://ipfs-internals/ in the Brave Browser.
 
 #### defaultProvider
 

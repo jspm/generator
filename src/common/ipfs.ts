@@ -1,19 +1,32 @@
 import { create } from 'ipfs-client';
 import { Buffer } from 'buffer';
 
+const tryAPIs = [
+  '/ip4/127.0.0.1/tcp/45005/http',
+  '/ip4/127.0.0.1/tcp/5001'
+];
+
 let client, clientAPI;
 
-function initClient (api = '/ip4/127.0.0.1/tcp/45005/http') {
-  if (client && clientAPI === api)
+async function initClient (api = tryAPIs) {
+  if (typeof api === 'string')
+    api = [api];
+  if (client && api.some(api => api === clientAPI))
     return;
-  client = create({
-    http: api
-  });
-  clientAPI = api;
+  for (const http of api) {
+    client = create({ http });
+    try {
+      await client.repo.version();
+      clientAPI = http;
+      return;
+    }
+    catch {}
+  }
+  throw new Error(`Unable to contact IPFS API at ${api.join(', ')}. Make sure an IPFS node is running with the API enabled. Set the ipfsAPI option to customize the API address.`);
 }
 
 export async function get (id, api) {
-  initClient(api);
+  await initClient(api);
 
   const chunks = [];
 
@@ -33,7 +46,7 @@ export async function get (id, api) {
 }
 
 export async function ls (cid, api) {
-  initClient(api);
+  await initClient(api);
 
   const result = await client.ls(cid);
 
@@ -45,14 +58,14 @@ export async function ls (cid, api) {
 }
 
 export async function add (content, api) {
-  initClient(api);
+  await initClient(api);
   
   const result = await client.add(content, { cidVersion: 1 });
   return result.cid.toString();
 }
 
 export async function addAll (files, api) {
-  initClient(api);
+  await initClient(api);
   
   const result = await client.addAll(files, { wrapWithDirectory: true, cidVersion: 1 });
   let lastCid;
