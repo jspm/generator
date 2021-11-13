@@ -62,6 +62,6 @@ jobs:
     - run: cd jspm-core && npm install
     - run: npm run build
     - run: npm run typedoc
-    - run: IPFS_API=/ip4/127.0.0.1/tcp/5001 run test:node
+    - run: IPFS_API=/ip4/127.0.0.1/tcp/5001 npm run test:node
       env:
         DENO_BIN: /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64/deno
