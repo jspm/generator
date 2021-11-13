@@ -47,7 +47,7 @@ export interface LatestPackageTarget {
   range: any;
 }
 
-const supportedProtocols = ['https', 'http', 'data', 'file'];
+const supportedProtocols = ['https', 'http', 'data', 'file', 'ipfs'];
 export async function parseUrlTarget (resolver: Resolver, targetStr: string, parentUrl?: string): Promise<{ alias: string, target: URL, subpath: '.' | `./${string}` } | undefined> {
   const registryIndex = targetStr.indexOf(':');
   if (isRelative(targetStr) || registryIndex !== -1 && supportedProtocols.includes(targetStr.slice(0, registryIndex))) {

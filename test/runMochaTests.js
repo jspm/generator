@@ -27,7 +27,7 @@ setInterval(() => {
   suite('Browser Tests', async function () {
     this.timeout(30000);
     for (const name of tests) {
-      if (name.startsWith('deno'))
+      if (name.startsWith('deno') || name.startsWith('node'))
         continue;
       test(name, async function () {
         await import('./' + name + '.js');
