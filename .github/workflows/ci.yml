@@ -56,7 +56,7 @@ jobs:
         tar -xvzf go-ipfs_v0.10.0_linux-amd64.tar.gz;
         cd go-ipfs;
         sudo bash install.sh;
-        ipfs daemon &;
+        ipfs daemon &
 
     - run: npm install
     - run: cd jspm-core && npm install
