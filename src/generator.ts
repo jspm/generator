@@ -533,7 +533,7 @@ export interface LookupOptions {
  * 
  * Use the `{ cache: 'no-store' }` option to disable the cache, and the `{ cache: 'force-cache' }` option to enforce the offline cache.
  */
-export async function fetch (url: string, opts: any) {
+export async function fetch (url: string, opts: any = {}) {
   // @ts-ignore
   return _fetch(url, opts);
 }
