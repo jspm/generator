@@ -20,6 +20,7 @@ export async function createTsAnalysis (source: string, url: string): Promise<An
   const dynamicImports = new Set<string>();
   let importMeta = false;
 
+  // @ts-ignore
   globalThis.console = dummyConsole;
   try {
     babel.transform(source, {

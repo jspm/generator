@@ -43,13 +43,13 @@ export function clearResolveCache () {
   resolveCache = {};
 }
 
-async function checkBuildOrError (pkg: ExactPackage): Promise<boolean> {
+async function checkBuildOrError (pkg: ExactPackage, fetchOpts: any): Promise<boolean> {
   const pkgStr = pkgToStr(pkg);
-  const pjsonRes = await fetch(`${cdnUrl}${pkgStr}/package.json`);
+  const pjsonRes = await fetch(`${cdnUrl}${pkgStr}/package.json`, fetchOpts);
   if (pjsonRes.ok)
     return true;
   // no package.json! Check if there's a build error:
-  const errLogRes = await fetch(`${cdnUrl}${pkgStr}/_error.log`);
+  const errLogRes = await fetch(`${cdnUrl}${pkgStr}/_error.log`, fetchOpts);
   if (errLogRes.ok) {
     const errLog = await errLogRes.text();
     throw new JspmError(`Resolved dependency ${pkgStr} with error:\n\n${errLog}\nPlease post an issue at jspm/project on GitHub, or by following the link below:\n\nhttps://github.com/jspm/project/issues/new?title=CDN%20build%20error%20for%20${encodeURIComponent(pkg.name + '@' + pkg.version)}&body=_Reporting%20CDN%20Build%20Error._%0A%0A%3C!--%20%20No%20further%20description%20necessary,%20just%20click%20%22Submit%20new%20issue%22%20--%3E`);
@@ -57,9 +57,9 @@ async function checkBuildOrError (pkg: ExactPackage): Promise<boolean> {
   return false;
 }
 
-async function ensureBuild (pkg: ExactPackage) {
+async function ensureBuild (pkg: ExactPackage, fetchOpts: any) {
   const pkgStr = pkgToStr(pkg);
-  if (await checkBuildOrError(pkg))
+  if (await checkBuildOrError(pkg, fetchOpts))
     return;
 
   // no package.json AND no build error -> post a build request
@@ -75,7 +75,7 @@ async function ensureBuild (pkg: ExactPackage) {
   while (true) {
     await new Promise(resolve => setTimeout(resolve, BUILD_POLL_INTERVAL));
 
-    if (await checkBuildOrError(pkg))
+    if (await checkBuildOrError(pkg, fetchOpts))
       return;
 
     if (Date.now() - startTime >= BUILD_POLL_TIME)
@@ -89,7 +89,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   // exact version optimization
   if (range.isExact && !range.version.tag) {
     const pkg = { registry, name, version: range.version.toString() };
-    await ensureBuild(pkg);
+    await ensureBuild(pkg, this.fetchOpts);
     return pkg;
   }
 
@@ -109,7 +109,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
       if (lookup instanceof Promise)
         throwInternalError();
       this.log('resolve', `${target.registry}:${target.name}@${range} -> WILDCARD ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-      await ensureBuild(lookup);
+      await ensureBuild(lookup, this.fetchOpts);
       return lookup;
     }
   }
@@ -123,7 +123,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
       if (lookup instanceof Promise)
         throwInternalError();
       this.log('resolve', `${target.registry}:${target.name}@${range} -> TAG ${tag}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-      await ensureBuild(lookup);
+      await ensureBuild(lookup, this.fetchOpts);
       return lookup;
     }
   }
@@ -137,7 +137,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
       if (lookup instanceof Promise)
         throwInternalError();
       this.log('resolve', `${target.registry}:${target.name}@${range} -> MAJOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-      await ensureBuild(lookup);
+      await ensureBuild(lookup, this.fetchOpts);
       return lookup;
     }
   }
@@ -151,7 +151,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
       if (lookup instanceof Promise)
         throwInternalError();
       this.log('resolve', `${target.registry}:${target.name}@${range} -> MINOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-      await ensureBuild(lookup);
+      await ensureBuild(lookup, this.fetchOpts);
       return lookup;
     }
   }

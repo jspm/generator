@@ -50,10 +50,19 @@ jobs:
     - uses: denoland/setup-deno@v1
       with:
         deno-version: ${{ matrix.deno }}
+    - name: Install IPFS
+      run: |
+        wget https://dist.ipfs.io/go-ipfs/v0.10.0/go-ipfs_v0.10.0_linux-amd64.tar.gz
+        tar -xvzf go-ipfs_v0.10.0_linux-amd64.tar.gz
+        cd go-ipfs
+        sudo bash install.sh
+        ipfs init
+        ipfs daemon &
+
     - run: npm install
     - run: cd jspm-core && npm install
     - run: npm run build
     - run: npm run typedoc
-    - run: npm run test:node
+    - run: IPFS_API=/ip4/127.0.0.1/tcp/5001 npm run test:node
       env:
         DENO_BIN: /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64/deno

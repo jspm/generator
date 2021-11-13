@@ -76,7 +76,7 @@ export class Resolver {
   // since "dependencies" come from package base, while "imports" come from local pjson
 
   async getPackageConfig (pkgUrl: string): Promise<PackageConfig | null> {
-    if (!pkgUrl.startsWith('file:') && !pkgUrl.startsWith('http:') && !pkgUrl.startsWith('https:'))
+    if (!pkgUrl.startsWith('file:') && !pkgUrl.startsWith('http:') && !pkgUrl.startsWith('https:') && !pkgUrl.startsWith('ipfs:'))
       return null;
     if (!pkgUrl.endsWith('/'))
       throw new Error(`Internal Error: Package URL must end in "/". Got ${pkgUrl}`);
