@@ -21,9 +21,9 @@
   "imports": {
     "#fetch": {
       "source": {
+        "vscode": "./lib/common/fetch-vscode.js",
         "deno": "./lib/common/fetch-deno.js",
         "node": "./lib/common/fetch-node.js",
-        "vscode": "./lib/common/fetch-vscode.js",
         "default": "./lib/common/fetch-native.js"
       },
       "default": {
