@@ -1,4 +1,4 @@
-import { baseUrl as _baseUrl } from "./common/url.js";
+import { baseUrl as _baseUrl, isPlain } from "./common/url.js";
 import { ExactPackage, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 import { LockResolutions } from './install/installer.js';
