@@ -187,13 +187,21 @@ export class Resolver {
   async realPath (url: string): Promise<string> {
     if (!url.startsWith('file:') || this.preserveSymlinks)
       return url;
+    let encodedColon = false;
+    url = url.replace(/%3a/i, () => {
+      encodedColon = true;
+      return ':';
+    });
     if (!realpath) {
       [{ realpath }, { pathToFileURL }] = await Promise.all([
         import('fs' as any),
         import('url' as any)
       ]);
     }
-    return pathToFileURL(await new Promise((resolve, reject) => realpath(new URL(url), (err, result) => err ? reject(err) : resolve(result)))).href;
+    const outUrl = pathToFileURL(await new Promise((resolve, reject) => realpath(new URL(url), (err, result) => err ? reject(err) : resolve(result)))).href;
+    if (encodedColon)
+      return outUrl.replace(':', '%3a');
+    return outUrl;
   }
 
   async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], pkgUrl?: string): Promise<string> {

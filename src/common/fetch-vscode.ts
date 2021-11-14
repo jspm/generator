@@ -57,7 +57,7 @@ export const fetch = async function (url: URL, opts?: Record<string, any>) {
       catch (e) {
         if (e.code === 'FileIsADirectory')
           return dirResponse;
-        if (e.code === 'Unavailable')
+        if (e.code === 'Unavailable' || e.code === 'EntryNotFound' || e.code === 'FileNotFound')
           return { status: 404, statusText: e.toString() };
         return { status: 500, statusText: e.toString() };
       }

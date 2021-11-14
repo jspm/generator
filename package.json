@@ -27,6 +27,7 @@
         "default": "./lib/common/fetch-native.js"
       },
       "default": {
+        "vscode": "./dist/fetch-vscode.js",
         "deno": "./dist/fetch-deno.js",
         "node": "./dist/fetch-node.js",
         "default": "./dist/fetch-native.js"

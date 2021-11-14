@@ -325,7 +325,7 @@ export class Generator {
     if (ipfsAPI)
       fetchOpts.ipfsAPI = ipfsAPI;
     const { log, logStream } = createLogger();
-    const resolver = new Resolver(log, fetchOpts);
+    const resolver = new Resolver(log, fetchOpts, true);
     if (customProviders) {
       for (const provider of Object.keys(customProviders)) {
         resolver.addCustomProvider(provider, customProviders[provider]);
