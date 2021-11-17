@@ -437,7 +437,7 @@ export class Installer {
             return { registry: pkg.registry, name: pkg.name, version };
         }
         else {
-          return new URL(resolution);
+          return new URL(resolution.endsWith('/') ? resolution : resolution + '/');
         }
       }
     }

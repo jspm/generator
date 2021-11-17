@@ -4,6 +4,7 @@ export default {
   input: {
     'generator': 'lib/generator.js',
     // TODO: internal module builds should be automatically iterated and built
+    'fetch-vscode': 'lib/common/fetch-vscode.js',
     'fetch-deno': 'lib/common/fetch-deno.js',
     'fetch-node': 'lib/common/fetch-node.js',
     'fetch-native': 'lib/common/fetch-native.js'
