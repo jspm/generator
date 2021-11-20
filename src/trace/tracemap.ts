@@ -160,7 +160,7 @@ export default class TraceMap {
             if (isPlain(dep)) {
               const existing = this.map.scopes[parentPkgUrl]?.[dep];
               if (!existing || existing && existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
-              this.map.set(dep, resolvedUrl, parentPkgUrl);
+                this.map.set(dep, resolvedUrl, parentPkgUrl);
             }
           }
           for (const dep of entry.cjsLazyDeps) {
@@ -170,7 +170,7 @@ export default class TraceMap {
             if (isPlain(dep)) {
               const existing = this.map.scopes[parentPkgUrl]?.[dep];
               if (!existing || existing && existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
-              this.map.set(dep, resolvedUrl, parentPkgUrl);
+                this.map.set(dep, resolvedUrl, parentPkgUrl);
             }
           }
         }
