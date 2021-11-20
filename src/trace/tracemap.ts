@@ -148,7 +148,7 @@ export default class TraceMap {
             const resolvedUrl = traceResolutions[dep + '##' + url];
             if (isPlain(dep)) {
               const existing = this.map.scopes[parentPkgUrl]?.[dep];
-              if (!existing || existing && existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
+              if (!existing || existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
                 this.map.set(dep, resolvedUrl, parentPkgUrl);
             }
             discoveredDynamics.add(resolvedUrl);
@@ -159,7 +159,7 @@ export default class TraceMap {
             const resolvedUrl = traceResolutions[dep + '##' + url];
             if (isPlain(dep)) {
               const existing = this.map.scopes[parentPkgUrl]?.[dep];
-              if (!existing || existing && existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
+              if (!existing || existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
                 this.map.set(dep, resolvedUrl, parentPkgUrl);
             }
           }
@@ -169,7 +169,7 @@ export default class TraceMap {
             const resolvedUrl = traceResolutions[dep + '##' + url];
             if (isPlain(dep)) {
               const existing = this.map.scopes[parentPkgUrl]?.[dep];
-              if (!existing || existing && existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
+              if (!existing || existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
                 this.map.set(dep, resolvedUrl, parentPkgUrl);
             }
           }
