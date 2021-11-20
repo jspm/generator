@@ -146,23 +146,32 @@ export default class TraceMap {
             if (dep.indexOf('*') !== -1)
               continue;
             const resolvedUrl = traceResolutions[dep + '##' + url];
-            if (isPlain(dep))
-              this.map.set(dep, resolvedUrl, parentPkgUrl);
+            if (isPlain(dep)) {
+              const existing = this.map.scopes[parentPkgUrl]?.[dep];
+              if (!existing || existing && existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
+                this.map.set(dep, resolvedUrl, parentPkgUrl);
+            }
             discoveredDynamics.add(resolvedUrl);
           }
           for (const dep of entry.deps) {
             if (dep.indexOf('*') !== -1)
               continue;
             const resolvedUrl = traceResolutions[dep + '##' + url];
-            if (isPlain(dep))
+            if (isPlain(dep)) {
+              const existing = this.map.scopes[parentPkgUrl]?.[dep];
+              if (!existing || existing && existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
               this.map.set(dep, resolvedUrl, parentPkgUrl);
+            }
           }
           for (const dep of entry.cjsLazyDeps) {
             if (dep.indexOf('*') !== -1)
               continue;
             const resolvedUrl = traceResolutions[dep + '##' + url];
-            if (isPlain(dep))
+            if (isPlain(dep)) {
+              const existing = this.map.scopes[parentPkgUrl]?.[dep];
+              if (!existing || existing && existing !== resolvedUrl && this.tracedUrls?.[url]?.wasCJS)
               this.map.set(dep, resolvedUrl, parentPkgUrl);
+            }
           }
         }
         const seen = new Set<string>();
