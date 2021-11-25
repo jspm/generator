@@ -367,7 +367,7 @@ export class Installer {
     }
 
     // package dependencies
-    const installTarget = pcfg.dependencies?.[pkgName] || pcfg.peerDependencies?.[pkgName] || pcfg.optionalDependencies?.[pkgName] || pcfg.devDependencies?.[pkgName];
+    const installTarget = pcfg.dependencies?.[pkgName] || pcfg.peerDependencies?.[pkgName] || pcfg.optionalDependencies?.[pkgName] || pkgUrl === this.installBaseUrl && pcfg.devDependencies?.[pkgName];
     if (installTarget) {
       const target = newPackageTarget(installTarget, pkgUrl, pkgName);
       return this.installTarget(pkgName, target, pkgUrl, false, parentUrl);
