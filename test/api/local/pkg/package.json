@@ -5,7 +5,8 @@
     "./withdep": "./b.js",
     "./withdep2": "./c.js",
     "./remotedep": "./d.js",
-    "./cjs": "./e.cjs"
+    "./cjs": "./e.cjs",
+    "./jquery": "./jquery.js"
   },
   "imports": {
     "#cjsdep": "./f.cjs"
@@ -14,5 +15,8 @@
     "dep": "file:../dep",
     "dep2": "../dep",
     "react": "https://ga.jspm.io/npm:react@16.14.0"
+  },
+  "devDependencies": {
+    "jquery": "2"
   }
 }
