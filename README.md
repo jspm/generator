@@ -50,6 +50,21 @@ await generator.install({ target: 'lit@2', subpath: './html.js' });
 await generator.install({ alias: 'mypkg', target: './packages/local-pkg', subpath: './feature' });
 
 console.log(generator.getMap());
+/*
+ * Outputs the import map:
+ *
+ * {
+ *   "imports": {
+ *     "lit/decorators.js": "https://ga.jspm.io/npm:lit@2.0.0-rc.1/decorators.js",
+ *     "lit/html.js": "https://ga.jspm.io/npm:lit@2.0.0-rc.1/html.js",
+ *     "mypkg/feature": "./packages/local-pkg/feature.js",
+ *     "react": "./local/react.js",
+ *     "react16": "https://ga.jspm.io/npm:react@16.14.0/index.js",
+ *     "react-dom": "https://ga.jspm.io/npm:react-dom@17.0.2/index.js"
+ *   },
+ *   "scopes": { ... }
+ * }
+ */
 ```
 
 ### Generating with node_modules
@@ -76,24 +91,31 @@ const generator = new Generator({
 
 // where "pkg" is already installed into node_modules and package.json "dependencies" by npm
 await generator.install('pkg');
-
-console.log(generator.getMap());
-/*
- * Outputs the import map:
- *
- * {
- *   "imports": {
- *     "lit/decorators.js": "https://ga.jspm.io/npm:lit@2.0.0-rc.1/decorators.js",
- *     "lit/html.js": "https://ga.jspm.io/npm:lit@2.0.0-rc.1/html.js",
- *     "mypkg/feature": "./packages/local-pkg/feature.js",
- *     "react": "./local/react.js",
- *     "react16": "https://ga.jspm.io/npm:react@16.14.0/index.js",
- *     "react-dom": "https://ga.jspm.io/npm:react-dom@17.0.2/index.js"
- *   },
- *   "scopes": { ... }
- * }
- */
 ```
+
+### Working with Import Maps
+
+To execute the application, the import map needs to be included in the HTML directly using an inline tag:
+
+```html
+<script type="importmap">
+{
+  "imports": { ... },
+  "scopes": { ... }
+}
+</script>
+```
+
+With the import map embedded in the page, all `import` statements will have access to the defined mappings
+allowing direct `import 'lit/html.js'` style JS code in the browser.
+
+For browsers without import maps, it is recommended to use the [ES Module Shims](https://github.com/guybedford/es-module-shims) import maps polyfill.
+This is a highly optimized polyfill supporting almost native speeds, see [the performance benchmarks](https://github.com/guybedford/es-module-shims/blob/main/bench/README.md) for more information.
+
+Dynamically injecting `<script type="importmap">` from JavaScript is supported as well but only if no
+modules have yet executed on the page. For dynamic import map injection workflows, creating an IFrame
+for each import map and injecting it into this frame can be used to get around this constraint for
+in-page refreshing application workflows.
 
 ### Trace Installs
 
@@ -170,39 +192,6 @@ node_modules lookups.
 
 The `"jspm.system"` provider can be used to generate import maps for SystemJS, which behave identically to modules on `"jspm"`
 but fully supporting older browsers due to the semantic equivalence with ES modules of the SystemJS module format.
-
-### Working with Import Maps
-
-Import maps are supported in Chrome 89+ and related Chromium browsers. In these environments, the import map
-can be included with an inline `"importmap"` script tag (using an external `"src"` is not yet supported):
-
-```html
-<script type="importmap">
-{
-  "imports": { ... },
-  "scopes": { ... }
-}
-</script>
-```
-
-With the import map embedded in the page, all `import` statements will have access to the defined mappings
-allowing direct `import 'lit/html.js'` style JS code in the browser.
-
-For browsers without import maps, there are two recommended options:
-
-1. Use the [ES Module Shims](https://github.com/guybedford/es-module-shims) import maps polyfill.
-  This involves adding a script tag to load the polyfill before the import map to enable.
-
-2. Use [SystemJS](https://github.com/systemjs/systemjs) to load System modules in older browsers.
-  To generate a SystemJS import map, use the `'jspm.system'` `defaultProvider` option. Then include
-  the SystemJS import map via a `<script type="systemjs-importmap">` tag with the System modules loaded via
-  `<script type="systemjs-module>` or `System.import`. See the [SystemJS documentation](https://github.com/systemjs/systemjs)
-  for further information on these workflows.
-
-Dynamically injecting `<script type="importmap">` from JavaScript is supported as well but only if no
-modules have yet executed on the page. For dynamic import map injection workflows, creating an IFrame
-for each import map and injecting it into this frame can be used to get around this constraint for
-in-page refreshing application workflows.
 
 ## API
 
