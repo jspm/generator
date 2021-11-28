@@ -17,34 +17,9 @@ npm install @jspm/generator
 
 `@jspm/generator` only ships as an ES module, so to use it in Node.js add `"type": "module"` to your package.json file or write an `.mjs` to load it.
 
-Browser:
+### Generating for JSPM CDN
 
-```html
-<script type="importmap">
-{
-  imports: {
-    '@jspm/generator': 'https://ga.jspm.io/npm:@jspm/generator@1.0.0-beta.15/dist/generator.js'
-  },
-  scopes: {
-    'https://ga.jspm.io/': {
-      '#fetch': 'https://ga.jspm.io/npm:@jspm/generator@1.0.0-beta.15/dist/fetch-native.js',
-      '@jspm/import-map': 'https://ga.jspm.io/npm:@jspm/import-map@0.1.5/dist/map.js',
-      buffer: 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.10/nodelibs/browser/buffer.js',
-      'es-module-lexer': 'https://ga.jspm.io/npm:es-module-lexer@0.4.1/dist/lexer.cjs',
-      fs: 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.10/nodelibs/browser/fs.js',
-      process: 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.10/nodelibs/browser/process.js',
-      semver: 'https://ga.jspm.io/npm:semver@6.3.0/semver.js',
-      sver: 'https://ga.jspm.io/npm:sver@1.8.3/sver.js',
-      'sver/convert-range.js': 'https://ga.jspm.io/npm:sver@1.8.3/convert-range.js',
-      url: 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.10/nodelibs/browser/url.js'
-    }
-  }
-}
-</script>
-<script type="module" src="generate.mjs"></script>
-```
-
-### Usage
+By default the generator generates import maps against the JSPM CDN by treating the `defaultProvider: 'jspm'` option. This can be configured to other CDNs or sources including local `nodemodules`, see the next section on how to achieve this.
 
 generate.mjs
 ```js
@@ -52,18 +27,10 @@ import { Generator } from '@jspm/generator';
 
 const generator = new Generator({
   mapUrl: import.meta.url,
-  inputMap: {
-    "imports": {
-      "react": "https://cdn.skypack.dev/react"
-    }
-  },
-  defaultProvider: 'jspm',
-  providers: {
-    '@orgscope': 'nodemodules'
-  },
-  customProviders: {},
-  env: ['production', 'browser'],
-  cache: false,
+  defaultProvider: 'jspm', // this is the default defaultProvider
+  // Always ensure to define your target environment to get a working map
+  // it is advisable to pass the "module" condition as supported by Webpack
+  env: ['production', 'browser', 'module'],
 });
 
 // Install a new package into the import map
@@ -82,7 +49,35 @@ await generator.install({ target: 'lit@2', subpath: './html.js' });
 // The package.json is used to determine the exports and dependencies.
 await generator.install({ alias: 'mypkg', target: './packages/local-pkg', subpath: './feature' });
 
-console.log(JSON.stringify(generator.getMap(), null, 2));
+console.log(generator.getMap());
+```
+
+### Generating with node_modules
+
+To generate an import map for a local application linked against local `node_modules` (and provided that all packages are ES modules), this can be done via:
+
+generate.mjs
+```js
+import { Generator } from '@jspm/generator';
+
+const generator = new Generator({
+  mapUrl: import.meta.url,
+  defaultProvider: 'nodemodules',
+  // custom user provided mappings, which are authoritative
+  inputMap: {
+    imports: {
+      'react': './local/react.js'
+    }
+  },
+  // Always ensure to define your target environment to get a working map
+  // it is advisable to pass the "module" condition as supported by Webpack
+  env: ['production', 'browser', 'module'],
+});
+
+// where "pkg" is already installed into node_modules and package.json "dependencies" by npm
+await generator.install('pkg');
+
+console.log(generator.getMap());
 /*
  * Outputs the import map:
  *
@@ -91,28 +86,40 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
  *     "lit/decorators.js": "https://ga.jspm.io/npm:lit@2.0.0-rc.1/decorators.js",
  *     "lit/html.js": "https://ga.jspm.io/npm:lit@2.0.0-rc.1/html.js",
  *     "mypkg/feature": "./packages/local-pkg/feature.js",
- *     "react": "https://cdn.skypack.dev/react",
+ *     "react": "./local/react.js",
  *     "react16": "https://ga.jspm.io/npm:react@16.14.0/index.js",
  *     "react-dom": "https://ga.jspm.io/npm:react-dom@17.0.2/index.js"
  *   },
  *   "scopes": { ... }
  * }
  */
-
-// Instead of installing, an entry point module can be traced directly
-// Then all of its dependencies will be installed into the map only as needed
-await generator.traceInstall('./app.js');
-
-// generator.importMap returns the internal import map instance,
-// with API per the @jspm/import-map package
-const map = generator.importMap.resolve('lit/html.js);
-// -> https://ga.jspm.io/npm:lit@2.0.0-rc.1/html.js
-
-// Once packages are installed, the resolve function provides direct import map resolutions:
-
-// https://ga.jspm.io/npm:lit@2.0.0-rc.1/decorators.js
-console.log(generator.resolve('lib/decorators.js'/*, optionalScopeUrl */));
 ```
+
+### Trace Installs
+
+Instead of installing specific packages into the map, you can also just trace a local
+module directly and JSPM will generate the scoped mappings to support that modules execution:
+
+generate.mjs
+```js
+// all static and dynamic dependencies necessary to execute app will be traced and
+// put into the map as necessary
+await generator.traceInstall('./app.js');
+```
+
+### Import Map Object
+
+The import map object returned by the generator can be directly accessed via the `importMap` getter (instead of the `getMap()` function which returns JSON):
+
+```js
+const map = generator.importMap;
+console.log(map.resolve('lit/html.js'));
+// -> https://ga.jspm.io/npm:lit@2.0.0-rc.1/html.js
+```
+
+The API of this map is as defined in https://github.com/jspm/import-map.
+
+### Package Scopes
 
 The `"scopes"` field is populated with all necessary deep dependencies with versions deduped and shared as
 possible within version ranges. Just like a file-system-based package manager, JSPM will handle dependency
