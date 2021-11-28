@@ -49,7 +49,7 @@ await generator.install({ target: 'lit@2', subpath: './html.js' });
 // The package.json is used to determine the exports and dependencies.
 await generator.install({ alias: 'mypkg', target: './packages/local-pkg', subpath: './feature' });
 
-console.log(generator.getMap());
+console.log(JSON.stringify(generator.getMap(), null, 2));
 /*
  * Outputs the import map:
  *
@@ -91,6 +91,9 @@ const generator = new Generator({
 
 // where "pkg" is already installed into node_modules and package.json "dependencies" by npm
 await generator.install('pkg');
+
+// output the full import map
+console.log(JSON.stringify(generator.getMap(), null, 2));
 ```
 
 ### Working with Import Maps
