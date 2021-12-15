@@ -257,12 +257,12 @@ export class Resolver {
     }
     // Node.js core resolutions
     if (url.startsWith('node:')) {
-      const resolution = await installer.stdlibInstall(url.slice(5), pkgUrl);
+      const resolution = await installer.installTarget(url.slice(5), installer.stdlibTarget, pkgUrl, false, 'nodelibs/' + url.slice(5), pkgUrl);
       let [installPkg, installExport] = resolution.split('|');
       if (!installPkg.endsWith('/'))
         installPkg += '/';
       installExport = installExport.length ? './' + installExport : '.';
-      return this.finalizeResolve(await this.resolveExport(installPkg, installExport, env, parentIsCjs, url, installer, new URL(pkgUrl)), parentIsCjs, env, installer, pkgUrl);
+      return this.finalizeResolve(await this.resolveExport(installPkg, installExport, env, parentIsCjs, url, installer, new URL(pkgUrl)), parentIsCjs, env, installer, installPkg);
     }
     return url;
   }

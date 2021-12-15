@@ -198,7 +198,7 @@ export default class TraceMap {
   }
 
   async add (name: string, target: InstallTarget, persist = true): Promise<string> {
-    const installed = await this.installer!.installTarget(name, target, this.mapBase.href, persist);
+    const installed = await this.installer!.installTarget(name, target, this.mapBase.href, persist, null, this.mapBase.href);
     return installed.slice(0, -1);
   }
 
@@ -305,7 +305,7 @@ export default class TraceMap {
       if (!match)
         throw new JspmError(`No '${specifier}' import defined in ${parentPkgUrl}${importedFrom(parentUrl)}.`);
       const resolved = await this.resolver.realPath(resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, specifier.slice(match.length), this.installer));
-      this.installer.newInstalls = setResolution(this.installer.installs, pkgName, parentPkgUrl, resolved);
+      this.map.set(match, resolved);
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;
