@@ -508,6 +508,17 @@ import { getPackageConfig } from '@jspm/generator';
 }
 ```
 
+#### getPackageBase
+
+_Get the baseURL for a given URL. Will either be the origin root or a URL ending in `/` that contains the package.json config file._
+
+```js
+import { getPackageBase } from '@jspm/generator';
+
+const pkgUrl = await getPackageBase('https://ga.jspm.io/npm:lit-element@2.5.1/lit-element.js');
+// Returns: https://ga.jspm.io/npm:lit-element@2.5.1/
+```
+
 #### lookup
 
 _Get the lookup resolution information for a specific install._
