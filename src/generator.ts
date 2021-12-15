@@ -574,7 +574,7 @@ export async function lookup (install: string | Install, { provider, cache }: Lo
  * Get the package.json configuration for a specific URL or package.
  * 
  * @param pkg Package to lookup configuration for
- * @param lookupOptions Provider and cache defaults for lookup
+ * @param lookupOptions Optional provider and cache defaults for lookup
  * @returns Package JSON configuration
  * 
  * Example:
@@ -601,6 +601,47 @@ export async function getPackageConfig (pkg: string | URL | ExactPackage, { prov
   else
     pkg = pkg.href;
   return generator.traceMap.resolver.getPackageConfig(pkg);
+}
+
+/**
+ * Get the package base URL for the given module URL.
+ * 
+ * @param url module URL
+ * @param lookupOptions Optional provider and cache defaults for lookup
+ * @returns Base package URL
+ * 
+ * Modules can be remote CDN URLs or local file:/// URLs.
+ * 
+ * All modules in JSPM are resolved as within a package boundary, which is the
+ * parent path of the package containing a package.json file.
+ * 
+ * For JSPM CDN this will always be the base of the package as defined by the
+ * JSPM CDN provider. For non-provider-defined origins it is always determined
+ * by trying to fetch the package.json in each parent path until the root is reached
+ * or one is found. On file:/// URLs this exactly matches the Node.js resolution
+ * algorithm boundary lookup.
+ * 
+ * This package.json file controls the package name, imports resolution, dependency
+ * resolutions and other package information.
+ * 
+ * getPackageBase will return the folder containing the package.json,
+ * with a trailing '/'.
+ * 
+ * This URL will either be the root URL of the origin, or it will be a
+ * path "pkgBase" such that fetch(`${pkgBase}package.json`) is an existing
+ * package.json file.
+ * 
+ * For example:
+ * 
+ * ```js
+ *   import { getPackageBase } from '@jspm/generator'; 
+ *   const pkgUrl = await getPackageBase('https://ga.jspm.io/npm:lit-element@2.5.1/lit-element.js');
+ *   // Returns: https://ga.jspm.io/npm:lit-element@2.5.1/
+ * ```
+ */
+export async function getPackageBase (url: string | URL, { provider, cache }: LookupOptions = {}): Promise<string> {
+  const generator = new Generator({ cache: !cache, defaultProvider: provider });
+  return generator.traceMap.resolver.getPackageBase(typeof url === 'string' ? url : url.href);
 }
 
 async function installToTarget (this: Generator, install: Install | string) {

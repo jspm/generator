@@ -103,11 +103,21 @@ function getResolution (resolutions: LockResolutions, name: string, pkgUrl: stri
   return resolutions[pkgUrl][name];
 }
 
-export function setResolution (resolutions: LockResolutions, name: string, pkgUrl: string, resolution: string) {
+function stringResolution (resolution: string, subpath: string | null) {
+  if (!resolution.endsWith('/'))
+    throwInternalError(resolution);
+  return subpath ? resolution.slice(0, -1) + '|' + subpath : resolution;
+}
+
+export function setResolution (resolutions: LockResolutions, name: string, pkgUrl: string, resolution: string, subpath: string | null) {
   if (!pkgUrl.endsWith('/'))
     throwInternalError(pkgUrl);
   resolutions[pkgUrl] = resolutions[pkgUrl] || {};
-  resolutions[pkgUrl][name] = resolution;
+  const strResolution = stringResolution(resolution, subpath);
+  if (resolutions[pkgUrl][name] === strResolution)
+    return false;
+  resolutions[pkgUrl][name] = strResolution;
+  return true;
 }
 
 export class Installer {
@@ -274,11 +284,9 @@ export class Installer {
     return replaced;
   }
 
-  async installTarget (pkgName: string, target: InstallTarget, pkgScope: string, pjsonPersist: boolean, parentUrl = pkgScope): Promise<string> {
+  async installTarget (pkgName: string, target: InstallTarget, pkgScope: string, pjsonPersist: boolean, subpath: string | null, parentUrl: string): Promise<string> {
     if (this.opts.freeze)
       throw new JspmError(`"${pkgName}" is not installed in the jspm lockfile, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
-
-    this.newInstalls = true;
 
     if (pjsonPersist) {
       if (pkgScope === this.installBaseUrl && pkgScope.startsWith('file:')) {
@@ -292,8 +300,8 @@ export class Installer {
     if (target instanceof URL) {
       this.log('install', `${pkgName} ${pkgScope} -> ${target.href}`);
       const pkgUrl = target.href + (target.href.endsWith('/') ? '' : '/');
-      setResolution(this.installs, pkgName, pkgScope, pkgUrl);
-      return pkgUrl;
+      this.newInstalls = setResolution(this.installs, pkgName, pkgScope, pkgUrl, subpath);
+      return stringResolution(pkgUrl, subpath);
     }
 
     let provider = this.defaultProvider;
@@ -314,9 +322,9 @@ export class Installer {
       if (existingInstall) {
         this.log('install', `${pkgName} ${pkgScope} -> ${existingInstall.registry}:${existingInstall.name}@${existingInstall.version}`);
         const pkgUrl = this.resolver.pkgToUrl(existingInstall, provider);
-        setResolution(this.installs, pkgName, pkgScope, pkgUrl);
+        this.newInstalls = setResolution(this.installs, pkgName, pkgScope, pkgUrl, subpath);
         addInstalledRange(this.installedRanges, pkgName, pkgScope, target);
-        return pkgUrl;
+        return stringResolution(pkgUrl, subpath);
       }
     }
 
@@ -331,16 +339,16 @@ export class Installer {
       else
         this.log('install', `${pkgName} ${pkgScope} -> ${restrictedToPkg.registry}:${restrictedToPkg.name}@${restrictedToPkg.version}`);
       const pkgUrl = restrictedToPkg instanceof URL ? restrictedToPkg.href : this.resolver.pkgToUrl(restrictedToPkg, provider);
-      setResolution(this.installs, pkgName, pkgScope, pkgUrl);
+      this.newInstalls = setResolution(this.installs, pkgName, pkgScope, pkgUrl, subpath);
       addInstalledRange(this.installedRanges, pkgName, pkgScope, target);
-      return pkgUrl;
+      return stringResolution(pkgUrl, subpath);
     }
 
     this.log('install', `${pkgName} ${pkgScope} -> ${latest.registry}:${latest.name}@${latest.version}`);
     const pkgUrl = this.resolver.pkgToUrl(latest, provider);
-    setResolution(this.installs, pkgName, pkgScope, pkgUrl);
+    this.newInstalls = setResolution(this.installs, pkgName, pkgScope, pkgUrl, subpath);
     addInstalledRange(this.installedRanges, pkgName, pkgScope, target);
-    return pkgUrl;
+    return stringResolution(pkgUrl, subpath);
   }
 
   async install (pkgName: string, pkgUrl: string, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<string> {
@@ -353,24 +361,21 @@ export class Installer {
     }
 
     if (this.resolutions[pkgName]) {
-      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, pkgName), pkgUrl, false, parentUrl);
+      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, pkgName), pkgUrl, false, null, parentUrl);
     }
 
     const pcfg = await this.resolver.getPackageConfig(pkgUrl) || {};
 
     // node.js core
     if (nodeBuiltins && nodeBuiltinSet.has(pkgName)) {
-      const target = this.stdlibTarget;
-      const resolution = (await this.installTarget(pkgName, target, pkgUrl, false, parentUrl)).slice(0, -1) + '|nodelibs/' + pkgName;
-      setResolution(this.installs, pkgName, pkgUrl, resolution);
-      return resolution;
+      return this.installTarget(pkgName, this.stdlibTarget, pkgUrl, false, 'nodelibs/' + pkgName, parentUrl);
     }
 
     // package dependencies
     const installTarget = pcfg.dependencies?.[pkgName] || pcfg.peerDependencies?.[pkgName] || pcfg.optionalDependencies?.[pkgName] || pkgUrl === this.installBaseUrl && pcfg.devDependencies?.[pkgName];
     if (installTarget) {
       const target = newPackageTarget(installTarget, pkgUrl, pkgName);
-      return this.installTarget(pkgName, target, pkgUrl, false, parentUrl);
+      return this.installTarget(pkgName, target, pkgUrl, false, null, parentUrl);
     }
 
     // import map "imports"
@@ -379,7 +384,7 @@ export class Installer {
 
     // global install fallback
     const target = newPackageTarget('*', pkgUrl, pkgName);
-    const exactInstall = await this.installTarget(pkgName, target, pkgUrl, true, parentUrl);
+    const exactInstall = await this.installTarget(pkgName, target, pkgUrl, true, null, parentUrl);
     return exactInstall;
   }
 
@@ -414,15 +419,15 @@ export class Installer {
 
     if (compatible) {
       for (const { name, pkgUrl } of installed) {
-        const resolution = getResolution(this.installs, name, pkgUrl).split('|')[0];
+        const [resolution, curSubpath] = getResolution(this.installs, name, pkgUrl).split('|');
         const parsed = parseUrlPkg(resolution);
         if (parsed) {
           const { pkg: { version } } = parseUrlPkg(resolution);
           if (version !== pkg.version)
-            setResolution(this.installs, name, pkgUrl, this.resolver.pkgToUrl(pkg, provider));
+            this.newInstalls = setResolution(this.installs, name, pkgUrl, this.resolver.pkgToUrl(pkg, provider), curSubpath);
         }
         else {
-          setResolution(this.installs, name, pkgUrl, resolution);
+          this.newInstalls = setResolution(this.installs, name, pkgUrl, resolution, curSubpath);
         }
       }
     }

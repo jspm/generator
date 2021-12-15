@@ -198,7 +198,7 @@ export default class TraceMap {
   }
 
   async add (name: string, target: InstallTarget, persist = true): Promise<string> {
-    const installed = await this.installer!.installTarget(name, target, this.mapBase.href, persist);
+    const installed = await this.installer!.installTarget(name, target, this.mapBase.href, persist, null, this.mapBase.href);
     return installed.slice(0, -1);
   }
 
@@ -239,9 +239,9 @@ export default class TraceMap {
       if (resolvedUrl.protocol !== 'file:' && resolvedUrl.protocol !== 'https:' && resolvedUrl.protocol !== 'http:' && resolvedUrl.protocol !== 'node:' && resolvedUrl.protocol !== 'data:')
         throw new JspmError(`Found unexpected protocol ${resolvedUrl.protocol}${importedFrom(parentUrl)}`);
       const resolvedHref = resolvedUrl.href;
-      const finalized = await this.resolver.realPath(await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env));
+      const finalized = await this.resolver.realPath(await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env, this.installer, parentPkgUrl));
       if (finalized !== resolvedHref) {
-        this.map.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized);
+        this.map.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized, parentPkgUrl);
         resolvedUrl = new URL(finalized);
       }
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolvedUrl}`);
@@ -293,7 +293,7 @@ export default class TraceMap {
     // Own name import
     const pcfg = await this.resolver.getPackageConfig(parentPkgUrl) || {};
     if (pcfg.exports && pcfg.name === pkgName) {
-      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(parentPkgUrl, subpath, env, parentIsCjs, specifier, parentUrl));
+      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(parentPkgUrl, subpath, env, parentIsCjs, specifier, this.installer, parentUrl));
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;
@@ -304,8 +304,8 @@ export default class TraceMap {
       const match = getMapMatch(specifier, pcfg.imports);
       if (!match)
         throw new JspmError(`No '${specifier}' import defined in ${parentPkgUrl}${importedFrom(parentUrl)}.`);
-      const resolved = await this.resolver.realPath(resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, specifier.slice(match.length)));
-      setResolution(this.installer.installs, pkgName, parentPkgUrl, resolved);
+      const resolved = await this.resolver.realPath(resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, specifier.slice(match.length), this.installer));
+      this.map.set(match, resolved, parentPkgUrl);
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;
@@ -318,7 +318,7 @@ export default class TraceMap {
       if (subpathBase && !pkgUrl.endsWith('/'))
         pkgUrl += '/';
       const key = subpathBase ? './' + subpathBase + subpath.slice(1) : subpath;
-      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(pkgUrl, key, env, parentIsCjs, specifier, parentUrl));
+      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(pkgUrl, key, env, parentIsCjs, specifier, this.installer, parentUrl));
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;

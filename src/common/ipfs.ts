@@ -1,4 +1,6 @@
+// @ts-ignore
 import { create } from 'ipfs-client';
+// @ts-ignore
 import { Buffer } from 'buffer';
 
 const tryAPIs = [

@@ -11,6 +11,7 @@ import rimraf from 'rimraf';
 import makeFetchHappen from 'make-fetch-happen';
 // @ts-ignore
 import { readFileSync } from 'fs';
+// @ts-ignore
 import { Buffer } from 'buffer';
 
 let cacheDir: string;
