@@ -241,7 +241,7 @@ export default class TraceMap {
       const resolvedHref = resolvedUrl.href;
       const finalized = await this.resolver.realPath(await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env, this.installer, parentPkgUrl));
       if (finalized !== resolvedHref) {
-        this.map.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized);
+        this.map.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized, parentPkgUrl);
         resolvedUrl = new URL(finalized);
       }
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolvedUrl}`);
@@ -305,7 +305,7 @@ export default class TraceMap {
       if (!match)
         throw new JspmError(`No '${specifier}' import defined in ${parentPkgUrl}${importedFrom(parentUrl)}.`);
       const resolved = await this.resolver.realPath(resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, specifier.slice(match.length), this.installer));
-      this.map.set(match, resolved);
+      this.map.set(match, resolved, parentPkgUrl);
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);
       return resolved;
