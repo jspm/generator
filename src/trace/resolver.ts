@@ -8,7 +8,7 @@ import { parse } from 'es-module-lexer';
 import { getProvider, defaultProviders, Provider } from '../providers/index.js';
 import { Analysis, createSystemAnalysis, createCjsAnalysis, createEsmAnalysis, createTsAnalysis } from './analysis.js';
 import { getMapMatch } from '@jspm/import-map';
-import { PackageProvider } from '../install/installer.js';
+import { Installer, PackageProvider } from '../install/installer.js';
 
 let realpath, pathToFileURL;
 
@@ -204,7 +204,7 @@ export class Resolver {
     return outUrl;
   }
 
-  async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], pkgUrl?: string): Promise<string> {
+  async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], installer: Installer, pkgUrl: string): Promise<string> {
     if (parentIsCjs && url.endsWith('/'))
       url = url.slice(0, -1);
     // Only CJS modules do extension searching for relative resolved paths
@@ -214,12 +214,12 @@ export class Resolver {
         if (await this.exists(url + '/package.json')) {
           const pcfg = await this.getPackageConfig(url) || {};
           if (env.includes('browser') && typeof pcfg.browser === 'string')
-            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(url)), parentIsCjs, env, pkgUrl);
+            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(url)), parentIsCjs, env, installer, pkgUrl);
           if (env.includes('module') && typeof pcfg.module === 'string')
-            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(url)), parentIsCjs, env, pkgUrl);
+            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(url)), parentIsCjs, env, installer, pkgUrl);
           if (typeof pcfg.main === 'string')
-            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(url)), parentIsCjs, env, pkgUrl);
-          return this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(url)), parentIsCjs, env, pkgUrl);
+            return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(url)), parentIsCjs, env, installer, pkgUrl);
+          return this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(url)), parentIsCjs, env, installer, pkgUrl);
         }
         if (await this.exists(url + '/index.js'))
           return url + '/index.js';
@@ -250,15 +250,24 @@ export class Resolver {
               throw new Error(`TODO: Empty browser map for ${subpath} in ${url}`);
             if (!target.startsWith('./'))
               throw new Error(`TODO: External browser map for ${subpath} to ${target} in ${url}`); 
-            return await this.finalizeResolve(pkgUrl + target.slice(2), parentIsCjs, env, pkgUrl);
+            return await this.finalizeResolve(pkgUrl + target.slice(2), parentIsCjs, env, installer, pkgUrl);
           }
         }
       }
     }
+    // Node.js core resolutions
+    if (url.startsWith('node:')) {
+      const resolution = await installer.stdlibInstall(url.slice(5), pkgUrl);
+      let [installPkg, installExport] = resolution.split('|');
+      if (!installPkg.endsWith('/'))
+        installPkg += '/';
+      installExport = installExport.length ? './' + installExport : '.';
+      return this.finalizeResolve(await this.resolveExport(installPkg, installExport, env, parentIsCjs, url, installer, new URL(pkgUrl)), parentIsCjs, env, installer, pkgUrl);
+    }
     return url;
   }
 
-  async resolveExport (pkgUrl: string, subpath: string, env: string[], parentIsCjs: boolean, originalSpecifier: string, parentUrl?: URL): Promise<string> {
+  async resolveExport (pkgUrl: string, subpath: string, env: string[], parentIsCjs: boolean, originalSpecifier: string, installer: Installer, parentUrl?: URL): Promise<string> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
 
     function throwExportNotDefined () {
@@ -275,23 +284,23 @@ export class Resolver {
       }
       if (typeof pcfg.exports === 'string') {
         if (subpath === '.')
-          return this.finalizeResolve(new URL(pcfg.exports, pkgUrl).href, parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(new URL(pcfg.exports, pkgUrl).href, parentIsCjs, env, installer, pkgUrl);
         else
           throwExportNotDefined();
       }
       else if (!allDotKeys(pcfg.exports)) {
         if (subpath === '.')
-          return this.finalizeResolve(resolvePackageTarget(pcfg.exports, pkgUrl, env, ''), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(resolvePackageTarget(pcfg.exports, pkgUrl, env, '', installer), parentIsCjs, env, installer, pkgUrl);
         else
           throwExportNotDefined();
       }
       else {
         const match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
         if (match) {
-          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)));
+          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), installer);
           if (resolved === null)
             throwExportNotDefined();
-          return this.finalizeResolve(resolved, parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(resolved, parentIsCjs, env, installer, pkgUrl);
         }
         throwExportNotDefined();
       }
@@ -299,15 +308,15 @@ export class Resolver {
     else {
       if (subpath === '.' || parentIsCjs && subpath === './') {
         if (env.includes('browser') && typeof pcfg.browser === 'string')
-          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, installer, pkgUrl);
         if (env.includes('module') && typeof pcfg.module === 'string')
-          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, installer, pkgUrl);
         if (typeof pcfg.main === 'string')
-          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, pkgUrl);
-        return this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, pkgUrl);
+          return this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, installer, pkgUrl);
+        return this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), parentIsCjs, env, installer, pkgUrl);
       }
       else {
-        return this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, parentIsCjs, env, pkgUrl);
+        return this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, parentIsCjs, env, installer, pkgUrl);
       }
     }
   }
@@ -429,7 +438,7 @@ export class Resolver {
   }
 }
 
-export function resolvePackageTarget (target: ExportsTarget, packageUrl: string, env: string[], subpath: string): string | null {
+export function resolvePackageTarget (target: ExportsTarget, packageUrl: string, env: string[], subpath: string, installer: Installer): string | null {
   if (typeof target === 'string') {
     if (subpath === '')
       return new URL(target, packageUrl).href;
@@ -446,7 +455,7 @@ export function resolvePackageTarget (target: ExportsTarget, packageUrl: string,
   else if (typeof target === 'object' && target !== null && !Array.isArray(target)) {
     for (const condition in target) {
       if (condition === 'default' || env.includes(condition)) {
-        const resolved = resolvePackageTarget(target[condition], packageUrl, env, subpath);
+        const resolved = resolvePackageTarget(target[condition], packageUrl, env, subpath, installer);
         if (resolved)
           return resolved;
       }
@@ -455,7 +464,7 @@ export function resolvePackageTarget (target: ExportsTarget, packageUrl: string,
   else if (Array.isArray(target)) {
     // TODO: Validation for arrays
     for (const targetFallback of target) {
-      return resolvePackageTarget(targetFallback, packageUrl, env, subpath);
+      return resolvePackageTarget(targetFallback, packageUrl, env, subpath, installer);
     }
   }
   return null;

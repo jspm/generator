@@ -29,6 +29,7 @@ const dirResponse = {
   }
 };
 
+// @ts-ignore
 const vscode = require('vscode');
 
 export const fetch = async function (url: URL, opts?: Record<string, any>) {
