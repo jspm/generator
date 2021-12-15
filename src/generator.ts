@@ -613,7 +613,13 @@ export async function getPackageConfig (pkg: string | URL | ExactPackage, { prov
  * Modules can be remote CDN URLs or local file:/// URLs.
  * 
  * All modules in JSPM are resolved as within a package boundary, which is the
- * parent path containing a package.json file.
+ * parent path of the package containing a package.json file.
+ * 
+ * For JSPM CDN this will always be the base of the package as defined by the
+ * JSPM CDN provider. For non-provider-defined origins it is always determined
+ * by trying to fetch the package.json in each parent path until the root is reached
+ * or one is found. On file:/// URLs this exactly matches the Node.js resolution
+ * algorithm boundary lookup.
  * 
  * This package.json file controls the package name, imports resolution, dependency
  * resolutions and other package information.
