@@ -24,11 +24,6 @@ const map = generator.getMap();
 
 // console.log(replaceAll(JSON.stringify(map, null, 2), targetUrl, 'https://ga.jspm.io/npm:@jspm/generator@1.0.0-beta.7/'));
 
-// tmp fix
-delete map.imports['node:os'];
-delete map.imports['node:process'];
-delete map.imports['node:tty'];
-
 await denoExec(generator.getMap(), `
   import { Generator } from '@jspm/generator';
   import { assertEquals } from "https://deno.land/std@0.100.0/testing/asserts.ts";
