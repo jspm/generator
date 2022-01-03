@@ -9,8 +9,12 @@ import { Resolver } from "./trace/resolver.js";
 import { IImportMap } from "@jspm/import-map";
 import { Provider } from "./providers/index.js";
 import { JspmError } from "./common/err.js";
-import { init } from 'es-module-lexer';
 import { analyzeHtml } from "./html/analyze.js";
+import { SemverRange } from 'sver';
+import { Replacer } from "./common/str.js";
+import { getIntegrity } from "./common/integrity.js";
+
+export { analyzeHtml }
 
 export interface GeneratorOptions {
   /**
@@ -386,7 +390,6 @@ export class Generator {
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
-    await init;
     if (typeof parentUrl === 'string')
       parentUrl = new URL(parentUrl);
     let error = false;
@@ -407,32 +410,90 @@ export class Generator {
     }
   }
   
-  async traceHtml (html: string, url?: string | URL): Promise<HtmlInjector> {
-    await init;
-    const htmlUrl = typeof url === 'string' ? new URL(url) : url || this.mapUrl;
-    let error = false;
-    if (this.installCnt++ === 0)
-      this.finishInstall = await this.traceMap.startInstall();
+  /*
+   * Generate and inject an import map for an HTML file
+   *
+   * Traces the module scripts of the HTML via traceInstall and install
+   * for URL-like specifiers and bare specifiers respectively.
+   * 
+   * Injects the final generated import map returning the injected HTML
+   * 
+   * Input Options control the input HTML and URL
+   */
+  async htmlGenerate (html: string, {
+    htmlUrl, preload = false, integrity = false, whitespace = true, esModuleShims = true
+  }: {
+    htmlUrl?: string | URL,
+    preload?: boolean,
+    integrity?: boolean,
+    whitespace?: boolean,
+    esModuleShims?: string | boolean
+  } = {}): Promise<string> {
+    if (typeof htmlUrl === 'string')
+      htmlUrl = new URL(htmlUrl);
+    if (integrity)
+      preload = true;
     const analysis = analyzeHtml(html, htmlUrl);
-    try {
-      await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
-        if (isPlain(impt))
-          await this.traceMap.trace(impt, htmlUrl);
-        else
-          await this.install(impt);
-      }));
+    let preloadDeps: string[] = [];
+    // TODO:
+    // extract lockfile from map
+    await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
+      if (isPlain(impt)) {
+        var { staticDeps } = await this.install(impt);
+      }
+      else {
+        var { staticDeps } = await this.traceInstall(impt, analysis.base);
+      }
+      preloadDeps = preloadDeps.concat(staticDeps);
+    }));
+
+    const replacer = new Replacer(html);
+
+    let esms = '';
+    if (esModuleShims) {
+      const esmsPkg = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, this.traceMap.installer.defaultProvider);
+      const esmsUrl = this.traceMap.resolver.pkgToUrl(esmsPkg, this.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
+      esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${integrity ? ` integrity="${await getIntegrity(esmsUrl, this.traceMap.resolver.fetchOpts)}"` : ''}></script>${analysis.map.newlineTab}`;
     }
-    catch (e) {
-      error = true;
-      throw e;
+
+    if (esModuleShims !== undefined && analysis.esModuleShims) {
+      replacer.remove(analysis.esModuleShims.start, analysis.esModuleShims.end, true);
     }
-    finally {
-      if (--this.installCnt === 0)
-        await this.finishInstall(true);
-      if (!error)
-        return;
-        //return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+
+    let preloads = '';
+    if (preload && preloadDeps.length) {
+      let first = true;
+      for (let dep of preloadDeps) {
+        if (first || whitespace)
+          preloads += analysis.map.newlineTab;
+        if (first) first = false;
+        if (integrity) {
+          preloads += `<link rel="modulepreload" href="${dep}" integrity="${await getIntegrity(dep, this.traceMap.resolver.fetchOpts)}" />`;
+        }
+        else {
+          preloads += `<link rel="modulepreload" href="${dep}" />`;
+        }
+      }
     }
+
+    if (preload !== undefined) {
+      for (const preload of analysis.preloads) {
+        replacer.remove(preload.start, preload.end, true);
+      }
+    }
+
+    replacer.replace(analysis.map.start, analysis.map.end,
+      esms +
+      '<script type="importmap">' +
+      (whitespace ? '\n' : '') +
+      JSON.stringify(this.getMap(), null, whitespace ? 2 : 0) +
+      (whitespace ? analysis.map.newlineTab : '') +
+      '</script>' +
+      preloads +
+      (analysis.map.newScript ? analysis.map.newlineTab : '')
+    );
+
+    return replacer.source;
   }
 
   /**
@@ -461,7 +522,6 @@ export class Generator {
    * 
    */
   async install (install: string | Install | (string | Install)[]): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
-    await init;
     this.traceMap.clearLists();
     if (Array.isArray(install))
       return await Promise.all(install.map(install => this.install(install))).then(() => ({

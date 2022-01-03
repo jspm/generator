@@ -1,4 +1,4 @@
-import { analyzeHtml } from '#html/analyze';
+import { analyzeHtml } from '@jspm/generator';
 import { init } from 'es-module-lexer';
 import { deepStrictEqual, strictEqual } from 'assert';
 
@@ -34,17 +34,22 @@ import('/dynamic');
 deepStrictEqual(analysis.map, {
   start: 2,
   end: 95,
-  attrs: [{
-    name: 'type',
-    quote: '"',
-    value: 'importmap'
-  }],
+  attrs: {
+    type: {
+      start: 10,
+      end: 25,
+      name: 'type',
+      quote: '"',
+      value: 'importmap'
+    }
+  },
   json: {
     imports: {
       react: '/react.js'
     }
   },
-  postInject: '\n\n',
+  newScript: false,
+  newlineTab: '\n',
   style: {
     indent: '  ',
     newline: '\n',
@@ -55,17 +60,50 @@ deepStrictEqual(analysis.map, {
 });
 
 deepStrictEqual(analysis.preloads, [{
-  start: 308,
-  end: 422,
-  attrs: [
-    { quote: '', name: 'rel', value: 'modulepreload' },
-    { quote: '"', name: 'href', value: './subdep.js' },
-    { quote: '"', name: 'integrity', value: 'asdf' }
-  ]
+  start: 310,
+  end: 372,
+  attrs: {
+    rel: { start: 316, end: 333, quote: '', name: 'rel', value: 'modulepreload' },
+    href: { start: 334, end: 351, quote: '"', name: 'href', value: './subdep.js' },
+    integrity: { start: 353, end: 368, quote: '"', name: 'integrity', value: 'asdf' }
+  }
 }]);
 
-deepStrictEqual([...analysis.staticImports], ['./local.js', '/absolute.js']);
+deepStrictEqual([...analysis.staticImports], ['react', './local.js', '/absolute.js']);
 
 deepStrictEqual([...analysis.dynamicImports], ['/dynamic']);
 
-strictEqual(analysis.hasESMS, true);
+deepStrictEqual(analysis.esModuleShims, {
+  attrs: {
+    async: {
+      name: 'async',
+      quote: '',
+      value: null,
+      start: 105,
+      end: 110
+    },
+    crossorigin: {
+      name: 'crossorigin',
+      quote: '"',
+      value: 'anonymous',
+      start: 275,
+      end: 297
+    },
+    integrity: {
+      name: 'integrity',
+      quote: '"',
+      value: 'sha384-Gba99Cy/cyqL1MpdnMzkUKYpebrPnBrQ5xnOoqJJNQstoxJQjAE4xgr80AiDYuTA',
+      start: 191,
+      end: 273
+    },
+    src: {
+      name: 'src',
+      quote: '"',
+      value: 'https://ga.jspm.io/npm:es-module-shims@0.12.8/dist/es-module-shims.min.js',
+      start: 111,
+      end: 189
+    }
+  },
+  end: 308,
+  start: 97
+});

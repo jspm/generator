@@ -2,12 +2,15 @@ import { parseStyled } from '../common/json.js';
 import { SourceStyle } from '../common/source-style.js';
 import { baseUrl } from '../common/url.js';
 import { ParsedAttribute, ParsedTag, parseHtml } from './lexer.js';
-import { parse } from 'es-module-lexer';
+// @ts-ignore
+import { parse } from 'es-module-lexer/js';
 
-export interface Attr {
+export interface HtmlAttr {
   quote: '"' | "'" | '';
   name: string;
   value: string | null;
+  start: number;
+  end: number;
 }
 
 function getAttr (source: string, tag: ParsedTag, name: string) {
@@ -18,40 +21,44 @@ function getAttr (source: string, tag: ParsedTag, name: string) {
   return null;
 }
 
-export interface ParsedMap {
+export interface ParsedMap extends HtmlTag {
   json: any;
   style: SourceStyle;
-  postInject: string;
-  start: number;
-  end: number;
-  attrs: Attr[];
+  newlineTab: string;
+  newScript: boolean;
 }
 
 export interface HtmlAnalysis {
   map: ParsedMap;
   base: URL;
-  hasESMS: boolean;
+  esModuleShims: HtmlTag | null;
   staticImports: Set<string>;
   dynamicImports: Set<string>;
-  preloads: ParsedPreload[];
+  preloads: HtmlTag[];
+  modules: HtmlTag[];
 }
 
-export interface ParsedPreload {
+export interface HtmlTag {
   start: number;
   end: number;
-  attrs: Attr[];
+  attrs: Record<string, HtmlAttr>;
 }
 
 const esmsSrcRegEx = /(^|\/)(es-module-shims|esms)(\.min)?\.js$/;
 
+function toHtmlAttrs (source: string, attributes: ParsedAttribute[]): Record<string, HtmlAttr> {
+  return Object.fromEntries(attributes.map(attr => readAttr(source, attr)).map(attr => [attr.name, attr]));
+}
+
 export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
   const analysis: HtmlAnalysis = {
     base: url,
-    map: { json: null, style: null, start: -1, end: -1, postInject: '', attrs: [] },
+    map: { json: null, style: null, start: -1, end: -1, newlineTab: '\n', newScript: false, attrs: null },
     staticImports: new Set<string>(),
     dynamicImports: new Set<string>(),
     preloads: [],
-    hasESMS: false
+    modules: [],
+    esModuleShims: null
   };
   const tags = parseHtml(source);
   for (const tag of tags) {
@@ -67,14 +74,14 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
         if (type === 'importmap') {
           const { json, style } = parseStyled(source.slice(tag.innerStart, tag.innerEnd), url.href + '#importmap');
           const { start, end } = tag;
-          const attrs = tag.attributes.map(attr => readAttr(source, attr));
-          analysis.map = { json, style, start, end, attrs, postInject: detectIndent(source, tag.start) };
+          const attrs = toHtmlAttrs(source, tag.attributes);
+          analysis.map = { json, style, start, end, attrs, newlineTab: '\n' + detectIndent(source, end), newScript: false };
         }
         else if (type === 'module') {
           const src = getAttr(source, tag, 'src');
           if (src) {
             if (esmsSrcRegEx.test(src))
-              analysis.hasESMS = true;
+              analysis.esModuleShims = { start: tag.start, end: tag.end, attrs: toHtmlAttrs(source, tag.attributes) };
             else
               analysis.staticImports.add(src);
           }
@@ -86,11 +93,11 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
             }
           }
         }
-        else if (!type) {
+        else if (!type || type === 'javascript') {
           const src = getAttr(source, tag, 'src');
           if (src) {
             if (esmsSrcRegEx.test(src))
-              analysis.hasESMS = true;
+              analysis.esModuleShims = { start: tag.start, end: tag.end, attrs: toHtmlAttrs(source, tag.attributes) };
             else
               analysis.staticImports.add(src);
           }
@@ -108,7 +115,7 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
         if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag);
         if (getAttr(source, tag, 'rel') === 'modulepreload') {
           const { start, end } = tag;
-          const attrs = tag.attributes.map(attr => readAttr(source, attr));
+          const attrs = toHtmlAttrs(source, tag.attributes);
           analysis.preloads.push({ start, end, attrs });
         }
     }
@@ -117,13 +124,16 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
 }
 
 function createInjectionPoint (source: string, map: ParsedMap, tag: ParsedTag) {
-  map.postInject = detectIndent(source, tag.start);
-  map.attrs = tag.attributes.map(attr => readAttr(source, attr));
+  map.newlineTab = '\n' + detectIndent(source, tag.start);
+  map.newScript = true;
+  map.attrs = toHtmlAttrs(source, tag.attributes);
   map.start = map.end = tag.start;
 }
 
-function readAttr (source: string, { nameStart, nameEnd, valueStart, valueEnd }: ParsedAttribute): Attr {
+function readAttr (source: string, { nameStart, nameEnd, valueStart, valueEnd }: ParsedAttribute): HtmlAttr {
   return {
+    start: nameStart,
+    end: valueEnd !== -1 ? valueEnd : nameEnd,
     quote: valueStart !== -1 && (source[valueStart - 1] === '"' || source[valueStart - 1] === "'") ? source[valueStart - 1] as '"' | "'" : '',
     name: source.slice(nameStart, nameEnd),
     value: valueStart === -1 ? null : source.slice(valueStart, valueEnd)
@@ -133,6 +143,6 @@ function readAttr (source: string, { nameStart, nameEnd, valueStart, valueEnd }:
 function detectIndent (source: string, atIndex: number) {
   if (source === '' || atIndex === -1) return '';
   const nl = source.lastIndexOf('\n', atIndex);
-  const spaceMatch = (nl === -1 ? source : source.slice(nl, atIndex)).match(/^\s*/);
-  return spaceMatch ? '\n' + spaceMatch[0] : '';
+  const spaceMatch = (nl === -1 ? source : source.slice(nl, atIndex)).match(/^[ \t]*/);
+  return spaceMatch ? spaceMatch[0] : '';
 }

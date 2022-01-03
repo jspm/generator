@@ -4,7 +4,8 @@ import { Log } from '../common/log.js';
 // @ts-ignore
 import { fetch } from '#fetch';
 import { importedFrom } from "../common/url.js";
-import { parse } from 'es-module-lexer';
+// @ts-ignore
+import { parse } from 'es-module-lexer/js';
 import { getProvider, defaultProviders, Provider } from '../providers/index.js';
 import { Analysis, createSystemAnalysis, createCjsAnalysis, createEsmAnalysis, createTsAnalysis } from './analysis.js';
 import { getMapMatch } from '@jspm/import-map';

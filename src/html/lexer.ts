@@ -16,6 +16,8 @@ export interface ParsedAttribute {
   valueEnd: number;
 }
 
+const alwaysSelfClosing = ['link', 'base'];
+
 export function parseHtml (_source: string, tagNames: string[] = ['script', 'link', 'base']) {
   const scripts: ParsedTag[] = [];
   source = _source;
@@ -38,22 +40,30 @@ export function parseHtml (_source: string, tagNames: string[] = ['script', 'lin
     }
     else if (tagNames.includes(tagName)) {
       curScript.tagName = tagName;
-      curScript.start = i - 8;
+      curScript.start = i - tagName.length - 2;
       const attributes = curScript.attributes;
       let attr;
       while (attr = scanAttr())
         attributes.push(attr);
-      curScript.innerStart = i;
-      while (true) {
-        while (source.charCodeAt(i++) !== 60 /*<*/)
-          if (i === source.length) return scripts;
-        const tag = readTagName();
-        if (tag === undefined) return scripts;
-        if (tag === '/script') {
-          curScript.innerEnd = i - 8;
-          while (scanAttr());
-          curScript.end = i;
-          break;
+      let selfClosing = alwaysSelfClosing.includes(tagName);
+      if (source.charCodeAt(i - 2) === 47 /*/*/ && source.charCodeAt(i - 1) === 62 /*>*/)
+        selfClosing = true;
+      if (selfClosing) {
+        curScript.end = i;
+      }
+      else {
+        curScript.innerStart = i;
+        while (true) {
+          while (source.charCodeAt(i++) !== 60 /*<*/)
+            if (i === source.length) return scripts;
+          const tag = readTagName();
+          if (tag === undefined) return scripts;
+          if (tag === '/script') {
+            curScript.innerEnd = i - 8;
+            while (scanAttr());
+            curScript.end = i;
+            break;
+          }
         }
       }
       scripts.push(curScript);
@@ -78,7 +88,7 @@ function scanAttr (): ParsedAttribute | null {
   let ch;
   while (isWs(ch = source.charCodeAt(i)))
     if (++i === source.length) return null;
-  if (ch === 62 /*>*/) {
+  if (ch === 62 /*>*/ || ch === 47 /*/*/ && (ch = source.charCodeAt(++i)) === 62 /*>*/) {
     i++;
     return null;
   }
