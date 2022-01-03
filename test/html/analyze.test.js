@@ -1,8 +1,5 @@
 import { analyzeHtml } from '@jspm/generator';
-import { init } from 'es-module-lexer';
-import { deepStrictEqual, strictEqual } from 'assert';
-
-await init;
+import { deepStrictEqual } from 'assert';
 
 const analysis = analyzeHtml(`
 

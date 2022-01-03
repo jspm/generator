@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { parseHtml } from '#html/lexer';
+import { parseHtml } from '../../lib/html/lexer.js';
 
 console.group('Simple script');
 {

@@ -35,9 +35,6 @@
     },
     "#test/*": {
       "source": "./test/*.js"
-    },
-    "#*": {
-      "source": "./lib/*.js"
     }
   },
   "exports": {

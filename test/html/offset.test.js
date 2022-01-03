@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { Replacer } from '#common/str';
+import { Replacer } from '../../lib/common/str.js';
 
 {
   const replacer = new Replacer('hello world');
