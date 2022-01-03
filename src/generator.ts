@@ -410,7 +410,7 @@ export class Generator {
     }
   }
   
-  /*
+  /**
    * Generate and inject an import map for an HTML file
    *
    * Traces the module scripts of the HTML via traceInstall and install
@@ -418,7 +418,34 @@ export class Generator {
    * 
    * Injects the final generated import map returning the injected HTML
    * 
-   * Input Options control the input HTML and URL
+   * @param html String
+   * @param injectOptions Injection options
+   * 
+   * Injection options are: `htmlUrl`, `preload`, `integrity`, `whitespace`
+   * and `esModuleShims`. The default is `{ esModuleShims: true, whitespace: true }`.
+   * 
+   * ES Module shims will be resolved to the latest version against the provider
+   * 
+   * Example:
+   * 
+   * ```js
+   *  const outputHtml = await generator.htmlGenerate(`
+   *    <!doctype html>
+   *    <script type="module">import 'react'</script>
+   *  `);
+   * ```
+   * 
+   * which outputs:
+   * 
+   * ```
+   *   <!doctype html>
+   *   <script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js"></script>
+   *   <script type="importmap">
+   *   {...}
+   *   </script>
+   *   <script type="module">import 'react'</script>
+   * ```
+   * 
    */
   async htmlGenerate (html: string, {
     htmlUrl, preload = false, integrity = false, whitespace = true, esModuleShims = true
