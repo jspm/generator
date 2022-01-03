@@ -1,5 +1,5 @@
 import { Generator } from '@jspm/generator';
-import { addAll } from '../../lib/common/ipfs';
+import { addAll } from '../../lib/common/ipfs.js';
 import assert from 'assert';
 
 const cid = await addAll([
