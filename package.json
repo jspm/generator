@@ -9,7 +9,7 @@
     "tsc:watch": "tsc -p . --watch",
     "typedoc": "typedoc src/generator.ts",
     "rollup": "rollup -c",
-    "build": "npm run tsc ; npm run rollup",
+    "build": "npm run tsc && npm run rollup",
     "cache-clear": "node cache-clear.js",
     "self-generate": "node self-generate.js",
     "test": "npm run test:node ; npm run test:browser",
