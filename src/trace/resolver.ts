@@ -4,7 +4,8 @@ import { Log } from '../common/log.js';
 // @ts-ignore
 import { fetch } from '#fetch';
 import { importedFrom } from "../common/url.js";
-import { parse } from 'es-module-lexer';
+// @ts-ignore
+import { parse } from 'es-module-lexer/js';
 import { getProvider, defaultProviders, Provider } from '../providers/index.js';
 import { Analysis, createSystemAnalysis, createCjsAnalysis, createEsmAnalysis, createTsAnalysis } from './analysis.js';
 import { getMapMatch } from '@jspm/import-map';
@@ -393,7 +394,7 @@ export class Resolver {
         catch {}
       }
 
-      const [imports, exports] = await parse(source) as any as [any[], string[]];
+      const [imports, exports] = parse(source) as any as [any[], string[]];
       if (imports.every(impt => impt.d > 0) && !exports.length && resolvedUrl.startsWith('file:')) {
         // Support CommonJS package boundary checks for non-ESM on file: protocol only
         if (isRequire) {

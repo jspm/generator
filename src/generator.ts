@@ -1,4 +1,4 @@
-import { baseUrl as _baseUrl } from "./common/url.js";
+import { baseUrl as _baseUrl, isPlain } from "./common/url.js";
 import { ExactPackage, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 import { LockResolutions } from './install/installer.js';
@@ -9,6 +9,12 @@ import { Resolver } from "./trace/resolver.js";
 import { IImportMap } from "@jspm/import-map";
 import { Provider } from "./providers/index.js";
 import { JspmError } from "./common/err.js";
+import { analyzeHtml } from "./html/analyze.js";
+import { SemverRange } from 'sver';
+import { Replacer } from "./common/str.js";
+import { getIntegrity } from "./common/integrity.js";
+
+export { analyzeHtml }
 
 export interface GeneratorOptions {
   /**
@@ -403,6 +409,119 @@ export class Generator {
         return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
     }
   }
+  
+  /**
+   * Generate and inject an import map for an HTML file
+   *
+   * Traces the module scripts of the HTML via traceInstall and install
+   * for URL-like specifiers and bare specifiers respectively.
+   * 
+   * Injects the final generated import map returning the injected HTML
+   * 
+   * @param html String
+   * @param injectOptions Injection options
+   * 
+   * Injection options are: `htmlUrl`, `preload`, `integrity`, `whitespace`
+   * and `esModuleShims`. The default is `{ esModuleShims: true, whitespace: true }`.
+   * 
+   * ES Module shims will be resolved to the latest version against the provider
+   * 
+   * Example:
+   * 
+   * ```js
+   *  const outputHtml = await generator.htmlGenerate(`
+   *    <!doctype html>
+   *    <script type="module">import 'react'</script>
+   *  `);
+   * ```
+   * 
+   * which outputs:
+   * 
+   * ```
+   *   <!doctype html>
+   *   <script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js"></script>
+   *   <script type="importmap">
+   *   {...}
+   *   </script>
+   *   <script type="module">import 'react'</script>
+   * ```
+   * 
+   */
+  async htmlGenerate (html: string, {
+    htmlUrl, preload = false, integrity = false, whitespace = true, esModuleShims = true
+  }: {
+    htmlUrl?: string | URL,
+    preload?: boolean,
+    integrity?: boolean,
+    whitespace?: boolean,
+    esModuleShims?: string | boolean
+  } = {}): Promise<string> {
+    if (typeof htmlUrl === 'string')
+      htmlUrl = new URL(htmlUrl);
+    if (integrity)
+      preload = true;
+    const analysis = analyzeHtml(html, htmlUrl);
+    let preloadDeps: string[] = [];
+    // TODO:
+    // extract lockfile from map
+    await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
+      if (isPlain(impt)) {
+        var { staticDeps } = await this.install(impt);
+      }
+      else {
+        var { staticDeps } = await this.traceInstall(impt, analysis.base);
+      }
+      preloadDeps = preloadDeps.concat(staticDeps);
+    }));
+
+    const replacer = new Replacer(html);
+
+    let esms = '';
+    if (esModuleShims) {
+      const esmsPkg = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, this.traceMap.installer.defaultProvider);
+      const esmsUrl = this.traceMap.resolver.pkgToUrl(esmsPkg, this.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
+      esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${integrity ? ` integrity="${await getIntegrity(esmsUrl, this.traceMap.resolver.fetchOpts)}"` : ''}></script>${analysis.map.newlineTab}`;
+    }
+
+    if (esModuleShims !== undefined && analysis.esModuleShims) {
+      replacer.remove(analysis.esModuleShims.start, analysis.esModuleShims.end, true);
+    }
+
+    let preloads = '';
+    if (preload && preloadDeps.length) {
+      let first = true;
+      for (let dep of preloadDeps) {
+        if (first || whitespace)
+          preloads += analysis.map.newlineTab;
+        if (first) first = false;
+        if (integrity) {
+          preloads += `<link rel="modulepreload" href="${dep}" integrity="${await getIntegrity(dep, this.traceMap.resolver.fetchOpts)}" />`;
+        }
+        else {
+          preloads += `<link rel="modulepreload" href="${dep}" />`;
+        }
+      }
+    }
+
+    if (preload !== undefined) {
+      for (const preload of analysis.preloads) {
+        replacer.remove(preload.start, preload.end, true);
+      }
+    }
+
+    replacer.replace(analysis.map.start, analysis.map.end,
+      esms +
+      '<script type="importmap">' +
+      (whitespace ? '\n' : '') +
+      JSON.stringify(this.getMap(), null, whitespace ? 2 : 0) +
+      (whitespace ? analysis.map.newlineTab : '') +
+      '</script>' +
+      preloads +
+      (analysis.map.newScript ? analysis.map.newlineTab : '')
+    );
+
+    return replacer.source;
+  }
 
   /**
    * Install a package target into the import map, including all its dependency resolutions via tracing.
@@ -519,6 +638,13 @@ export class Generator {
     map.sort();
     return map.toJSON();
   }
+}
+
+export interface HtmlInjector {
+  setMap: (map: any) => void;
+  clearPreloads: () => void;
+  
+  toString: () => string;
 }
 
 export interface LookupOptions {

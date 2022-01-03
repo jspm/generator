@@ -17,7 +17,7 @@ npm install @jspm/generator
 
 `@jspm/generator` only ships as an ES module, so to use it in Node.js add `"type": "module"` to your package.json file or write an `.mjs` to load it.
 
-### Generating for JSPM CDN
+### Generating Import Maps
 
 By default the generator generates import maps against the JSPM CDN by treating the `defaultProvider: 'jspm'` option. This can be configured to other CDNs or sources including local `nodemodules`, see the next section on how to achieve this.
 
@@ -67,7 +67,49 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
  */
 ```
 
-### Generating with node_modules
+### Generating HTML
+
+Instead of inputting modules and outputting an import map, the generator can directly trace
+and inject into HTML using the `htmlGenerate` method.
+
+All module scripts in the provided HTML string will be analyzed, traced, and the import map
+generated and then injected to replace the existing import map, or to add a new import map
+into the HTML provided.
+
+generate.mjs
+```js
+import { Generator } from '@jspm/generator';
+
+const generator = new Generator({
+  mapUrl: import.meta.url,
+  env: ['production', 'browser', 'module'],
+});
+
+const outHtml = await generator.htmlGenerate(`
+  <!doctype html>
+  <script type="module">import 'react'</script>
+`, { esModuleShims: true });
+
+/*
+ * Outputs the HTML:
+ *
+ * <!doctype html>
+ * <script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js"></script>
+ * <script type="importmap">
+ * {...}
+ * </script>
+ * <script type="module">import 'react'</script>
+ * 
+```
+
+The second HTML Generation options include:
+
+* `preload`: Boolean, injects `<link rel="modulepreload">` preload tags
+* `whitespace`: Boolean, set to `false` to use minified JSON and preload injections
+* `esModuleShims`: Boolean, set to a string to use a custom ES Module Shims path. Set to `false` to remove ES Module Shims
+* `integrity`: Boolean, set to `true` to inject integrity attributes. Works with `preload` to inline integrity for static modules.
+
+### Generating node_modules
 
 To generate an import map for a local application linked against local `node_modules` (and provided that all packages are ES modules), this can be done via:
 
