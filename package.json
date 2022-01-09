@@ -2,7 +2,7 @@
   "name": "@jspm/generator",
   "description": "Package Import Map Generation Tool",
   "license": "MIT",
-  "version": "1.0.0-beta.21",
+  "version": "1.0.0-beta.22",
   "types": "lib/generator.d.ts",
   "scripts": {
     "tsc": "tsc -p .",
