@@ -1,6 +1,6 @@
 import { parseStyled } from '../common/json.js';
 import { SourceStyle } from '../common/source-style.js';
-import { baseUrl } from '../common/url.js';
+import { baseUrl, isPlain } from '../common/url.js';
 import { ParsedAttribute, ParsedTag, parseHtml } from './lexer.js';
 // @ts-ignore
 import { parse } from 'es-module-lexer/js';
@@ -83,7 +83,7 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
             if (esmsSrcRegEx.test(src))
               analysis.esModuleShims = { start: tag.start, end: tag.end, attrs: toHtmlAttrs(source, tag.attributes) };
             else
-              analysis.staticImports.add(src);
+              analysis.staticImports.add(isPlain(src) ? './' + src : src);
           }
           else {
             const [imports] = parse(source.slice(tag.innerStart, tag.innerEnd)) || [];

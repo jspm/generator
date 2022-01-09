@@ -64,7 +64,7 @@ async function ensureBuild (pkg: ExactPackage, fetchOpts: any) {
 
   // no package.json AND no build error -> post a build request
   // once the build request has been posted, try polling for up to 2 mins
-  const buildRes = await fetch(`${apiUrl}/build/${pkg.name}@${pkg.version}`);
+  const buildRes = await fetch(`${apiUrl}build/${pkg.name}@${pkg.version}`, fetchOpts);
   if (!buildRes.ok && buildRes.status !== 403) {
     const err = (await buildRes.json()).error;
     throw new JspmError(`Unable to request the JSPM API for a build of ${pkgStr}, with error: ${err}.`);
