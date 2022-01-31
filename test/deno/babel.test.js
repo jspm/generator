@@ -2,8 +2,7 @@ import { Generator } from '@jspm/generator';
 import { denoExec } from '#test/deno';
 
 const generator = new Generator({
-  env: ['node', 'deno'],
-  stdlib: '@jspm/core@2.0.0-beta.10' // Pending https://github.com/babel/babel/issues/13863
+  env: ['node', 'deno']
 });
 
 await generator.install('@babel/core@7.15.0');
