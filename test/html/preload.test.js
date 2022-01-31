@@ -1,10 +1,14 @@
 import { Generator } from '@jspm/generator';
 import assert from 'assert';
+import { SemverRange } from 'sver';
 
 const generator = new Generator({
   mapUrl: new URL('./local/page.html', import.meta.url),
   env: ['production', 'browser']
 });
+
+const esmsPkg = await generator.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, generator.traceMap.installer.defaultProvider);
+const esmsUrl = generator.traceMap.resolver.pkgToUrl(esmsPkg, generator.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
 
 assert.strictEqual(await generator.htmlGenerate(`
 <!doctype html>
@@ -13,7 +17,7 @@ assert.strictEqual(await generator.htmlGenerate(`
 </script>
 `, { preload: true, integrity: true }), '\n' +
 '<!doctype html>\n' +
-'<script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js" crossorigin="anonymous" integrity="sha384-KqbnIVokesGNC0MknInEbFCUdjO3a1mNBxgfPZ+6SqOcQtK7/7dTQOZX0l6mpeUA"></script>\n' +     
+`<script async src="${esmsUrl}" crossorigin="anonymous" integrity="sha384-KqbnIVokesGNC0MknInEbFCUdjO3a1mNBxgfPZ+6SqOcQtK7/7dTQOZX0l6mpeUA"></script>\n` +
 '<script type="importmap">\n' +
 '{\n' +
 '  "imports": {\n' +
@@ -35,7 +39,7 @@ assert.strictEqual(await generator.htmlGenerate(`
 // Idempotency
 assert.strictEqual(await generator.htmlGenerate('\n' +
 '<!doctype html>\n' +
-'<script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js"></script>\n' +     
+`<script async src="${esmsUrl}"></script>\n` +
 '<script type="importmap">\n' +
 '{\n' +
 '  "imports": {\n' +
@@ -55,7 +59,7 @@ assert.strictEqual(await generator.htmlGenerate('\n' +
 "  import 'react';\n" +
 '</script>\n', { preload: true, integrity: true, whitespace: false }), '\n' +
 '<!doctype html>\n' +
-'<script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js" crossorigin="anonymous" integrity="sha384-KqbnIVokesGNC0MknInEbFCUdjO3a1mNBxgfPZ+6SqOcQtK7/7dTQOZX0l6mpeUA"></script>\n' +     
+`<script async src="${esmsUrl}" crossorigin="anonymous" integrity="sha384-KqbnIVokesGNC0MknInEbFCUdjO3a1mNBxgfPZ+6SqOcQtK7/7dTQOZX0l6mpeUA"></script>\n` +
 '<script type="importmap">{"imports":{"react":"https://ga.jspm.io/npm:react@17.0.2/index.js"},"scopes":{"https://ga.jspm.io/":{"object-assign":"https://ga.jspm.io/npm:object-assign@4.1.1/index.js"}}}</script>\n' +
 '<link rel="modulepreload" href="https://ga.jspm.io/npm:react@17.0.2/index.js" integrity="sha384-XapV4O3iObT3IDFIFYCLWwO8NSi+SIOMlAWsO3n8+HsPNzAitpl3cdFHbe+msAQY" /><link rel="modulepreload" href="https://ga.jspm.io/npm:object-assign@4.1.1/index.js" integrity="sha384-iQp1zoaqIhfUYyYkz3UNk1QeFfmBGgt1Ojq0kZD5Prql1g7fgJVzVgsjDoR65lv8" />\n' +
 '<script type="module">\n' +
