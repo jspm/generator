@@ -12,7 +12,6 @@ function replaceAll (str, pattern, replacement) {
 
 const generator = new Generator({
   mapUrl: 'about:blank',
-  stdlib: new URL('../../jspm-core/', import.meta.url),
   env: ['production', 'node', 'deno', 'module', 'test']
 });
 
@@ -30,7 +29,6 @@ await denoExec(generator.getMap(), `
 
   const generator = new Generator({
     mapUrl: 'about:blank',
-    stdlib: new URL('../../jspm-core/', ${JSON.stringify(import.meta.url)}),
     env: ['production', 'node', 'deno', 'module', 'test']
   });
 

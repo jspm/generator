@@ -1,10 +1,14 @@
 import { Generator } from '@jspm/generator';
 import assert from 'assert';
+import { SemverRange } from 'sver';
 
 const generator = new Generator({
   mapUrl: new URL('./local/page.html', import.meta.url),
   env: ['production', 'browser']
 });
+
+const esmsPkg = await generator.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, generator.traceMap.installer.defaultProvider);
+const esmsUrl = generator.traceMap.resolver.pkgToUrl(esmsPkg, generator.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
 
 assert.strictEqual(await generator.htmlGenerate(`
 <!doctype html>
@@ -13,7 +17,7 @@ assert.strictEqual(await generator.htmlGenerate(`
 </script>
 `), '\n' +
 '<!doctype html>\n' +
-'<script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js" crossorigin="anonymous"></script>\n' +     
+`<script async src="${esmsUrl}" crossorigin="anonymous"></script>\n` +
 '<script type="importmap">\n' +
 '{\n' +
 '  "imports": {\n' +
@@ -33,7 +37,7 @@ assert.strictEqual(await generator.htmlGenerate(`
 // Idempotency
 assert.strictEqual(await generator.htmlGenerate('\n' +
 '<!doctype html>\n' +
-'<script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js"></script>\n' +     
+`<script async src="${esmsUrl}"></script>\n` +
 '<script type="importmap">\n' +
 '{\n' +
 '  "imports": {\n' +
@@ -50,7 +54,7 @@ assert.strictEqual(await generator.htmlGenerate('\n' +
 "  import 'react';\n" +
 '</script>\n'), '\n' +
 '<!doctype html>\n' +
-'<script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js" crossorigin="anonymous"></script>\n' +     
+`<script async src="${esmsUrl}" crossorigin="anonymous"></script>\n` +
 '<script type="importmap">\n' +
 '{\n' +
 '  "imports": {\n' +

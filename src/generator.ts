@@ -323,11 +323,11 @@ export class Generator {
   }: GeneratorOptions = {}) {
     let fetchOpts = undefined;
     if (cache === 'offline')
-      fetchOpts = { cache: 'force-cache' };
+      fetchOpts = { cache: 'force-cache', headers: { 'Accept-Encoding': 'gzip, br' } };
     else if (!cache)
-      fetchOpts = { cache: 'no-store' };
+      fetchOpts = { cache: 'no-store', headers: { 'Accept-Encoding': 'gzip, br' } };
     else
-      fetchOpts = {};
+      fetchOpts = { headers: { 'Accept-Encoding': 'gzip, br' } };
     if (ipfsAPI)
       fetchOpts.ipfsAPI = ipfsAPI;
     const { log, logStream } = createLogger();

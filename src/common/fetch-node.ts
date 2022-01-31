@@ -22,11 +22,6 @@ else if (process.platform === 'win32')
 else
   cacheDir = path.join(process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache'), 'jspm');
 
-
-async function getIPFS () {
-  return import('./ipfs.js');
-}
-
 export function clearCache () {
   rimraf.sync(path.join(cacheDir, 'fetch-cache'));
 };
