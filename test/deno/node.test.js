@@ -3,7 +3,6 @@ import { denoExec } from '#test/deno';
 
 const generator = new Generator({
   mapUrl: 'about:blank',
-  stdlib: new URL('../../jspm-core/', import.meta.url),
   env: ['production', 'node', 'deno', 'module']
 });
 
