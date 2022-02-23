@@ -21,13 +21,14 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
+      - name: Use Chomp
+        run: cargo install chompbuild
       - name: Setup Firefox ${{ matrix.firefox }}
         uses: browser-actions/setup-firefox@latest
         with:
           firefox-version: ${{ matrix.firefox }}
-      - run: npm install
-      - run: npm run build
-      - run: npm run test:browser
+      - run: chomp build
+      - run: chomp test:browser
         env:
           CI_BROWSER: /opt/hostedtoolcache/firefox/${{ matrix.firefox }}/x64/firefox
           CI_BROWSER_FLAGS: -headless
@@ -50,18 +51,19 @@ jobs:
     - uses: denoland/setup-deno@v1
       with:
         deno-version: ${{ matrix.deno }}
-    - name: Install IPFS
-      run: |
-        wget https://dist.ipfs.io/go-ipfs/v0.10.0/go-ipfs_v0.10.0_linux-amd64.tar.gz
-        tar -xvzf go-ipfs_v0.10.0_linux-amd64.tar.gz
-        cd go-ipfs
-        sudo bash install.sh
-        ipfs init
-        ipfs daemon &
-
-    - run: npm install
+    - name: Use Chomp
+      run: cargo install chompbuild
+    # - name: Install IPFS
+    #   run: |
+    #     wget https://dist.ipfs.io/go-ipfs/v0.10.0/go-ipfs_v0.10.0_linux-amd64.tar.gz
+    #     tar -xvzf go-ipfs_v0.10.0_linux-amd64.tar.gz
+    #     cd go-ipfs
+    #     sudo bash install.sh
+    #     ipfs init
+    #     ipfs daemon &
+    - run: chomp test
+      env:
+        DENO_BIN: /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64/deno
     - run: npm run build
     - run: npm run typedoc
     - run: IPFS_API=/ip4/127.0.0.1/tcp/5001 npm run test:node
-      env:
-        DENO_BIN: /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64/deno

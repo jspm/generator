@@ -1,0 +1,89 @@
+version = 0.1
+
+extensions = ['../chomp/chomp-extensions/swc.js', '../chomp/chomp-extensions/rollup.js']
+
+default-task = 'test'
+
+[[task]]
+target = 'docs'
+deps = ['src/**/*.ts', 'npm:install']
+run = 'typedoc src/generator.ts'
+
+[[task]]
+name = 'build'
+target = 'dist'
+deps = ['lib/**/*.js']
+template = 'rollup'
+[task.template-options]
+entries = [
+    'lib/generator.js',
+    'lib/common/fetch-vscode.js',
+    'lib/common/fetch-deno.js',
+    'lib/common/fetch-node.js',
+    'lib/common/fetch-native.js'
+]
+
+[[task]]
+target = 'lib/#.js'
+deps = ['src/#.ts', 'npm:install']
+template = 'swc'
+
+[[task]]
+name = 'test'
+serial = true
+deps = [
+    'test:node',
+    'test:browser',
+]
+
+[[task]]
+name = 'test:#'
+serial = true
+deps = ['test/#.test.js', 'lib/**/*.js']
+display = 'dot'
+stdio = 'stderr-only'
+run = 'node -C source $DEP'
+
+[[task]]
+name = 'test:browser'
+deps = ['lib/**/*.js']
+run = 'node test/server.mjs'
+
+[[task]]
+name = 'test:watch'
+run = 'node test/server.mjs'
+
+[[task]]
+name = 'cache-clear'
+engine = 'node'
+run = '''
+    import { clearCache } from '@jspm/generator';
+    clearCache();
+'''
+
+[[task]]
+name = 'self-generate'
+engine = 'node'
+run = '''
+    import { Generator } from '@jspm/generator';
+    import { readFile } from 'fs/promises';
+
+    const noTs = !process.env.TS;
+
+    const generator = new Generator({
+    mapUrl: 'about:blank',
+    inputMap: noTs ? {
+        imports: {
+        '@babel/core': 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.10/nodelibs/@empty.js',
+        '@babel/preset-typescript': 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.10/nodelibs/@empty.js'
+        }
+    } : {}
+    });
+
+    const { version } = JSON.parse(await readFile(new URL('package.json', import.meta.url)));
+
+    await generator.install(`@jspm/generator@${version}`);
+
+    const json = generator.getMap();
+    console.log(JSON.stringify(json, null, 2));
+'''
