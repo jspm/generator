@@ -1,13 +1,12 @@
 // @ts-ignore
 import sver from 'sver';
-const { Semver, SemverRange } = sver;
+const { Semver } = sver;
 import { Log } from '../common/log.js';
 import { Resolver } from "../trace/resolver.js";
 import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
 import { isURL, importedFrom } from "../common/url.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { nodeBuiltinSet } from '../providers/node.js';
-import { Provider } from '../providers/index.js';
 import { parseUrlPkg } from '../providers/jspm.js';
 
 export interface PackageProvider {

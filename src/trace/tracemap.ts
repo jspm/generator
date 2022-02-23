@@ -1,4 +1,4 @@
-import { InstallOptions, InstallTarget, PackageProvider, setResolution } from "../install/installer.js";
+import { type InstallOptions, InstallTarget, PackageProvider } from "../install/installer.js";
 import { importedFrom, isPlain } from "../common/url.js";
 import { Installer } from "../install/installer.js";
 import { JspmError, throwInternalError } from "../common/err.js";

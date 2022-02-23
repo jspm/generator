@@ -1,12 +1,15 @@
 version = 0.1
 
-extensions = ['chomp@0.1:swc', 'chomp@0.1:rollup']
+extensions = ['../chomp/chomp-extensions/swc.js', '../chomp/chomp-extensions/rollup.js']
 
 default-task = 'test'
 
+[template-options.npm]
+auto-install = true
+
 [[task]]
 target = 'docs'
-deps = ['src/**/*.ts', 'npm:install']
+deps = ['src/**/*.ts']
 run = 'typedoc src/generator.ts'
 
 [[task]]
@@ -35,7 +38,7 @@ run = '''
 
 [[task]]
 target = 'lib/#.js'
-deps = ['src/#.ts', 'npm:install']
+deps = ['src/#.ts']
 template = 'swc'
 
 [[task]]
