@@ -6,7 +6,7 @@ default-task = 'test'
 
 [[task]]
 target = 'docs'
-deps = ['src/**/*.ts']
+deps = ['src/**/*.ts', 'npm:install']
 run = 'typedoc src/generator.ts'
 
 [[task]]
