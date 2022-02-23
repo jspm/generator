@@ -24,6 +24,16 @@ entries = [
 ]
 
 [[task]]
+target = 'lib/version.js'
+dep = 'package.json'
+engine = 'node'
+run = '''
+    import { readFileSync, writeFileSync } from 'fs';
+    const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+    writeFileSync('lib/version.js', `export default ${JSON.stringify(version)}`);
+'''
+
+[[task]]
 target = 'lib/#.js'
 deps = ['src/#.ts', 'npm:install']
 template = 'swc'
@@ -32,12 +42,12 @@ template = 'swc'
 name = 'test'
 serial = true
 deps = [
-    'test:node',
+    'unit:',
     'test:browser',
 ]
 
 [[task]]
-name = 'test:#'
+name = 'unit:#'
 serial = true
 deps = ['test/#.test.js', 'lib/**/*.js']
 display = 'dot'
