@@ -5,11 +5,8 @@ extensions = ['chomp@0.1:swc', 'chomp@0.1:rollup']
 default-task = 'test'
 
 [[task]]
-name = 'install'
-
-[[task]]
 target = 'docs'
-deps = ['src/**/*.ts', 'install']
+deps = ['src/**/*.ts']
 run = 'typedoc src/generator.ts'
 
 [[task]]
@@ -28,7 +25,7 @@ entries = [
 
 [[task]]
 target = 'lib/#.js'
-deps = ['src/#.ts', 'install']
+deps = ['src/#.ts', 'npm:install']
 template = 'swc'
 
 [[task]]
