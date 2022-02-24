@@ -56,7 +56,7 @@ run = 'node -C source $DEP'
 
 [[task]]
 name = 'test:browser'
-deps = ['lib/**/*.js']
+deps = ['lib/**/*.js', 'dist/*']
 run = 'node test/server.mjs'
 
 [[task]]

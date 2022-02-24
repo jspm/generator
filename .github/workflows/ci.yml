@@ -27,7 +27,6 @@ jobs:
         uses: browser-actions/setup-firefox@latest
         with:
           firefox-version: ${{ matrix.firefox }}
-      - run: chomp build
       - run: chomp test:browser
         env:
           CI_BROWSER: /opt/hostedtoolcache/firefox/${{ matrix.firefox }}/x64/firefox
@@ -64,6 +63,4 @@ jobs:
     - run: chomp test
       env:
         DENO_BIN: /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64/deno
-    - run: npm run build
-    - run: npm run typedoc
-    - run: IPFS_API=/ip4/127.0.0.1/tcp/5001 npm run test:node
+    # - run: IPFS_API=/ip4/127.0.0.1/tcp/5001 npm run test:node
