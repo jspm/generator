@@ -21,8 +21,8 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
-      - name: Use Chomp
-        run: cargo install chompbuild
+      - name: Setup Chomp
+        uses: guybedford/chomp-action@v1
       - name: Setup Firefox ${{ matrix.firefox }}
         uses: browser-actions/setup-firefox@latest
         with:
@@ -50,8 +50,8 @@ jobs:
     - uses: denoland/setup-deno@v1
       with:
         deno-version: ${{ matrix.deno }}
-    - name: Use Chomp
-      run: cargo install chompbuild
+    - name: Setup Chomp
+      uses: guybedford/chomp-action@v1
     # - name: Install IPFS
     #   run: |
     #     wget https://dist.ipfs.io/go-ipfs/v0.10.0/go-ipfs_v0.10.0_linux-amd64.tar.gz
