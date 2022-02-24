@@ -16,18 +16,17 @@ export function createEsmAnalysis (imports: any[], source: string, url: string):
   const dynamicDeps: string[] = [];
   for (const impt of imports) {
     if (impt.d === -1) {
-      deps.push(source.slice(impt.s, impt.e));
+      deps.push(impt.n);
       continue;
     }
     // dynamic import -> deoptimize trace all dependencies (and all their exports)
     if (impt.d >= 0) {
-      const dynExpression = source.slice(impt.s, impt.e);
-      if (dynExpression.startsWith('"') || dynExpression.startsWith('\'')) {
+      if (impt.n) {
         try {
-          dynamicDeps.push(JSON.parse('"' + dynExpression.slice(1, -1) + '"'));
+          dynamicDeps.push(impt.n);
         }
         catch (e) {
-          console.warn('TODO: Dynamic import custom expression tracing.');
+          console.warn(`TODO: Dynamic import custom expression tracing in ${url} for:\n\n${source.slice(impt.ss, impt.se)}\n`);
         }
       }
     }

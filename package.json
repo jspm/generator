@@ -4,19 +4,6 @@
   "license": "MIT",
   "version": "1.0.0-beta.22",
   "types": "lib/generator.d.ts",
-  "scripts": {
-    "tsc": "tsc -p .",
-    "tsc:watch": "tsc -p . --watch",
-    "typedoc": "typedoc src/generator.ts",
-    "rollup": "rollup -c",
-    "build": "npm run tsc ; npm run rollup",
-    "cache-clear": "node cache-clear.js",
-    "self-generate": "node self-generate.js",
-    "test": "npm run test:node ; npm run test:browser",
-    "test:node": "node -C source test/test.js",
-    "test:browser": "node test/server.mjs",
-    "test:watch": "cross-env WATCH_MODE=1 node test/server.mjs"
-  },
   "type": "module",
   "imports": {
     "#fetch": {
@@ -46,13 +33,15 @@
     "@babel/preset-typescript": "^7.15.0",
     "@jspm/core": "^2.0.0-beta.8",
     "@jspm/import-map": "^0.3.1",
-    "es-module-lexer": "^0.9.3",
+    "es-module-lexer": "^0.10.0",
     "ipfs-client": "^0.7.1",
     "make-fetch-happen": "^8.0.3",
     "sver": "^1.8.3",
     "typescript": "^4.3.5"
   },
   "devDependencies": {
+    "@swc/cli": "^0.1.55",
+    "@swc/core": "^1.2.144",
     "chalk": "^4.1.1",
     "cross-env": "^7.0.2",
     "kleur": "^4.1.4",

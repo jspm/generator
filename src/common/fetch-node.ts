@@ -1,4 +1,5 @@
-import { version } from '../version.js';
+// @ts-ignore
+import version from '../version.js';
 // @ts-ignore
 import path from 'path';
 // @ts-ignore
