@@ -49,7 +49,7 @@ deps = [
 [[task]]
 name = 'unit:#'
 serial = true
-deps = ['test/#.test.js', 'lib/**/*.js']
+deps = ['test/#.test.js', 'lib/**/*.js', 'dist/*']
 display = 'dot'
 stdio = 'stderr-only'
 run = 'node -C source $DEP'
