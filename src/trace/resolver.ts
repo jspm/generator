@@ -250,7 +250,10 @@ export class Resolver {
             if (target === false)
               throw new Error(`TODO: Empty browser map for ${subpath} in ${url}`);
             if (!target.startsWith('./'))
-              throw new Error(`TODO: External browser map for ${subpath} to ${target} in ${url}`); 
+              throw new Error(`TODO: External browser map for ${subpath} to ${target} in ${url}`);
+            // for browser mappings to the same module, avoid a loop
+            if (pkgUrl + target.slice(2) === url)
+              return url;
             return await this.finalizeResolve(pkgUrl + target.slice(2), parentIsCjs, env, installer, pkgUrl);
           }
         }
