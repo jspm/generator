@@ -37,6 +37,8 @@ run = '''
 target = 'lib/#.js'
 deps = ['src/#.ts']
 template = 'swc'
+[task.template-options.config]
+inlineSourcesContent = false
 
 [[task]]
 name = 'test'
