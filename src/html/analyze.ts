@@ -80,10 +80,13 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
         else if (type === 'module') {
           const src = getAttr(source, tag, 'src');
           if (src) {
-            if (esmsSrcRegEx.test(src))
+            if (esmsSrcRegEx.test(src)) {
               analysis.esModuleShims = { start: tag.start, end: tag.end, attrs: toHtmlAttrs(source, tag.attributes) };
-            else
+            }
+            else {
               analysis.staticImports.add(isPlain(src) ? './' + src : src);
+              analysis.modules.push({ start: tag.start, end: tag.end, attrs: toHtmlAttrs(source, tag.attributes) });
+            }
           }
           else {
             const [imports] = parse(source.slice(tag.innerStart, tag.innerEnd)) || [];
@@ -96,10 +99,9 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
         else if (!type || type === 'javascript') {
           const src = getAttr(source, tag, 'src');
           if (src) {
-            if (esmsSrcRegEx.test(src))
+            if (esmsSrcRegEx.test(src)) {
               analysis.esModuleShims = { start: tag.start, end: tag.end, attrs: toHtmlAttrs(source, tag.attributes) };
-            else
-              analysis.staticImports.add(src);
+            }
           }
           else {
             const [imports] = parse(source.slice(tag.innerStart, tag.innerEnd)) || [];

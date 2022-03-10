@@ -1,6 +1,6 @@
 import { IImportMap } from "@jspm/import-map";
 import { throwInternalError } from "../common/err.js";
-import { relativeUrl } from "../common/url.js";
+import { isPlain, relativeUrl, resolveUrl } from "../common/url.js";
 import { Resolver } from "../trace/resolver.js";
 
 export interface LockResolutions {
@@ -65,14 +65,6 @@ export function setResolution (resolutions: LockResolutions, name: string, pkgUr
   return true;
 }
 
-function resolveUrl (url: string, mapUrl: URL, rootUrl: URL) {
-  if (url.startsWith('//'))
-    return new URL(url, rootUrl);
-  if (url.startsWith('/'))
-    return new URL(url.slice(1), rootUrl);
-  return new URL(url, mapUrl);
-}
-
 export async function extractLockAndMap (map: IImportMap, preloadUrls: string[], mapUrl: URL, rootUrl: URL, resolver: Resolver): Promise<{ lock: LockResolutions, maps: IImportMap }> {
   const lock: LockResolutions = {};
   const maps: IImportMap = { imports: {}, scopes: {} };
@@ -80,12 +72,13 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
   for (const key of Object.keys(map.imports || {})) {
     const targetUrl = resolveUrl(map.imports[key], mapUrl, rootUrl).href;
     const providerPkg = resolver.parseUrlPkg(targetUrl);
+    const resolvedKey = isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl).href;
     if (providerPkg) {
       const pkgUrl = await resolver.getPackageBase(mapUrl.href);
-      setResolution(lock, key, pkgUrl, resolver.pkgToUrl(providerPkg.pkg, providerPkg.source), '');
+      setResolution(lock, resolvedKey, pkgUrl, resolver.pkgToUrl(providerPkg.pkg, providerPkg.source), '');
     }
     else {
-      maps.imports[key] = targetUrl;
+      maps.imports[resolvedKey] = targetUrl;
     }
   }
 

@@ -98,6 +98,7 @@ export class Resolver {
           case 200:
           case 304:
             break;
+          case 400:
           case 401:
           case 403:
           case 404:
