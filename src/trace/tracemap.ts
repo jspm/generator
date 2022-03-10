@@ -312,7 +312,7 @@ export default class TraceMap {
     }
 
     // @ts-ignore
-    const installed = this.opts.freeze ? this.installer?.installs[parentPkgUrl]?.[pkgName] : await this.installer?.install(pkgName, parentPkgUrl, subpath === './' ? false : true, parentUrl.href);
+    const installed = this.installer?.installs[parentPkgUrl]?.[pkgName] || !this.opts.freeze && await this.installer?.install(pkgName, parentPkgUrl, subpath === './' ? false : true, parentUrl.href);
     if (installed) {
       let [pkgUrl, subpathBase] = installed.split('|');
       if (subpathBase && !pkgUrl.endsWith('/'))

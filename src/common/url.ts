@@ -36,7 +36,9 @@ function matchesRoot (url: URL, baseUrl: URL) {
 
 export function relativeUrl (url: URL, baseUrl: URL, absolute = false) {
   const href = url.href;
-  const baseUrlHref = baseUrl.href;
+  let baseUrlHref = baseUrl.href;
+  if (!baseUrlHref.endsWith('/'))
+    baseUrlHref += '/';
   if (href.startsWith(baseUrlHref))
     return (absolute ? '/' : './') + href.slice(baseUrlHref.length);
   if (!matchesRoot(url, baseUrl))
