@@ -1,4 +1,4 @@
-import { baseUrl as _baseUrl, isPlain, relativeUrl } from "./common/url.js";
+import { baseUrl as _baseUrl, isPlain, relativeUrl, resolveUrl } from "./common/url.js";
 import { ExactPackage, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 // @ts-ignore
@@ -490,7 +490,7 @@ export class Generator {
     const analysis = analyzeHtml(html, htmlUrl);
     let preloadDeps: string[] = [];
     const preloadUrls = analysis.preloads.map(preload => preload.attrs.href?.value).filter(x => x);
-    const { maps, lock } = await extractLockAndMap(analysis.map.json || {} as IImportMap, preloadUrls, htmlUrl || this.mapUrl, this.rootUrl, this.traceMap.resolver);
+    const { maps, lock } = await extractLockAndMap(analysis.map.json || {} as IImportMap, preloadUrls, htmlUrl || this.mapUrl, this.rootUrl || this.baseUrl, this.traceMap.resolver);
     for (const pkg of Object.keys(lock)) {
       if (this.traceMap.installer.installs[pkg])
         Object.assign(this.traceMap.installer.installs[pkg] = {}, lock[pkg]);
@@ -500,7 +500,8 @@ export class Generator {
     this.traceMap.map = new ImportMap(this.mapUrl).extend(maps);
     await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
       if (isPlain(impt)) {
-        var { staticDeps } = await this.install(impt);
+        const pkgBaseUrl = await this.traceMap.resolver.getPackageBase(this.mapUrl.href);
+        var { staticDeps } = await this.traceInstall(impt, pkgBaseUrl);
       }
       else {
         var { staticDeps } = await this.traceInstall(impt, analysis.base);
@@ -521,10 +522,14 @@ export class Generator {
       replacer.remove(analysis.esModuleShims.start, analysis.esModuleShims.end, true);
     }
 
+    for (const preload of analysis.preloads) {
+      replacer.remove(preload.start, preload.end, true);
+    }
+
     let preloads = '';
     if (preload && preloadDeps.length) {
       let first = true;
-      for (let dep of preloadDeps) {
+      for (let dep of preloadDeps.sort()) {
         if (first || whitespace)
           preloads += analysis.map.newlineTab;
         if (first) first = false;
@@ -537,9 +542,16 @@ export class Generator {
       }
     }
 
-    if (preload !== undefined) {
-      for (const preload of analysis.preloads) {
-        replacer.remove(preload.start, preload.end, true);
+    // when applying integrity, all existing script tags have their integrity updated
+    if (integrity) {
+      for (const module of analysis.modules) {
+        if (!module.attrs.src)
+          continue;
+        if (module.attrs.integrity) {
+          replacer.remove(module.attrs.integrity.start - (replacer.source[replacer.idx(module.attrs.integrity.start - 1)] === ' ' ? 1 : 0), module.attrs.integrity.end + 1);
+        }
+        const lastAttr = Object.keys(module.attrs).filter(attr => attr !== 'integrity').sort((a, b) => module.attrs[a].end > module.attrs[b].end ? -1 : 1)[0];
+        replacer.replace(module.attrs[lastAttr].end + 1, module.attrs[lastAttr].end + 1, ` integrity="${await getIntegrity(resolveUrl(module.attrs.src.value, this.mapUrl, this.rootUrl).href, this.traceMap.resolver.fetchOpts)}"`)
       }
     }
 

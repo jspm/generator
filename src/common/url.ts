@@ -25,6 +25,14 @@ else if (typeof document as any !== 'undefined') {
     baseUrl = new URL('../', new URL(location.href));
 }
 
+export function resolveUrl (url: string, mapUrl: URL, rootUrl: URL) {
+  if (url.startsWith('//'))
+    return new URL(url, rootUrl);
+  if (url.startsWith('/'))
+    return new URL(url.slice(1), rootUrl);
+  return new URL(url, mapUrl);
+}
+
 export function importedFrom (parentUrl?: string | URL) {
   if (!parentUrl) return '';
   return ` imported from ${parentUrl}`;
