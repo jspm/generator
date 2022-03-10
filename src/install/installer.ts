@@ -8,6 +8,7 @@ import { isURL, importedFrom } from "../common/url.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { nodeBuiltinSet } from '../providers/node.js';
 import { parseUrlPkg } from '../providers/jspm.js';
+import { getResolution, LockFile, LockResolutions, pruneResolutions, setResolution, stringResolution } from './lock.js';
 
 export interface PackageProvider {
   provider: string;
@@ -26,15 +27,6 @@ export interface PackageInstallRange {
 }
 
 export type InstallTarget = PackageTarget | URL;
-
-export interface LockFile {
-  exists: boolean;
-  resolutions: LockResolutions;
-}
-
-export interface LockResolutions {
-  [pkgUrl: string]: Record<string, string>;
-}
 
 export interface InstalledRanges {
   [exactName: string]: PackageInstallRange[];
@@ -56,7 +48,7 @@ export interface InstallOptions {
   // default base for relative installs
   baseUrl: URL;
   // create a lockfile if it does not exist
-  lock?: LockFile;
+  lock?: LockResolutions;
   // do not modify the lockfile
   freeze?: boolean;
   // force use latest versions for everything we touch
@@ -85,40 +77,6 @@ export interface InstallOptions {
   providers?: Record<string, string>;
 }
 
-function pruneResolutions (resolutions: LockResolutions, to: [string, string][]): LockResolutions {
-  const newResolutions: LockResolutions = {};
-  for (const [name, parent] of to) {
-    const resolution = resolutions[parent][name];
-    newResolutions[parent] = newResolutions[parent] || {};
-    newResolutions[parent][name] = resolution;
-  }
-  return newResolutions;
-}
-
-function getResolution (resolutions: LockResolutions, name: string, pkgUrl: string): string | undefined {
-  if (!pkgUrl.endsWith('/'))
-    throwInternalError(pkgUrl);
-  resolutions[pkgUrl] = resolutions[pkgUrl] || {};
-  return resolutions[pkgUrl][name];
-}
-
-function stringResolution (resolution: string, subpath: string | null) {
-  if (!resolution.endsWith('/'))
-    throwInternalError(resolution);
-  return subpath ? resolution.slice(0, -1) + '|' + subpath : resolution;
-}
-
-export function setResolution (resolutions: LockResolutions, name: string, pkgUrl: string, resolution: string, subpath: string | null) {
-  if (!pkgUrl.endsWith('/'))
-    throwInternalError(pkgUrl);
-  resolutions[pkgUrl] = resolutions[pkgUrl] || {};
-  const strResolution = stringResolution(resolution, subpath);
-  if (resolutions[pkgUrl][name] === strResolution)
-    return false;
-  resolutions[pkgUrl][name] = strResolution;
-  return true;
-}
-
 export class Installer {
   opts: InstallOptions;
   installedRanges: InstalledRanges = {};
@@ -143,17 +101,14 @@ export class Installer {
     this.resolutions = opts.resolutions || {};
     this.installBaseUrl = baseUrl.href;
     this.opts = opts;
-    let resolutions: LockResolutions = {};
-    if (opts.lock)
-      ({ resolutions, exists: this.hasLock } = opts.lock);
+    this.hasLock = !!opts.lock;
+    this.installs = opts.lock || {};
     if (opts.defaultProvider)
       this.defaultProvider = {
         provider: opts.defaultProvider.split('.')[0],
         layer: opts.defaultProvider.split('.')[1] || 'default'
       };
     this.providers = opts.providers || {};
-
-    this.installs = resolutions;
 
     if (opts.stdlib) {
       if (isURL(opts.stdlib) || opts.stdlib[0] === '.') {

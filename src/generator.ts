@@ -1,18 +1,18 @@
-import { baseUrl as _baseUrl, isPlain } from "./common/url.js";
+import { baseUrl as _baseUrl, isPlain, relativeUrl } from "./common/url.js";
 import { ExactPackage, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
-import { LockResolutions } from './install/installer.js';
 // @ts-ignore
 import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
 import { createLogger, LogStream } from './common/log.js';
 import { Resolver } from "./trace/resolver.js";
-import { IImportMap } from "@jspm/import-map";
+import { IImportMap, ImportMap } from "@jspm/import-map";
 import { Provider } from "./providers/index.js";
 import { JspmError } from "./common/err.js";
 import { analyzeHtml } from "./html/analyze.js";
 import { SemverRange } from 'sver';
 import { Replacer } from "./common/str.js";
 import { getIntegrity } from "./common/integrity.js";
+import { extractLockAndMap, LockResolutions, normalizeLock, resolveLock } from "./install/lock.js";
 
 export { analyzeHtml }
 
@@ -243,6 +243,18 @@ export interface GeneratorOptions {
    * IPFS node.
    */
   ipfsAPI?: string | string[];
+  /**
+   * Lockfile data to use for resolutions
+   */
+  lock?: LockResolutions
+  /**
+   * When using a lockfile, do not modify existing resolutions
+   */
+  freeze?: boolean
+  /**
+   * When using a lockfile, force update touched resolutions to latest
+   */
+  latest?: boolean
 }
 
 export interface ModuleAnalysis {
@@ -319,6 +331,9 @@ export class Generator {
     cache = true,
     stdlib = '@jspm/core',
     ignore = [],
+    lock = {},
+    freeze,
+    latest,
     ipfsAPI
   }: GeneratorOptions = {}) {
     let fetchOpts = undefined;
@@ -360,6 +375,8 @@ export class Generator {
     }
     this.mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl, this.baseUrl) : mapUrl;
     this.rootUrl = typeof rootUrl === 'string' ? new URL(rootUrl, this.baseUrl) : rootUrl || null;
+    if (this.rootUrl && !this.rootUrl.pathname.endsWith('/'))
+      this.rootUrl.pathname += '/';
     if (!this.mapUrl.pathname.endsWith('/')) {
       try {
         this.mapUrl = new URL('./', this.mapUrl);
@@ -368,6 +385,7 @@ export class Generator {
       }
     }
     this.traceMap = new TraceMap(this.mapUrl, {
+      lock,
       baseUrl: this.baseUrl,
       stdlib,
       env,
@@ -375,8 +393,17 @@ export class Generator {
       providers,
       inputMap,
       ignore,
-      resolutions
+      resolutions,
+      freeze,
+      latest
     }, log, resolver);
+  }
+
+  /**
+   * Retrieve the lockfile data from the installer
+   */
+  getLock (): LockResolutions {
+    return normalizeLock(this.traceMap.installer.installs, this.baseUrl);
   }
 
   /**
@@ -462,8 +489,15 @@ export class Generator {
       preload = true;
     const analysis = analyzeHtml(html, htmlUrl);
     let preloadDeps: string[] = [];
-    // TODO:
-    // extract lockfile from map
+    const preloadUrls = analysis.preloads.map(preload => preload.attrs.href?.value).filter(x => x);
+    const { maps, lock } = await extractLockAndMap(analysis.map.json || {} as IImportMap, preloadUrls, htmlUrl || this.mapUrl, this.rootUrl, this.traceMap.resolver);
+    for (const pkg of Object.keys(lock)) {
+      if (this.traceMap.installer.installs[pkg])
+        Object.assign(this.traceMap.installer.installs[pkg] = {}, lock[pkg]);
+      else
+        this.traceMap.installer.installs[pkg] = lock[pkg];
+    }
+    this.traceMap.map = new ImportMap(this.mapUrl).extend(maps);
     await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
       if (isPlain(impt)) {
         var { staticDeps } = await this.install(impt);
@@ -495,10 +529,10 @@ export class Generator {
           preloads += analysis.map.newlineTab;
         if (first) first = false;
         if (integrity) {
-          preloads += `<link rel="modulepreload" href="${dep}" integrity="${await getIntegrity(dep, this.traceMap.resolver.fetchOpts)}" />`;
+          preloads += `<link rel="modulepreload" href="${relativeUrl(new URL(dep), this.rootUrl || this.baseUrl, !!this.rootUrl)}" integrity="${await getIntegrity(dep, this.traceMap.resolver.fetchOpts)}" />`;
         }
         else {
-          preloads += `<link rel="modulepreload" href="${dep}" />`;
+          preloads += `<link rel="modulepreload" href="${relativeUrl(new URL(dep), this.rootUrl || this.baseUrl, !!this.rootUrl)}" />`;
         }
       }
     }

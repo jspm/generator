@@ -39,6 +39,7 @@ deps = ['src/#.ts']
 template = 'swc'
 [task.template-options.config]
 inlineSourcesContent = false
+'jsc.target' = 'es2019'
 
 [[task]]
 name = 'test'
@@ -53,7 +54,6 @@ name = 'unit:#'
 serial = true
 deps = ['test/#.test.js', 'lib/**/*.js', 'dist/*']
 display = 'dot'
-stdio = 'stderr-only'
 run = 'node -C source $DEP'
 
 [[task]]
