@@ -21,7 +21,7 @@ assert.strictEqual(await generator.htmlGenerate(`
 '<script type="importmap">\n' +
 '{\n' +
 '  "imports": {\n' +
-'    "react": "https://ga.jspm.io/npm:react@17.0.2/index.js"\n' +
+'    "react": "https://ga.jspm.io/npm:react@16.14.0/index.js"\n' +
 '  },\n' +
 '  "scopes": {\n' +
 '    "https://ga.jspm.io/": {\n' +

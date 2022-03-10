@@ -241,7 +241,11 @@ export default class TraceMap {
       const resolvedHref = resolvedUrl.href;
       let finalized = await this.resolver.realPath(await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env, this.installer, parentPkgUrl));
       // handle URL mappings
-      finalized = this.map.resolve(resolvedUrl.href, parentUrl, env) as string;
+      const urlResolved = this.map.resolve(finalized, parentUrl, env) as string;
+      // TODO: avoid this hack - perhaps solved by conditional maps
+      if (urlResolved !== finalized && !urlResolved.startsWith('node:')) {
+        finalized = urlResolved;
+      }
       if (finalized !== resolvedHref) {
         this.map.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized, parentPkgUrl);
         resolvedUrl = new URL(finalized);

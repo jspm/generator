@@ -522,6 +522,10 @@ export class Generator {
       replacer.remove(analysis.esModuleShims.start, analysis.esModuleShims.end, true);
     }
 
+    for (const preload of analysis.preloads) {
+      replacer.remove(preload.start, preload.end, true);
+    }
+
     let preloads = '';
     if (preload && preloadDeps.length) {
       let first = true;
@@ -535,12 +539,6 @@ export class Generator {
         else {
           preloads += `<link rel="modulepreload" href="${relativeUrl(new URL(dep), this.rootUrl || this.baseUrl, !!this.rootUrl)}" />`;
         }
-      }
-    }
-
-    if (preload !== undefined) {
-      for (const preload of analysis.preloads) {
-        replacer.remove(preload.start, preload.end, true);
       }
     }
 
