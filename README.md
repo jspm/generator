@@ -94,6 +94,7 @@ const outHtml = await generator.htmlGenerate(`
  * Outputs the HTML:
  *
  * <!doctype html>
+ * <!-- Built with @jspm/generator - https://github.com/jspm/generator -->
  * <script async src="https://ga.jspm.io/npm:es-module-shims@1.4.1/dist/es-module-shims.js"></script>
  * <script type="importmap">
  * {...}
@@ -104,6 +105,7 @@ const outHtml = await generator.htmlGenerate(`
 
 The second HTML Generation options include:
 
+* `comment`: Defaults to `Built with @jspm/generator` comment, set to false or an empty string to remove.
 * `preload`: Boolean, injects `<link rel="modulepreload">` preload tags
 * `whitespace`: Boolean, set to `false` to use minified JSON and preload injections
 * `esModuleShims`: Boolean, set to a string to use a custom ES Module Shims path. Set to `false` to remove ES Module Shims
