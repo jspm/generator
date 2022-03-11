@@ -29,7 +29,8 @@ export function parseUrlPkg (url: string): { pkg: ExactPackage, layer: string } 
   else
     return;
   const [,, registry, name, version] = url.slice((layer === 'default' ? cdnUrl : systemCdnUrl).length).match(exactPkgRegEx) || [];
-  return { pkg: { registry, name, version }, layer };
+  if (registry && name && version)
+    return { pkg: { registry, name, version }, layer };
 }
 
 let resolveCache: Record<string, {
