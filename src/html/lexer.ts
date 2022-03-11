@@ -18,7 +18,7 @@ export interface ParsedAttribute {
 
 const alwaysSelfClosing = ['link', 'base'];
 
-export function parseHtml (_source: string, tagNames: string[] = ['script', 'link', 'base']) {
+export function parseHtml (_source: string, tagNames: string[] = ['script', 'link', 'base', '!--']) {
   const scripts: ParsedTag[] = [];
   source = _source;
   i = 0;
@@ -27,12 +27,12 @@ export function parseHtml (_source: string, tagNames: string[] = ['script', 'lin
   while (i < source.length) {
     while (source.charCodeAt(i++) !== 60 /*<*/)
       if (i === source.length) return scripts;
-    const x = i;
-    i = x;
+    const start = i - 1;
     const tagName = readTagName()?.toLowerCase();
     if (tagName === '!--') {
       while (source.charCodeAt(i) !== 45/*-*/ || source.charCodeAt(i + 1) !== 45/*-*/ || source.charCodeAt(i + 2) !== 62/*>*/)
         if (++i === source.length) return scripts;
+      scripts.push({ tagName: '!--', start: start, end: i + 3, attributes: [], innerStart: start + 3, innerEnd: i });
       i += 3;
     }
     else if (tagName === undefined) {
@@ -134,7 +134,7 @@ function scanAttr (): ParsedAttribute | null {
   }
 }
 
-function isWs (ch) {
+export function isWs (ch) {
   return ch === 32 || ch < 14 && ch > 8;
 }
 

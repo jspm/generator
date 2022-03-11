@@ -1,9 +1,10 @@
 import { parseStyled } from '../common/json.js';
 import { SourceStyle } from '../common/source-style.js';
 import { baseUrl, isPlain } from '../common/url.js';
-import { ParsedAttribute, ParsedTag, parseHtml } from './lexer.js';
+import { isWs, ParsedAttribute, ParsedTag, parseHtml } from './lexer.js';
 // @ts-ignore
 import { parse } from 'es-module-lexer/js';
+import { isSwitchStatement } from 'typescript';
 
 export interface HtmlAttr {
   quote: '"' | "'" | '';
@@ -36,6 +37,7 @@ export interface HtmlAnalysis {
   dynamicImports: Set<string>;
   preloads: HtmlTag[];
   modules: HtmlTag[];
+  comments: HtmlTag[];
 }
 
 export interface HtmlTag {
@@ -58,11 +60,15 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
     dynamicImports: new Set<string>(),
     preloads: [],
     modules: [],
-    esModuleShims: null
+    esModuleShims: null,
+    comments: []
   };
   const tags = parseHtml(source);
   for (const tag of tags) {
     switch (tag.tagName) {
+      case '!--':
+        analysis.comments.push({ start: tag.start, end: tag.end, attrs: {} });
+        break;
       case 'base':
         if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag);
         const href = getAttr(source, tag, 'href');
@@ -75,7 +81,9 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
           const { json, style } = parseStyled(source.slice(tag.innerStart, tag.innerEnd), url.href + '#importmap');
           const { start, end } = tag;
           const attrs = toHtmlAttrs(source, tag.attributes);
-          analysis.map = { json, style, start, end, attrs, newlineTab: '\n' + detectIndent(source, end), newScript: false };
+          let lastChar = tag.innerEnd;
+          while (isWs(source.charCodeAt(--lastChar)));
+          analysis.map = { json, style, start, end, attrs, newlineTab: detectIndent(source, lastChar + 1), newScript: false };
         }
         else if (type === 'module') {
           const src = getAttr(source, tag, 'src');
@@ -144,7 +152,10 @@ function readAttr (source: string, { nameStart, nameEnd, valueStart, valueEnd }:
 
 function detectIndent (source: string, atIndex: number) {
   if (source === '' || atIndex === -1) return '';
-  const nl = source.lastIndexOf('\n', atIndex);
-  const spaceMatch = (nl === -1 ? source : source.slice(nl, atIndex)).match(/^[ \t]*/);
-  return spaceMatch ? spaceMatch[0] : '';
+  const nlIndex = atIndex;
+  while (source[atIndex] === '\r' || source[atIndex] === '\n')
+    atIndex++;
+  while (source[atIndex] === ' ' || source[atIndex] === '\t')
+    atIndex++;
+  return source.slice(nlIndex, atIndex) || '';
 }
