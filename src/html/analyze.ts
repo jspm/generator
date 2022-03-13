@@ -134,7 +134,9 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
 }
 
 function createInjectionPoint (source: string, map: ParsedMap, tag: ParsedTag) {
-  map.newlineTab = '\n' + detectIndent(source, tag.start);
+  let lastChar = tag.innerEnd;
+  while (isWs(source.charCodeAt(--lastChar)));
+  map.newlineTab = detectIndent(source, lastChar + 1);
   map.newScript = true;
   map.attrs = toHtmlAttrs(source, tag.attributes);
   map.start = map.end = tag.start;
