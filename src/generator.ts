@@ -562,10 +562,7 @@ export class Generator {
     if (comment) {
       const existingComment = analysis.comments.find(c => replacer.source.slice(replacer.idx(c.start), replacer.idx(c.end)).includes(comment as string));
       if (existingComment) {
-        let end = replacer.idx(existingComment.end);
-        while (replacer.source[end] === '\r' || replacer.source[end] === '\n')
-          end++;
-        replacer.remove(existingComment.start, end);
+        replacer.remove(existingComment.start, existingComment.end, true);
       }
     }
 
