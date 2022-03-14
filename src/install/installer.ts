@@ -1,4 +1,3 @@
-// @ts-ignore
 import sver from 'sver';
 const { Semver } = sver;
 import { Log } from '../common/log.js';
@@ -8,7 +7,7 @@ import { isURL, importedFrom } from "../common/url.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { nodeBuiltinSet } from '../providers/node.js';
 import { parseUrlPkg } from '../providers/jspm.js';
-import { getResolution, LockFile, LockResolutions, pruneResolutions, setResolution, stringResolution } from './lock.js';
+import { getResolution, LockResolutions, pruneResolutions, setResolution, stringResolution } from './lock.js';
 
 export interface PackageProvider {
   provider: string;
