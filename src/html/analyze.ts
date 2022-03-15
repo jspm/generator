@@ -4,7 +4,6 @@ import { baseUrl, isPlain } from '../common/url.js';
 import { isWs, ParsedAttribute, ParsedTag, parseHtml } from './lexer.js';
 // @ts-ignore
 import { parse } from 'es-module-lexer/js';
-import { isSwitchStatement } from 'typescript';
 
 export interface HtmlAttr {
   quote: '"' | "'" | '';
@@ -25,7 +24,6 @@ function getAttr (source: string, tag: ParsedTag, name: string) {
 export interface ParsedMap extends HtmlTag {
   json: any;
   style: SourceStyle;
-  newlineTab: string;
   newScript: boolean;
 }
 
@@ -38,6 +36,7 @@ export interface HtmlAnalysis {
   preloads: HtmlTag[];
   modules: HtmlTag[];
   comments: HtmlTag[];
+  newlineTab: string;
 }
 
 export interface HtmlTag {
@@ -55,7 +54,8 @@ function toHtmlAttrs (source: string, attributes: ParsedAttribute[]): Record<str
 export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
   const analysis: HtmlAnalysis = {
     base: url,
-    map: { json: null, style: null, start: -1, end: -1, newlineTab: '\n', newScript: false, attrs: null },
+    newlineTab: '\n',
+    map: { json: null, style: null, start: -1, end: -1, newScript: false, attrs: null },
     staticImports: new Set<string>(),
     dynamicImports: new Set<string>(),
     preloads: [],
@@ -70,7 +70,7 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
         analysis.comments.push({ start: tag.start, end: tag.end, attrs: {} });
         break;
       case 'base':
-        if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag);
+        if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag, analysis);
         const href = getAttr(source, tag, 'href');
         if (href)
           analysis.base = new URL(href, url);
@@ -83,7 +83,8 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
           const attrs = toHtmlAttrs(source, tag.attributes);
           let lastChar = tag.innerEnd;
           while (isWs(source.charCodeAt(--lastChar)));
-          analysis.map = { json, style, start, end, attrs, newlineTab: detectIndent(source, lastChar + 1), newScript: false };
+          analysis.newlineTab = detectIndent(source, lastChar + 1);
+          analysis.map = { json, style, start, end, attrs, newScript: false };
         }
         else if (type === 'module') {
           const src = getAttr(source, tag, 'src');
@@ -119,10 +120,10 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
             }
           }
         }
-        if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag);
+        if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag, analysis);
         break;
       case 'link':
-        if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag);
+        if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag, analysis);
         if (getAttr(source, tag, 'rel') === 'modulepreload') {
           const { start, end } = tag;
           const attrs = toHtmlAttrs(source, tag.attributes);
@@ -133,10 +134,15 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
   return analysis;
 }
 
-function createInjectionPoint (source: string, map: ParsedMap, tag: ParsedTag) {
+function createInjectionPoint (source: string, map: ParsedMap, tag: ParsedTag, analysis: HtmlAnalysis) {
   let lastChar = tag.innerEnd;
   while (isWs(source.charCodeAt(--lastChar)));
-  map.newlineTab = detectIndent(source, lastChar + 1);
+  analysis.newlineTab = detectIndent(source, lastChar + 1);
+  if (analysis.newlineTab.indexOf('\n') === -1) {
+    lastChar = tag.start;
+    while (isWs(source.charCodeAt(--lastChar)));
+    analysis.newlineTab = detectIndent(source, lastChar + 1);
+  }
   map.newScript = true;
   map.attrs = toHtmlAttrs(source, tag.attributes);
   map.start = map.end = tag.start;

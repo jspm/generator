@@ -512,13 +512,15 @@ export class Generator {
       preloadDeps = preloadDeps.concat(staticDeps);
     }));
 
+    const newlineTab = !whitespace ? analysis.newlineTab : analysis.newlineTab.includes('\n') ? analysis.newlineTab : '\n' + analysis.newlineTab;
+
     const replacer = new Replacer(html);
 
     let esms = '';
     if (esModuleShims) {
       const esmsPkg = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, this.traceMap.installer.defaultProvider);
       const esmsUrl = this.traceMap.resolver.pkgToUrl(esmsPkg, this.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
-      esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${integrity ? ` integrity="${await getIntegrity(esmsUrl, this.traceMap.resolver.fetchOpts)}"` : ''}></script>${analysis.map.newlineTab}`;
+      esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${integrity ? ` integrity="${await getIntegrity(esmsUrl, this.traceMap.resolver.fetchOpts)}"` : ''}></script>${newlineTab}`;
     }
 
     if (esModuleShims !== undefined && analysis.esModuleShims) {
@@ -534,7 +536,7 @@ export class Generator {
       let first = true;
       for (let dep of preloadDeps.sort()) {
         if (first || whitespace)
-          preloads += analysis.map.newlineTab;
+          preloads += newlineTab;
         if (first) first = false;
         if (integrity) {
           preloads += `<link rel="modulepreload" href="${relativeUrl(new URL(dep), this.rootUrl || this.baseUrl, !!this.rootUrl)}" integrity="${await getIntegrity(dep, this.traceMap.resolver.fetchOpts)}" />`;
@@ -566,15 +568,15 @@ export class Generator {
     }
 
     replacer.replace(analysis.map.start, analysis.map.end,
-      (comment ? '<!--' + comment + '-->' + analysis.map.newlineTab : '') +
+      (comment ? '<!--' + comment + '-->' + newlineTab : '') +
       esms +
       '<script type="importmap">' +
-      (whitespace ? analysis.map.newlineTab : '') +
-      JSON.stringify(this.getMap(), null, whitespace ? 2 : 0).replace(/\n/g, analysis.map.newlineTab) +
-      (whitespace ? analysis.map.newlineTab : '') +
+      (whitespace ? newlineTab : '') +
+      JSON.stringify(this.getMap(), null, whitespace ? 2 : 0).replace(/\n/g, newlineTab) +
+      (whitespace ? newlineTab : '') +
       '</script>' +
       preloads +
-      (analysis.map.newScript ? analysis.map.newlineTab : '')
+      (analysis.map.newScript ? newlineTab : '')
     );
 
     return replacer.source;

@@ -46,7 +46,6 @@ deepStrictEqual(analysis.map, {
     }
   },
   newScript: false,
-  newlineTab: '\n',
   style: {
     indent: '  ',
     newline: '\n',
