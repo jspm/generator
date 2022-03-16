@@ -1,5 +1,5 @@
 import { parseStyled } from '../common/json.js';
-import { SourceStyle } from '../common/source-style.js';
+import { defaultStyle, SourceStyle } from '../common/source-style.js';
 import { baseUrl, isPlain } from '../common/url.js';
 import { isWs, ParsedAttribute, ParsedTag, parseHtml } from './lexer.js';
 // @ts-ignore
@@ -63,6 +63,7 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
     esModuleShims: null,
     comments: []
   };
+  let createdInjectionPoint = false;
   const tags = parseHtml(source);
   for (const tag of tags) {
     switch (tag.tagName) {
@@ -70,7 +71,10 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
         analysis.comments.push({ start: tag.start, end: tag.end, attrs: {} });
         break;
       case 'base':
-        if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag, analysis);
+        if (!createdInjectionPoint) {
+          createInjectionPoint(source, analysis.map, tag, analysis);
+          createdInjectionPoint = true;
+        }
         const href = getAttr(source, tag, 'href');
         if (href)
           analysis.base = new URL(href, url);
@@ -78,13 +82,16 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
       case 'script':
         const type = getAttr(source, tag, 'type');
         if (type === 'importmap') {
-          const { json, style } = parseStyled(source.slice(tag.innerStart, tag.innerEnd), url.href + '#importmap');
+          const mapText = source.slice(tag.innerStart, tag.innerEnd);
+          const emptyMap = mapText.trim().length === 0;
+          const { json, style } = emptyMap ? { json: {}, style: defaultStyle } : parseStyled(mapText, url.href + '#importmap');
           const { start, end } = tag;
           const attrs = toHtmlAttrs(source, tag.attributes);
           let lastChar = tag.innerEnd;
           while (isWs(source.charCodeAt(--lastChar)));
           analysis.newlineTab = detectIndent(source, lastChar + 1);
           analysis.map = { json, style, start, end, attrs, newScript: false };
+          createdInjectionPoint = true;
         }
         else if (type === 'module') {
           const src = getAttr(source, tag, 'src');
@@ -120,10 +127,16 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
             }
           }
         }
-        if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag, analysis);
+        if (!createdInjectionPoint) {
+          createInjectionPoint(source, analysis.map, tag, analysis);
+          createdInjectionPoint = true;
+        }
         break;
       case 'link':
-        if (!analysis.map.json) createInjectionPoint(source, analysis.map, tag, analysis);
+        if (!createdInjectionPoint) {
+          createInjectionPoint(source, analysis.map, tag, analysis);
+          createdInjectionPoint = true;
+        }
         if (getAttr(source, tag, 'rel') === 'modulepreload') {
           const { start, end } = tag;
           const attrs = toHtmlAttrs(source, tag.attributes);
