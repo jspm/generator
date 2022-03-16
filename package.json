@@ -3,7 +3,7 @@
   "description": "Package Import Map Generation Tool",
   "license": "MIT",
   "version": "1.0.0-beta.29",
-  "types": "lib/generator.d.ts",
+  "types": "src/generator.ts",
   "type": "module",
   "scripts": {
     "prepublishOnly": "chomp build"
