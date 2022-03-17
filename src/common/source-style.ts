@@ -33,6 +33,7 @@ export function detectIndent (source: string, newline: string) {
     if (curIndent && (indent === undefined || curIndent.length < indent.length))
       indent = curIndent[0].slice(0, -1);
   }
+  indent = indent || '';
   lines = lines.map(line => line.slice(indent!.length));
   let tabSpaces = lines.map(line => line.match(/^[ \t]*/)?.[0] || '') || [];
   let tabDifferenceFreqs = new Map<number, number>();

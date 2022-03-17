@@ -55,7 +55,7 @@ name = 'unit:#'
 serial = true
 deps = ['test/#.test.js', 'build:ts', 'dist/*']
 display = 'dot'
-run = 'node -C source $DEP'
+run = 'node --enable-source-maps -C source $DEP'
 
 [[task]]
 name = 'test:browser'
