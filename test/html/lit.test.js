@@ -46,22 +46,22 @@ assert.strictEqual(await generator.htmlGenerate(`
 '  <script type="importmap">\n' +
 '  {\n' +
 '    "imports": {\n' +
-'      "lit": "https://ga.jspm.io/npm:lit@2.2.0/index.js"\n' +
+'      "lit": "https://ga.jspm.io/npm:lit@2.2.1/index.js"\n' +
 '    },\n' +
 '    "scopes": {\n' +
 '      "https://ga.jspm.io/": {\n' +
-'        "@lit/reactive-element": "https://ga.jspm.io/npm:@lit/reactive-element@1.3.0/reactive-element.js",\n' +
+'        "@lit/reactive-element": "https://ga.jspm.io/npm:@lit/reactive-element@1.3.1/reactive-element.js",\n' +
 '        "lit-element/lit-element.js": "https://ga.jspm.io/npm:lit-element@3.2.0/lit-element.js",\n' +
-'        "lit-html": "https://ga.jspm.io/npm:lit-html@2.2.0/lit-html.js"\n' +
+'        "lit-html": "https://ga.jspm.io/npm:lit-html@2.2.1/lit-html.js"\n' +
 '      }\n' +
 '    }\n' +
 '  }\n' +
 '  </script>\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.0/css-tag.js" />\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.0/reactive-element.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.1/css-tag.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.1/reactive-element.js" />\n' +
 '  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit-element@3.2.0/lit-element.js" />\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit-html@2.2.0/lit-html.js" />\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit@2.2.0/index.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit-html@2.2.1/lit-html.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit@2.2.1/index.js" />\n' +
 '  <script type="module">\n' +
 "    import {html, css, LitElement} from 'lit';\n" +
 '\n' +
@@ -97,22 +97,22 @@ assert.strictEqual(await generator.htmlGenerate('\n' +
 '  <script type="importmap">\n' +
 '  {\n' +
 '    "imports": {\n' +
-'      "lit": "https://ga.jspm.io/npm:lit@2.2.0/index.js"\n' +
+'      "lit": "https://ga.jspm.io/npm:lit@2.2.1/index.js"\n' +
 '    },\n' +
 '    "scopes": {\n' +
 '      "https://ga.jspm.io/": {\n' +
-'        "@lit/reactive-element": "https://ga.jspm.io/npm:@lit/reactive-element@1.3.0/reactive-element.js",\n' +
+'        "@lit/reactive-element": "https://ga.jspm.io/npm:@lit/reactive-element@1.3.1/reactive-element.js",\n' +
 '        "lit-element/lit-element.js": "https://ga.jspm.io/npm:lit-element@3.2.0/lit-element.js",\n' +
-'        "lit-html": "https://ga.jspm.io/npm:lit-html@2.2.0/lit-html.js"\n' +
+'        "lit-html": "https://ga.jspm.io/npm:lit-html@2.2.1/lit-html.js"\n' +
 '      }\n' +
 '    }\n' +
 '  }\n' +
 '  </script>\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.0/css-tag.js" />\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.0/reactive-element.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.1/css-tag.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.1/reactive-element.js" />\n' +
 '  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit-element@3.2.0/lit-element.js" />\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit-html@2.2.0/lit-html.js" />\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit@2.2.0/index.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit-html@2.2.1/lit-html.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit@2.2.1/index.js" />\n' +
 '  <script type="module">\n' +
 "    import {html, css, LitElement} from 'lit';\n" +
 '\n' +
@@ -145,22 +145,22 @@ assert.strictEqual(await generator.htmlGenerate('\n' +
 '  <script type="importmap">\n' +
 '  {\n' +
 '    "imports": {\n' +
-'      "lit": "https://ga.jspm.io/npm:lit@2.2.0/index.js"\n' +
+'      "lit": "https://ga.jspm.io/npm:lit@2.2.1/index.js"\n' +
 '    },\n' +
 '    "scopes": {\n' +
 '      "https://ga.jspm.io/": {\n' +
-'        "@lit/reactive-element": "https://ga.jspm.io/npm:@lit/reactive-element@1.3.0/reactive-element.js",\n' +
+'        "@lit/reactive-element": "https://ga.jspm.io/npm:@lit/reactive-element@1.3.1/reactive-element.js",\n' +
 '        "lit-element/lit-element.js": "https://ga.jspm.io/npm:lit-element@3.2.0/lit-element.js",\n' +
-'        "lit-html": "https://ga.jspm.io/npm:lit-html@2.2.0/lit-html.js"\n' +
+'        "lit-html": "https://ga.jspm.io/npm:lit-html@2.2.1/lit-html.js"\n' +
 '      }\n' +
 '    }\n' +
 '  }\n' +
 '  </script>\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.0/css-tag.js" />\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.0/reactive-element.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.1/css-tag.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:@lit/reactive-element@1.3.1/reactive-element.js" />\n' +
 '  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit-element@3.2.0/lit-element.js" />\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit-html@2.2.0/lit-html.js" />\n' +
-'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit@2.2.0/index.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit-html@2.2.1/lit-html.js" />\n' +
+'  <link rel="modulepreload" href="https://ga.jspm.io/npm:lit@2.2.1/index.js" />\n' +
 '  <script type="module">\n' +
 "    import {html, css, LitElement} from 'lit';\n" +
 '\n' +
