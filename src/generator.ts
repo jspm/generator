@@ -501,7 +501,11 @@ export class Generator {
       else
         this.traceMap.installer.installs[pkg] = lock[pkg];
     }
-    this.traceMap.map = new ImportMap(this.mapUrl).extend(maps);
+    const mapFromAnalysis = new ImportMap(this.mapUrl).extend(maps);
+    if(this.traceMap.map) {
+      mapFromAnalysis.extend(this.traceMap.map)
+    }
+    this.traceMap.map = mapFromAnalysis
     await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
       if (isPlain(impt)) {
         var { staticDeps } = await this.traceInstall(impt, this.baseUrl);
