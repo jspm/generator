@@ -144,6 +144,9 @@ export function analyzeHtml (source: string, url: URL = baseUrl): HtmlAnalysis {
         }
     }
   }
+  if (analysis.map.start === -1) {
+    createInjectionPoint(source, analysis.map, { tagName: 'html', start: source.length, end: source.length, attributes: [], innerStart: source.length, innerEnd: source.length }, analysis);
+  }
   return analysis;
 }
 
