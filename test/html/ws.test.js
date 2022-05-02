@@ -4,7 +4,10 @@ import { SemverRange } from 'sver';
 
 const generator = new Generator({
   rootUrl: new URL('./local', import.meta.url),
-  env: ['production', 'browser']
+  env: ['production', 'browser'],
+  resolutions: {
+    react: '17'
+  }
 });
 
 const esmsPkg = await generator.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, generator.traceMap.installer.defaultProvider);

@@ -2,7 +2,7 @@ version = 0.1
 
 extensions = ['chomp@0.1:swc', 'chomp@0.1:rollup']
 
-default-task = 'test'
+default-task = 'build'
 
 [[task]]
 target = 'docs'
@@ -35,8 +35,8 @@ run = '''
 
 [[task]]
 name = 'build:ts'
-target = 'lib/#.js'
-deps = ['src/#.ts']
+target = 'lib/##.js'
+deps = ['src/##.ts']
 template = 'swc'
 [task.template-options.config]
 inlineSourcesContent = false
@@ -53,7 +53,7 @@ deps = [
 [[task]]
 name = 'unit:#'
 serial = true
-deps = ['test/#.test.js', 'build:ts', 'dist/*']
+deps = ['test/##.test.js', 'build:ts', 'dist/*']
 display = 'dot'
 run = 'node --enable-source-maps -C source $DEP'
 

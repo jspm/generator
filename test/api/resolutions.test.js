@@ -9,7 +9,7 @@ const generator = new Generator({
   }
 });
 
-await generator.install('@babel/core');
+await generator.install('@babel/core@7.16.0');
 const json = generator.getMap();
 
 assert.ok(json.imports['@babel/core']);
