@@ -1,8 +1,9 @@
 import { type InstallOptions, InstallTarget, PackageProvider } from "../install/installer.js";
-import { importedFrom, isPlain } from "../common/url.js";
+import { importedFrom, isPlain, isURL } from "../common/url.js";
 import { Installer } from "../install/installer.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { parsePkg } from "../install/package.js";
+// @ts-ignore
 import { ImportMap, IImportMap, getMapMatch, getScopeMatches } from '@jspm/import-map';
 import { resolvePackageTarget, Resolver } from "./resolver.js";
 import { Log } from "../common/log.js";
@@ -310,7 +311,11 @@ export default class TraceMap {
       const match = getMapMatch(specifier, pcfg.imports);
       if (!match)
         throw new JspmError(`No '${specifier}' import defined in ${parentPkgUrl}${importedFrom(parentUrl)}.`);
-      const resolved = await this.resolver.realPath(resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, specifier.slice(match.length), this.installer));
+      const target = resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, specifier.slice(match.length), this.installer, true);
+      if (!isURL(target)) {
+        return this.trace(target, parentUrl, env);
+      }
+      const resolved = await this.resolver.realPath(target);
       this.map.set(match, resolved, parentPkgUrl);
       this.log('trace', `${specifier} ${parentUrl.href} -> ${resolved}`);
       await this.traceUrl(resolved, parentUrl, env);

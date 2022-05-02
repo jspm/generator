@@ -11,7 +11,7 @@ export { createCjsAnalysis } from './cjs.js';
 
 export function createEsmAnalysis (imports: any[], source: string, url: string): Analysis {
   if (!imports.length && registerRegEx.test(source))
-    return createSystemAnalysis(source, imports, url);  
+    return createSystemAnalysis(source, imports, url);
   const deps: string[] = [];
   const dynamicDeps: string[] = [];
   for (const impt of imports) {

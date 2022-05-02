@@ -8,6 +8,7 @@ import { importedFrom } from "../common/url.js";
 import { parse } from 'es-module-lexer/js';
 import { getProvider, defaultProviders, Provider } from '../providers/index.js';
 import { Analysis, createSystemAnalysis, createCjsAnalysis, createEsmAnalysis, createTsAnalysis } from './analysis.js';
+// @ts-ignore
 import { getMapMatch } from '@jspm/import-map';
 import { Installer, PackageProvider } from '../install/installer.js';
 
@@ -295,14 +296,14 @@ export class Resolver {
       }
       else if (!allDotKeys(pcfg.exports)) {
         if (subpath === '.')
-          return this.finalizeResolve(resolvePackageTarget(pcfg.exports, pkgUrl, env, '', installer), parentIsCjs, env, installer, pkgUrl);
+          return this.finalizeResolve(resolvePackageTarget(pcfg.exports, pkgUrl, env, '', installer, false), parentIsCjs, env, installer, pkgUrl);
         else
           throwExportNotDefined();
       }
       else {
         const match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
         if (match) {
-          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), installer);
+          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), installer, false);
           if (resolved === null)
             throwExportNotDefined();
           return this.finalizeResolve(resolved, parentIsCjs, env, installer, pkgUrl);
@@ -443,8 +444,15 @@ export class Resolver {
   }
 }
 
-export function resolvePackageTarget (target: ExportsTarget, packageUrl: string, env: string[], subpath: string, installer: Installer): string | null {
+export function resolvePackageTarget (target: ExportsTarget, packageUrl: string, env: string[], subpath: string, installer: Installer, isImport: boolean): string | null {
   if (typeof target === 'string') {
+    if (!target.startsWith('./')) {
+      if (isImport)
+        return target;
+      throw new Error(`Invalid exports target ${target} resolving ./${subpath} in ${packageUrl}`)
+    }
+    if (!target.startsWith('./'))
+      throw new Error('Invalid ')
     if (subpath === '')
       return new URL(target, packageUrl).href;
     if (target.indexOf('*') !== -1) {
@@ -454,13 +462,13 @@ export function resolvePackageTarget (target: ExportsTarget, packageUrl: string,
       return new URL(target + subpath, packageUrl).href;
     }
     else {
-      throw new Error('Expected pattern or path export');
+      throw new Error(`Expected pattern or path export resolving ./${subpath} in ${packageUrl}`);
     }
   }
   else if (typeof target === 'object' && target !== null && !Array.isArray(target)) {
     for (const condition in target) {
       if (condition === 'default' || env.includes(condition)) {
-        const resolved = resolvePackageTarget(target[condition], packageUrl, env, subpath, installer);
+        const resolved = resolvePackageTarget(target[condition], packageUrl, env, subpath, installer, isImport);
         if (resolved)
           return resolved;
       }
@@ -469,7 +477,7 @@ export function resolvePackageTarget (target: ExportsTarget, packageUrl: string,
   else if (Array.isArray(target)) {
     // TODO: Validation for arrays
     for (const targetFallback of target) {
-      return resolvePackageTarget(targetFallback, packageUrl, env, subpath, installer);
+      return resolvePackageTarget(targetFallback, packageUrl, env, subpath, installer, isImport);
     }
   }
   return null;
