@@ -247,7 +247,8 @@ export default class TraceMap {
       if (urlResolved !== finalized && !urlResolved.startsWith('node:')) {
         finalized = urlResolved;
       }
-      if (finalized !== resolvedHref) {
+      // TODO: avoid this hack too - we should not be resolving node:... to the core lib anyway?
+      if (finalized !== resolvedHref && !resolvedHref.startsWith('node:')) {
         this.map.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized, parentPkgUrl);
         resolvedUrl = new URL(finalized);
       }
