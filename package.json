@@ -43,8 +43,8 @@
     "typescript": "^4.3.5"
   },
   "devDependencies": {
-    "@swc/cli": "^0.1.55",
-    "@swc/core": "1.2.144",
+    "@swc/cli": "^0.1.57",
+    "@swc/core": "1.2.174",
     "chalk": "^4.1.1",
     "cross-env": "^7.0.2",
     "kleur": "^4.1.4",
