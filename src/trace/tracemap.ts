@@ -243,11 +243,13 @@ export default class TraceMap {
       let finalized = await this.resolver.realPath(await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env, this.installer, parentPkgUrl));
       // handle URL mappings
       const urlResolved = this.map.resolve(finalized, parentUrl, env) as string;
+      const doNodeMaps = env.includes('deno') || (env.includes('browser') && !env.includes('electron'));
       // TODO: avoid this hack - perhaps solved by conditional maps
       if (urlResolved !== finalized && !urlResolved.startsWith('node:')) {
         finalized = urlResolved;
       }
-      if (finalized !== resolvedHref) {
+      // TODO: avoid this hack too - we should not be resolving node:... to the core lib anyway?
+      if (finalized !== resolvedHref && (!resolvedHref.startsWith('node:') || doNodeMaps)) {
         this.map.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized, parentPkgUrl);
         resolvedUrl = new URL(finalized);
       }
@@ -339,7 +341,7 @@ export default class TraceMap {
   }
 
   private async traceUrl (resolvedUrl: string, parentUrl: URL, env: string[]): Promise<void> {
-    if (resolvedUrl in this.tracedUrls) return;
+    if (resolvedUrl in this.tracedUrls || resolvedUrl.startsWith('node:')) return;
 
     const traceEntry: TraceEntry = this.tracedUrls[resolvedUrl] = {
       wasCJS: false,
