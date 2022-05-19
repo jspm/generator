@@ -177,7 +177,9 @@ function readAttr (source: string, { nameStart, nameEnd, valueStart, valueEnd }:
 function detectIndent (source: string, atIndex: number) {
   if (source === '' || atIndex === -1) return '';
   const nlIndex = atIndex;
-  while (source[atIndex] === '\r' || source[atIndex] === '\n')
+  if (source[atIndex] === '\r' && source[atIndex + 1] === '\n')
+    atIndex++;
+  if (source[atIndex] === '\n')
     atIndex++;
   while (source[atIndex] === ' ' || source[atIndex] === '\t')
     atIndex++;
