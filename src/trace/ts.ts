@@ -1,6 +1,6 @@
 import { Analysis } from "./analysis";
 
-let babel, babelPresetTs;
+let babel, babelPresetTs, babelPluginImportAssertions;
 
 const globalConsole = globalThis.console;
 const dummyConsole = {
@@ -11,9 +11,10 @@ const dummyConsole = {
 
 export async function createTsAnalysis (source: string, url: string): Promise<Analysis> {
   if (!babel)
-    [{ default: babel }, { default: { default: babelPresetTs } }] = await Promise.all([
+    [{ default: babel }, { default: { default: babelPresetTs } }, { default: babelPluginImportAssertions }] = await Promise.all([
       import('@babel/core'),
-      import('@babel/preset-typescript')
+      import('@babel/preset-typescript'),
+      import('@babel/plugin-syntax-import-assertions')
     ]);
 
   const imports = new Set<string>();
@@ -41,7 +42,7 @@ export async function createTsAnalysis (source: string, url: string): Promise<An
       presets: [[babelPresetTs, {
         onlyRemoveTypeImports: true
       }]],
-      plugins: [({ types: t }) => {
+      plugins: [babelPluginImportAssertions, ({ types: t }) => {
         return {
           visitor: {
             ExportAllDeclaration (path) {
