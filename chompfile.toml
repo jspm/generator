@@ -53,7 +53,7 @@ deps = [
 [[task]]
 name = 'unit:#'
 serial = true
-deps = ['test/##.test.js', 'build:ts', 'dist/*']
+deps = ['test/##.test.js', 'lib/**/*']
 display = 'dot'
 run = 'node --enable-source-maps -C source $DEP'
 

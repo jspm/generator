@@ -12,7 +12,7 @@ function replaceAll (str, pattern, replacement) {
 
 const generator = new Generator({
   mapUrl: 'about:blank',
-  env: ['production', 'node', 'deno', 'module', 'test']
+  env: ['production', 'node', 'deno', 'module', 'source']
 });
 
 const targetUrl = new URL('../../', import.meta.url).href;
@@ -29,7 +29,7 @@ await denoExec(generator.getMap(), `
 
   const generator = new Generator({
     mapUrl: 'about:blank',
-    env: ['production', 'node', 'deno', 'module', 'test']
+    env: ['production', 'node', 'deno', 'module', 'source']
   });
 
   // inception!
