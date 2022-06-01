@@ -64,6 +64,7 @@ run = 'node test/server.mjs'
 
 [[task]]
 name = 'test:watch'
+env = { WATCH_MODE = '1' }
 run = 'node test/server.mjs'
 
 [[task]]

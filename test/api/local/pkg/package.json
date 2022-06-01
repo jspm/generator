@@ -6,7 +6,8 @@
     "./withdep2": "./c.js",
     "./remotedep": "./d.js",
     "./cjs": "./e.cjs",
-    "./jquery": "./jquery.js"
+    "./jquery": "./jquery.js",
+    "./json": "./json.ts"
   },
   "imports": {
     "#cjsdep": "./f.cjs"
