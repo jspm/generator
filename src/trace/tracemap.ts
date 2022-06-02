@@ -7,6 +7,7 @@ import { parsePkg } from "../install/package.js";
 import { ImportMap, IImportMap, getMapMatch, getScopeMatches } from '@jspm/import-map';
 import { resolvePackageTarget, Resolver } from "./resolver.js";
 import { Log } from "../common/log.js";
+import { extractLockAndMap } from "../install/lock.js";
 
 // TODO: options as trace-specific / stored as top-level per top-level load
 export interface TraceMapOptions extends InstallOptions {
@@ -58,6 +59,7 @@ export default class TraceMap {
   dynamicList = new Set<string>();
   log: Log;
   resolver: Resolver;
+  processedInputMap = false;
 
   constructor (mapBase: URL, opts: TraceMapOptions, log: Log, resolver: Resolver) {
     this.log = log;
@@ -66,11 +68,8 @@ export default class TraceMap {
     this.opts = opts;
     if (this.opts.env)
       this.env = this.opts.env;
-    if (opts.inputMap)
-      this.map = opts.inputMap instanceof ImportMap ? opts.inputMap : new ImportMap(mapBase).extend(opts.inputMap);
-    else
-      this.map = new ImportMap(mapBase);
     this.installer = new Installer(this.mapBase, this.opts, this.log, this.resolver);
+    this.map = new ImportMap(this.mapBase);
   }
 
   clearLists () {
@@ -112,6 +111,15 @@ export default class TraceMap {
   }
 
   async startInstall () {
+    if (!this.processedInputMap && this.opts.inputMap) {
+      const { maps, lock } = await extractLockAndMap(this.opts.inputMap, [], this.mapBase, this.opts.rootUrl, this.resolver);
+      console.log(maps);
+      console.log(lock);
+      this.map.extend(maps);
+      this.installer.installs = lock;
+      this.processedInputMap = true;
+    }
+
     const finishInstall = await this.installer.startInstall();
 
     return async (success: boolean) => {

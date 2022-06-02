@@ -46,6 +46,8 @@ function getInstalledRanges (installedRanges: InstalledRanges, target: PackageTa
 export interface InstallOptions {
   // default base for relative installs
   baseUrl: URL;
+  // root URL for inport map root resolution
+  rootUrl: URL;
   // create a lockfile if it does not exist
   lock?: LockResolutions;
   // do not modify the lockfile

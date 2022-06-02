@@ -386,6 +386,7 @@ export class Generator {
     }
     this.traceMap = new TraceMap(this.mapUrl, {
       lock,
+      rootUrl: this.rootUrl || this.baseUrl,
       baseUrl: this.baseUrl,
       stdlib,
       env,

@@ -2,6 +2,7 @@ import { IImportMap } from "@jspm/import-map";
 import { throwInternalError } from "../common/err.js";
 import { isPlain, relativeUrl, resolveUrl } from "../common/url.js";
 import { Resolver } from "../trace/resolver.js";
+import { parsePkg } from "./package.js";
 
 export interface LockResolutions {
   [pkgUrl: string]: Record<string, string>;
@@ -73,8 +74,9 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
     const targetUrl = resolveUrl(map.imports[key], mapUrl, rootUrl).href;
     const providerPkg = resolver.parseUrlPkg(targetUrl);
     const resolvedKey = isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl).href;
-    if (providerPkg) {
-      const pkgUrl = await resolver.getPackageBase(mapUrl.href);
+    const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await resolver.getPackageBase(mapUrl.href);
+    const parsed = isPlain(key) ? parsePkg(key) : null;
+    if (parsed && await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
       setResolution(lock, resolvedKey, pkgUrl, resolver.pkgToUrl(providerPkg.pkg, providerPkg.source), '');
     }
     else {
@@ -88,9 +90,12 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
     for (const key of Object.keys(scope)) {
       const targetUrl = resolveUrl(scope[key], mapUrl, rootUrl).href;
       const providerPkg = resolver.parseUrlPkg(targetUrl);
-      if (providerPkg) {
+      const resolvedKey = isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl).href;
+      const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await resolver.getPackageBase(mapUrl.href);
+      const parsed = isPlain(key) ? parsePkg(key) : null;
+      if (parsed && await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
         const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
-        setResolution(lock, key, scopePkgUrl, resolver.pkgToUrl(providerPkg.pkg, providerPkg.source), '');
+        setResolution(lock, resolvedKey, scopePkgUrl, resolver.pkgToUrl(providerPkg.pkg, providerPkg.source), '');
       }
       else {
         (maps.scopes[resolvedScopeUrl] = map.scopes[resolvedScopeUrl] || {})[key] = targetUrl;

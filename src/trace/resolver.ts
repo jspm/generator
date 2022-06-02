@@ -207,7 +207,7 @@ export class Resolver {
     return outUrl;
   }
 
-  async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], installer: Installer, pkgUrl: string): Promise<string> {
+  async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], installer: Installer | null, pkgUrl: string): Promise<string> {
     if (parentIsCjs && url.endsWith('/'))
       url = url.slice(0, -1);
     // Only CJS modules do extension searching for relative resolved paths
@@ -262,7 +262,7 @@ export class Resolver {
       }
     }
     // Node.js core resolutions
-    if (url.startsWith('node:')) {
+    if (installer && url.startsWith('node:')) {
       const resolution = await installer.installTarget(url.slice(5), installer.stdlibTarget, pkgUrl, false, 'nodelibs/' + url.slice(5), pkgUrl);
       let [installPkg, installExport] = resolution.split('|');
       if (!installPkg.endsWith('/'))
@@ -273,6 +273,65 @@ export class Resolver {
     return url;
   }
 
+  // returns true or false whether this package subpath can resolve to the given target URL for some env value
+  async hasExportResolution (pkgUrl: string, subpath: string, target: string, originalSpecifier: string): Promise<boolean> {
+    const pcfg = await this.getPackageConfig(pkgUrl) || {};
+    if (pcfg.exports !== undefined && pcfg.exports !== null) {
+      function allDotKeys (exports: Record<string, any>) {
+        for (let p in exports) {
+          if (p[0] !== '.')
+            return false;
+        }
+        return true;
+      }
+      if (typeof pcfg.exports === 'string') {
+        if (subpath !== '.')
+          return false;
+        const url = new URL(pcfg.exports, pkgUrl).href;
+        if (await this.finalizeResolve(url, false, [], null, pkgUrl) === target)
+          return true;
+        if (await this.finalizeResolve(url, false, ['browser'], null, pkgUrl) === target)
+          return true;
+        return false;
+      }
+      else if (!allDotKeys(pcfg.exports)) {
+        if (subpath !== '.')
+          return false;
+        const targets = enumeratePackageTargets(pcfg.exports, pkgUrl, '', false);
+        for (const curTarget of targets) {
+          if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target)
+            return true;
+        }
+        return false;
+      }
+      else {
+        const match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
+        if (!match)
+          return false;
+        const targets = enumeratePackageTargets(pcfg.exports[match], pkgUrl, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
+        for (const curTarget of targets) {
+          if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target)
+            return true;
+        }
+        return false;
+      }
+    }
+    else {
+      if (subpath !== '.')
+        return await this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, false, [], null, pkgUrl) === target;
+      if (typeof pcfg.main === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === target)
+        return true;
+      if (await this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === target)
+        return true;
+      if (typeof pcfg.browser === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['browser'], null, pkgUrl) === target)
+        return true;
+      if (typeof pcfg.module === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['module'], null, pkgUrl) === target)
+        return true;
+      return false;
+    }
+  }
+
+  // Note: updates here must be tracked in function above
   async resolveExport (pkgUrl: string, subpath: string, env: string[], parentIsCjs: boolean, originalSpecifier: string, installer: Installer, parentUrl?: URL): Promise<string> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
 
@@ -296,14 +355,14 @@ export class Resolver {
       }
       else if (!allDotKeys(pcfg.exports)) {
         if (subpath === '.')
-          return this.finalizeResolve(resolvePackageTarget(pcfg.exports, pkgUrl, env, '', installer, false), parentIsCjs, env, installer, pkgUrl);
+          return this.finalizeResolve(resolvePackageTarget(pcfg.exports, pkgUrl, env, '', false), parentIsCjs, env, installer, pkgUrl);
         else
           throwExportNotDefined();
       }
       else {
         const match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
         if (match) {
-          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), installer, false);
+          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
           if (resolved === null)
             throwExportNotDefined();
           return this.finalizeResolve(resolved, parentIsCjs, env, installer, pkgUrl);
@@ -444,7 +503,51 @@ export class Resolver {
   }
 }
 
-export function resolvePackageTarget (target: ExportsTarget, packageUrl: string, env: string[], subpath: string, installer: Installer, isImport: boolean): string | null {
+export function enumeratePackageTargets (target: ExportsTarget, packageUrl: string, subpath: string, isImport: boolean, targets = new Set<string>()): Set<string> {
+  if (typeof target === 'string') {
+    if (!target.startsWith('./')) {
+      if (isImport) {
+        targets.add(target);
+        return targets;
+      }
+      throw new Error(`Invalid exports target ${target} resolving ./${subpath} in ${packageUrl}`)
+    }
+    if (!target.startsWith('./'))
+      throw new Error('Invalid ')
+    if (subpath === '') {
+      targets.add(new URL(target, packageUrl).href);
+      return targets;
+    }
+    if (target.indexOf('*') !== -1) {
+      targets.add(new URL(target.replace(/\*/g, subpath), packageUrl).href);
+      return targets;
+    }
+    else if (target.endsWith('/')) {
+      targets.add(new URL(target + subpath, packageUrl).href);
+      return targets;
+    }
+    else {
+      throw new Error(`Expected pattern or path export resolving ./${subpath} in ${packageUrl}`);
+    }
+  }
+  else if (typeof target === 'object' && target !== null && !Array.isArray(target)) {
+    for (const condition in target) {
+      enumeratePackageTargets(target[condition], packageUrl, subpath, isImport, targets);
+    }
+    return targets;
+  }
+  else if (Array.isArray(target)) {
+    // TODO: Validation for arrays
+    for (const targetFallback of target) {
+      enumeratePackageTargets(targetFallback, packageUrl, subpath, isImport, targets);
+      return targets;
+    }
+  }
+  return targets;
+}
+
+// Note: changes to this function must be updated in the functionn above too
+export function resolvePackageTarget (target: ExportsTarget, packageUrl: string, env: string[], subpath: string, isImport: boolean): string | null {
   if (typeof target === 'string') {
     if (!target.startsWith('./')) {
       if (isImport)
@@ -468,7 +571,7 @@ export function resolvePackageTarget (target: ExportsTarget, packageUrl: string,
   else if (typeof target === 'object' && target !== null && !Array.isArray(target)) {
     for (const condition in target) {
       if (condition === 'default' || env.includes(condition)) {
-        const resolved = resolvePackageTarget(target[condition], packageUrl, env, subpath, installer, isImport);
+        const resolved = resolvePackageTarget(target[condition], packageUrl, env, subpath, isImport);
         if (resolved)
           return resolved;
       }
@@ -477,7 +580,7 @@ export function resolvePackageTarget (target: ExportsTarget, packageUrl: string,
   else if (Array.isArray(target)) {
     // TODO: Validation for arrays
     for (const targetFallback of target) {
-      return resolvePackageTarget(targetFallback, packageUrl, env, subpath, installer, isImport);
+      return resolvePackageTarget(targetFallback, packageUrl, env, subpath, isImport);
     }
   }
   return null;
