@@ -77,7 +77,7 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
     const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await resolver.getPackageBase(mapUrl.href);
     const parsed = isPlain(key) ? parsePkg(key) : null;
     if (parsed && await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
-      setResolution(lock, resolvedKey, pkgUrl, resolver.pkgToUrl(providerPkg.pkg, providerPkg.source), '');
+      setResolution(lock, resolvedKey, mapUrl.href, resolver.pkgToUrl(providerPkg.pkg, providerPkg.source), '');
     }
     else {
       maps.imports[resolvedKey] = targetUrl;

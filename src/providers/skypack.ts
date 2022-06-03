@@ -11,6 +11,8 @@ export function parseUrlPkg (url: string) {
   if (!url.startsWith(cdnUrl))
     return;
   const [, name, version] = url.slice(cdnUrl.length).match(exactPkgRegEx) || [];
+  if (!name || !version)
+    return;
   return { registry: 'npm', name, version };
 }
 

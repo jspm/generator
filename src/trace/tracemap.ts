@@ -113,8 +113,6 @@ export default class TraceMap {
   async startInstall () {
     if (!this.processedInputMap && this.opts.inputMap) {
       const { maps, lock } = await extractLockAndMap(this.opts.inputMap, [], this.mapBase, this.opts.rootUrl, this.resolver);
-      console.log(maps);
-      console.log(lock);
       this.map.extend(maps);
       this.installer.installs = lock;
       this.processedInputMap = true;

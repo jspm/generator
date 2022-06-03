@@ -288,10 +288,16 @@ export class Resolver {
         if (subpath !== '.')
           return false;
         const url = new URL(pcfg.exports, pkgUrl).href;
-        if (await this.finalizeResolve(url, false, [], null, pkgUrl) === target)
-          return true;
-        if (await this.finalizeResolve(url, false, ['browser'], null, pkgUrl) === target)
-          return true;
+        try {
+          if (await this.finalizeResolve(url, false, [], null, pkgUrl) === target)
+            return true;
+        }
+        catch {}
+        try {
+          if (await this.finalizeResolve(url, false, ['browser'], null, pkgUrl) === target)
+            return true;
+        }
+        catch {}
         return false;
       }
       else if (!allDotKeys(pcfg.exports)) {
@@ -299,8 +305,11 @@ export class Resolver {
           return false;
         const targets = enumeratePackageTargets(pcfg.exports, pkgUrl, '', false);
         for (const curTarget of targets) {
-          if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target)
-            return true;
+          try {
+            if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target)
+              return true;
+          }
+          catch {}
         }
         return false;
       }
@@ -310,24 +319,43 @@ export class Resolver {
           return false;
         const targets = enumeratePackageTargets(pcfg.exports[match], pkgUrl, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
         for (const curTarget of targets) {
-          if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target)
-            return true;
+          try {
+            if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target)
+              return true;
+          }
+          catch {}
         }
         return false;
       }
     }
     else {
-      if (subpath !== '.')
-        return await this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, false, [], null, pkgUrl) === target;
-      if (typeof pcfg.main === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === target)
-        return true;
-      if (await this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === target)
-        return true;
-      if (typeof pcfg.browser === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['browser'], null, pkgUrl) === target)
-        return true;
-      if (typeof pcfg.module === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['module'], null, pkgUrl) === target)
-        return true;
-      return false;
+      if (subpath !== '.') {
+        try {
+          return await this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, false, [], null, pkgUrl) === target;
+        }
+        catch {}
+      }
+      try {
+        if (typeof pcfg.main === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === target)
+          return true;
+      }
+      catch {}
+      try {
+        if (await this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === target)
+          return true;
+      }
+      catch {}
+      try {
+        if (typeof pcfg.browser === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['browser'], null, pkgUrl) === target)
+          return true;
+      }
+      catch {}
+      try {
+        if (typeof pcfg.module === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['module'], null, pkgUrl) === target)
+          return true;
+        return false;
+      }
+      catch {}
     }
   }
 
