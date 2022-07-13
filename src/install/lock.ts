@@ -70,14 +70,17 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
   const lock: LockResolutions = {};
   const maps: IImportMap = { imports: {}, scopes: {} };
 
+  const mapBase = await resolver.getPackageBase(mapUrl.href);
+
   for (const key of Object.keys(map.imports || {})) {
     const targetUrl = resolveUrl(map.imports[key], mapUrl, rootUrl).href;
     const providerPkg = resolver.parseUrlPkg(targetUrl);
     const resolvedKey = isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl).href;
-    const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await resolver.getPackageBase(mapUrl.href);
+    const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : mapBase;
     const parsed = isPlain(key) ? parsePkg(key) : null;
     if (parsed && await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
-      setResolution(lock, resolvedKey, mapUrl.href, resolver.pkgToUrl(providerPkg.pkg, providerPkg.source), '');
+      // TODO: lockfile should really now be based on primary and scoped
+      setResolution(lock, resolvedKey, mapBase, pkgUrl, '');
     }
     else {
       maps.imports[resolvedKey] = targetUrl;
@@ -91,7 +94,7 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
       const targetUrl = resolveUrl(scope[key], mapUrl, rootUrl).href;
       const providerPkg = resolver.parseUrlPkg(targetUrl);
       const resolvedKey = isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl).href;
-      const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await resolver.getPackageBase(mapUrl.href);
+      const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : mapBase;
       const parsed = isPlain(key) ? parsePkg(key) : null;
       if (parsed && await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
         const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
