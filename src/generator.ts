@@ -480,7 +480,7 @@ export class Generator {
     htmlUrl, preload = false, integrity = false, whitespace = true, esModuleShims = true, comment = true
   }: {
     htmlUrl?: string | URL,
-    preload?: boolean,
+    preload?: boolean | 'all' | 'static',
     integrity?: boolean,
     whitespace?: boolean,
     esModuleShims?: string | boolean,
@@ -514,7 +514,7 @@ export class Generator {
       }
     }));
 
-    const preloadDeps = [...this.traceMap.staticList];
+    const preloadDeps = preload === true && integrity || preload === 'all' ? [...new Set([...this.traceMap.staticList, ...this.traceMap.dynamicList])] : [...this.traceMap.staticList];
 
     const newlineTab = !whitespace ? analysis.newlineTab : analysis.newlineTab.includes('\n') ? analysis.newlineTab : '\n' + analysis.newlineTab;
 

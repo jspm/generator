@@ -106,7 +106,7 @@ const outHtml = await generator.htmlGenerate(`
 The second HTML Generation options include:
 
 * `comment`: Defaults to `Built with @jspm/generator` comment, set to false or an empty string to remove.
-* `preload`: Boolean, injects `<link rel="modulepreload">` preload tags
+* `preload`: Boolean, injects `<link rel="modulepreload">` preload tags. By default only injects static dependencies. Set to `'all'` to inject dyamic import preloads as well (this is the default when applying `integrity`).
 * `whitespace`: Boolean, set to `false` to use minified JSON and preload injections
 * `esModuleShims`: Boolean, set to a string to use a custom ES Module Shims path. Set to `false` to remove ES Module Shims
 * `integrity`: Boolean, set to `true` to inject integrity attributes. Works with `preload` to inline integrity for static modules.
