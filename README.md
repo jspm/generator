@@ -1,10 +1,12 @@
 # JSPM Generator
 
-Package Import Map Generation Tool
+Package Import Map Generation Tool.
 
 Manages version resolutions of modules against modules CDNs or even local node_modules via [supported providers](#defaultProvider).
 
 For an interactive UI for this tool running on JSPM.IO, see [https://generator.jspm.io](https://generator.jspm.io).
+
+Universal resolution rules are [detailed in this document](https://docs.google.com/document/d/10SuVDUYTib8gkI8eeRyXZDY-j4zKR5Nd4bS9WcOy2Hw/edit#).
 
 ## Getting Started
 
