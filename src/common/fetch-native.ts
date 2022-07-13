@@ -18,6 +18,24 @@ export async function fetch (url, opts) {
   try {
     return await globalThis.fetch(url, opts);
   }
+  catch (e) {
+    // CORS errors throw a fetch type error
+    // Instead, treat this as an actual unauthorized response
+    if (e instanceof TypeError) {
+      return {
+        status: 401,
+        async text () {
+          return '';
+        },
+        async json () {
+          throw new Error('Not JSON');
+        },
+        arrayBuffer () {
+          return new ArrayBuffer(0);
+        }
+      };
+    }
+  }
   finally {
     popFetchPool();
   }

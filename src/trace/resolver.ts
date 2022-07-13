@@ -633,6 +633,8 @@ async function legacyMainResolve (this: Resolver, main: string | null, pkgUrl: U
       return guess;
   }
   else {
+    if (pkgUrl.protocol !== 'file:' && await this.exists(guess = new URL('./mod.ts', pkgUrl).href))
+      return guess;
     if (await this.exists(guess = new URL('./index.js', pkgUrl).href))
       return guess;
     if (await this.exists(guess = new URL('./index.json', pkgUrl).href))

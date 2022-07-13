@@ -232,6 +232,13 @@ export class Installer {
       }
     }
 
+    // resolutions are authoritative at the top-level
+    if (this.resolutions[pkgName]) {
+      const resolutionTarget = newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, pkgName);
+      if (JSON.stringify(target) !== JSON.stringify(resolutionTarget))
+        return this.installTarget(pkgName, resolutionTarget, mode, pkgScope, pjsonPersist, subpath, parentUrl);
+    }
+
     const latest = await this.resolver.resolveLatestTarget(target, false, provider, parentUrl);
     const installed = getInstalledRanges(this.installedRanges, target);
     const restrictedToPkg = this.tryUpgradePackagesTo(latest, target, installed, provider);

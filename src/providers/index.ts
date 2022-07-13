@@ -1,3 +1,4 @@
+import * as deno from './denoland.js';
 import * as jspm from './jspm.js';
 import * as skypack from './skypack.js';
 import * as jsdelivr from './jsdelivr.js';
@@ -17,6 +18,7 @@ export interface Provider {
 }
 
 export const defaultProviders: Record<string, Provider> = {
+  deno,
   jsdelivr,
   jspm,
   node,
