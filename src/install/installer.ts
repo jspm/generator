@@ -232,6 +232,9 @@ export class Installer {
       }
     }
 
+    if (this.resolutions[pkgName])
+      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, pkgName), mode, pkgScope, pjsonPersist, subpath, parentUrl);
+
     const latest = await this.resolver.resolveLatestTarget(target, false, provider, parentUrl);
     const installed = getInstalledRanges(this.installedRanges, target);
     const restrictedToPkg = this.tryUpgradePackagesTo(latest, target, installed, provider);
