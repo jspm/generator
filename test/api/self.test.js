@@ -8,8 +8,8 @@ const generator = new Generator({
 
 const { staticDeps, dynamicDeps } = await generator.install('@jspm/generator@1.0.0-beta.13');
 
-assert.ok(staticDeps.length > 150);
-assert.strictEqual(dynamicDeps.length, 0);
+assert.ok(staticDeps.length < 50);
+assert.ok(dynamicDeps.length > 100);
 
 const json = generator.getMap();
 

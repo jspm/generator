@@ -2,7 +2,7 @@ import { Generator } from '@jspm/generator';
 import assert from 'assert';
 import { SemverRange } from 'sver';
 
-const generator = new Generator({
+let generator = new Generator({
   rootUrl: new URL('./local', import.meta.url),
   env: ['production', 'browser'],
   resolutions: {
@@ -44,7 +44,15 @@ assert.strictEqual(await generator.htmlGenerate(`
 '  <script type="importmap">{"imports":{"react":"https://ga.jspm.io/npm:react@17.0.2/index.js"},"scopes":{"https://ga.jspm.io/":{"object-assign":"https://ga.jspm.io/npm:object-assign@4.1.1/index.js"}}}</script>\n' +
 '  <script type="module">import \'react\'</script>\n');
 
-console.log('aaaa');
+
+generator = new Generator({
+  rootUrl: new URL('./local', import.meta.url),
+  env: ['production', 'browser'],
+  resolutions: {
+    react: '17'
+  }
+});
+
 assert.strictEqual(await generator.htmlGenerate(`
 <!DOCTYPE html>
 <html lang="en">

@@ -8,7 +8,7 @@ assert.strictEqual(staticDeps.length, 5);
 
 {
   const { staticDeps } = await generator.install({ alias: 'react17', target: 'react@17' });
-  assert.strictEqual(staticDeps.length, 2);
+  assert.strictEqual(staticDeps.length, 6);
 }
 
 const json = generator.getMap();

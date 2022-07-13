@@ -290,7 +290,7 @@ export class Generator {
   baseUrl: URL;
   mapUrl: URL;
   rootUrl: URL | null;
-  finishInstall: (success: boolean) => Promise<boolean | { pjsonChanged: boolean, lock: LockResolutions }> | null = null;
+  finishInstall: () => Promise<boolean | { pjsonChanged: boolean, lock: LockResolutions }> | null = null;
   installCnt = 0;
 
   logStream: LogStream;
@@ -414,30 +414,30 @@ export class Generator {
    * @param specifier Import specifier to trace
    * @param parentUrl Parent URL to trace this specifier from
    */
-  async traceInstall (specifier: string, parentUrl?: string | URL): Promise<{
+  async traceInstall (specifier: string): Promise<{
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
-    if (typeof parentUrl === 'string')
-      parentUrl = new URL(parentUrl);
     let error = false;
     if (this.installCnt++ === 0)
       this.finishInstall = await this.traceMap.startInstall();
     try {
-      await this.traceMap.trace(specifier, parentUrl || this.baseUrl);
+      await this.traceMap.visit(specifier);
+      this.traceMap.pin(specifier);
     }
     catch (e) {
       error = true;
       throw e;
     }
     finally {
-      if (--this.installCnt === 0)
-        await this.finishInstall(true);
-      if (!error)
-        return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+      if (--this.installCnt === 0) {
+        await this.finishInstall();
+        if (!error)
+          return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+      }
     }
   }
-  
+
   /**
    * Generate and inject an import map for an HTML file
    *
@@ -493,7 +493,6 @@ export class Generator {
     if (integrity)
       preload = true;
     const analysis = analyzeHtml(html, htmlUrl);
-    let preloadDeps: string[] = [];
     const preloadUrls = analysis.preloads.map(preload => preload.attrs.href?.value).filter(x => x);
     const { maps, lock } = await extractLockAndMap(analysis.map.json || {} as IImportMap, preloadUrls, htmlUrl || this.mapUrl, this.rootUrl || this.baseUrl, this.traceMap.resolver);
     for (const pkg of Object.keys(lock)) {
@@ -502,16 +501,20 @@ export class Generator {
       else
         this.traceMap.installer.installs[pkg] = lock[pkg];
     }
-    this.traceMap.map = new ImportMap(this.mapUrl).extend(maps);
+    if (this.installCnt !== 0)
+      throw new Error('htmlGenerate cannot run alongside other install ops');
+
+    this.traceMap.inputMap.extend(maps);
     await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
       if (isPlain(impt)) {
-        var { staticDeps } = await this.traceInstall(impt, this.baseUrl);
+        await this.traceInstall(impt);
       }
       else {
-        var { staticDeps } = await this.traceInstall(impt, analysis.base);
+        await this.traceInstall(impt);
       }
-      preloadDeps = preloadDeps.concat(staticDeps);
     }));
+
+    const preloadDeps = [...this.traceMap.staticList];
 
     const newlineTab = !whitespace ? analysis.newlineTab : analysis.newlineTab.includes('\n') ? analysis.newlineTab : '\n' + analysis.newlineTab;
 
@@ -580,6 +583,7 @@ export class Generator {
       (analysis.map.newScript ? newlineTab : '')
     );
 
+    this.installCnt = 0;
     return replacer.source;
   }
 
@@ -608,8 +612,7 @@ export class Generator {
    * ```
    * 
    */
-  async install (install: string | Install | (string | Install)[]): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
-    this.traceMap.clearLists();
+  async install (install: string | Install | (string | Install)[]): Promise<void | { staticDeps: string[], dynamicDeps: string[] }> {
     if (Array.isArray(install))
       return await Promise.all(install.map(install => this.install(install))).then(() => ({
         staticDeps: [...this.traceMap.staticList],
@@ -634,17 +637,19 @@ export class Generator {
     try {
       const { alias, target, subpath } = await installToTarget.call(this, install);
       await this.traceMap.add(alias, target);
-      await this.traceMap.trace(alias + subpath.slice(1), this.mapUrl);
+      await this.traceMap.visit(alias + subpath.slice(1), this.mapUrl);
+      this.traceMap.pin(alias + subpath.slice(1));
     }
     catch (e) {
       error = true;
       throw e;
     }
     finally {
-      if (--this.installCnt === 0)
-        await this.finishInstall(true);
-      if (!error)
-        return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+      if (--this.installCnt === 0) {
+        await this.finishInstall();
+        if (!error)
+          return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+      }
     }
   }
 

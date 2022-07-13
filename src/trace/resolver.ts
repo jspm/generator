@@ -203,7 +203,7 @@ export class Resolver {
     }
     const outUrl = pathToFileURL(await new Promise((resolve, reject) => realpath(new URL(url), (err, result) => err ? reject(err) : resolve(result)))).href;
     if (encodedColon)
-      return outUrl.replace(':', '%3a');
+      return 'file:' + outUrl.slice(5).replace(':', '%3a');
     return outUrl;
   }
 
