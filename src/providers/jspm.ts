@@ -102,7 +102,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
     tags: Object.create(null)
   };
 
-  if (range.isWildcard) {
+  if (range.isWildcard || range.isExact && range.version.tag === 'latest') {
     let lookup = await (cache.latest || (cache.latest = lookupRange.call(this, registry, name, '', unstable, parentUrl)));
     // Deno wat?
     if (lookup instanceof Promise)
