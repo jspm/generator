@@ -6,8 +6,8 @@ const generator = new Generator({
   defaultProvider: 'deno'
 });
 
-await generator.install('oak');
+await generator.install('oak@10.6.0');
 
 const json = generator.getMap();
 
-console.log(json);
+assert.strictEqual(json.imports['oak'], 'https://deno.land/x/oak@v10.6.0/mod.ts');
