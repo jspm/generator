@@ -84,7 +84,6 @@ export class Installer {
   installs: LockResolutions;
   installing = false;
   newInstalls = false;
-  currentInstall = Promise.resolve();
   // @ts-ignore
   stdlibTarget: InstallTarget;
   installBaseUrl: string;
@@ -123,66 +122,16 @@ export class Installer {
     }
   }
 
-  async startInstall (): Promise<(success: boolean) => Promise<false | { pjsonChanged: boolean, lock: LockResolutions }>> {
+  startInstall () {
     if (this.installing)
-      return this.currentInstall.then(() => this.startInstall());
-    let finishInstall: (success: boolean) => Promise<false | { pjsonChanged: boolean, lock: LockResolutions }>;
+      throw new Error('Internal error: already installing');
     this.installing = true;
     this.newInstalls = false;
     this.added = new Map<string, InstallTarget>();
-    this.currentInstall = new Promise(resolve => {
-      finishInstall = async (success: boolean) => {
-        if (!success) {
-          this.installing = false;
-          resolve();
-          return false;
-        }
+  }
 
-        // const save = this.opts.save || this.opts.saveDev || this.opts.savePeer || this.opts.saveOptional || this.hasLock || this.opts.lock;
-
-        // // update the package.json dependencies
-        // let pjsonChanged = false;
-        // const saveField: DependenciesField = this.opts.saveDev ? 'devDependencies' : this.opts.savePeer ? 'peerDependencies' : this.opts.saveOptional ? 'optionalDependencies' : 'dependencies';
-        // if (saveField && save) {
-        //   pjsonChanged = await updatePjson(this.resolver, this.installBaseUrl, async pjson => {
-        //     pjson[saveField!] = pjson[saveField!] || {};
-        //     for (const [name, target] of this.added) {
-        //       if (target instanceof URL) {
-        //         if (target.protocol === 'file:') {
-        //           pjson[saveField!]![name] = 'file:' + path.relative(fileURLToPath(this.installBaseUrl), fileURLToPath(target));
-        //         }
-        //         else {
-        //           pjson[saveField!]![name] = target.href;
-        //         }
-        //       }
-        //       else {
-        //         let versionRange = target.ranges.map(range => range.toString()).join(' || ');
-        //         if (versionRange === '*') {
-        //           const pcfg = await this.resolver.getPackageConfig(this.installs[this.installBaseUrl][target.name]);
-        //           if (pcfg)
-        //             versionRange = '^' + pcfg?.version;
-        //         }
-        //         pjson[saveField!]![name] = (target.name === name ? '' : target.registry + ':' + target.name + '@') + versionRange;
-        //       }
-        //     }
-        //   });
-        // }
-
-        // // prune the lockfile to the include traces only
-        // // this is done after pjson updates to include any adds
-        // if (this.opts.prune || pjsonChanged) {
-        //   const deps = await this.resolver.getDepList(this.installBaseUrl, true);
-        //   // existing deps is any existing builtin resolutions
-        //   const existingBuiltins = new Set(Object.keys(this.installs[this.installBaseUrl] || {}).filter(name => nodeBuiltinSet.has(name)));
-        //   await this.lockInstall([...new Set([...deps, ...existingBuiltins])], this.installBaseUrl, true);
-        // }
-
-        this.installing = false;
-        resolve();
-        return { pjsonChanged: false, lock: this.installs };
-      };
-    });
-    return finishInstall!;
+  finishInstall () {
+    this.installing = false;
   }
 
   async lockInstall (installs: string[], pkgUrl = this.installBaseUrl, prune = true) {
@@ -191,7 +140,7 @@ export class Installer {
       if (visited.has(name + '##' + pkgUrl))
         return;
       visited.add(name + '##' + pkgUrl);
-      const installUrl = await this.install(name, pkgUrl);
+      const installUrl = await this.install(name, 'existing', pkgUrl);
       const installPkgUrl = installUrl.split('|')[0] + (installUrl.indexOf('|') === -1 ? '' : '/');
       const deps = await this.resolver.getDepList(installPkgUrl);
       const existingDeps = Object.keys(this.installs[installPkgUrl] || {});
@@ -239,7 +188,7 @@ export class Installer {
     return replaced;
   }
 
-  async installTarget (pkgName: string, target: InstallTarget, pkgScope: string, pjsonPersist: boolean, subpath: string | null, parentUrl: string): Promise<string> {
+  async installTarget (pkgName: string, target: InstallTarget, mode: 'new' | 'existing', pkgScope: string, pjsonPersist: boolean, subpath: string | null, parentUrl: string): Promise<string> {
     if (this.opts.freeze)
       throw new JspmError(`"${pkgName}" is not installed in the jspm lockfile, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
 
@@ -272,7 +221,7 @@ export class Installer {
       }
     }
 
-    if (this.opts.freeze) {
+    if (this.opts.freeze || mode === 'existing') {
       const existingInstall = this.getBestMatch(target);
       if (existingInstall) {
         this.log('install', `${pkgName} ${pkgScope} -> ${existingInstall.registry}:${existingInstall.name}@${existingInstall.version}`);
@@ -306,7 +255,7 @@ export class Installer {
     return stringResolution(pkgUrl, subpath);
   }
 
-  async install (pkgName: string, pkgUrl: string, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<string> {
+  async install (pkgName: string, mode: 'new' | 'existing', pkgUrl: string, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<string> {
     if (!this.installing)
       throwInternalError('Not installing');
     if (!this.opts.reset) {
@@ -316,21 +265,30 @@ export class Installer {
     }
 
     if (this.resolutions[pkgName]) {
-      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, pkgName), pkgUrl, false, null, parentUrl);
+      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, pkgName), mode, pkgUrl, false, null, parentUrl);
+    }
+
+    // resolution scope cascading for existing only
+    if (mode === 'existing' && !this.opts.reset) {
+      for (const parentScope of enumerateParentScopes(pkgUrl)) {
+        const resolution = this.installs[parentScope]?.[pkgName];
+        if (resolution)
+          return resolution;
+      }
     }
 
     const pcfg = await this.resolver.getPackageConfig(pkgUrl) || {};
 
     // node.js core
     if (nodeBuiltins && nodeBuiltinSet.has(pkgName)) {
-      return this.installTarget(pkgName, this.stdlibTarget, pkgUrl, false, 'nodelibs/' + pkgName, parentUrl);
+      return this.installTarget(pkgName, this.stdlibTarget, mode, pkgUrl, false, 'nodelibs/' + pkgName, parentUrl);
     }
 
     // package dependencies
     const installTarget = pcfg.dependencies?.[pkgName] || pcfg.peerDependencies?.[pkgName] || pcfg.optionalDependencies?.[pkgName] || pkgUrl === this.installBaseUrl && pcfg.devDependencies?.[pkgName];
     if (installTarget) {
       const target = newPackageTarget(installTarget, pkgUrl, pkgName);
-      return this.installTarget(pkgName, target, pkgUrl, false, null, parentUrl);
+      return this.installTarget(pkgName, target, mode, pkgUrl, false, null, parentUrl);
     }
 
     // import map "imports"
@@ -339,7 +297,7 @@ export class Installer {
 
     // global install fallback
     const target = newPackageTarget('*', pkgUrl, pkgName);
-    const exactInstall = await this.installTarget(pkgName, target, pkgUrl, true, null, parentUrl);
+    const exactInstall = await this.installTarget(pkgName, target, mode, pkgUrl, true, null, parentUrl);
     return exactInstall;
   }
 
@@ -402,4 +360,16 @@ export class Installer {
       }
     }
   }
+}
+
+function enumerateParentScopes (url: string): string[] {
+  const parentScopes: string[] = [];
+  let separatorIndex = url.lastIndexOf('/');
+  const protocolIndex = url.indexOf('://') + 1;
+  if (separatorIndex !== url.length - 1)
+    throw new Error('Internal error: expected package URL');
+  while ((separatorIndex = url.lastIndexOf('/', separatorIndex - 1)) !== protocolIndex) {
+    parentScopes.push(url.slice(0, separatorIndex + 1));
+  }
+  return parentScopes;
 }
