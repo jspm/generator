@@ -16,7 +16,8 @@ export function createEsmAnalysis (imports: any[], source: string, url: string):
   const dynamicDeps: string[] = [];
   for (const impt of imports) {
     if (impt.d === -1) {
-      deps.push(impt.n);
+      if (!deps.includes(impt.n))
+        deps.push(impt.n);
       continue;
     }
     // dynamic import -> deoptimize trace all dependencies (and all their exports)

@@ -55,6 +55,7 @@ async function checkBuildOrError (pkg: ExactPackage, fetchOpts: any): Promise<bo
     const errLog = await errLogRes.text();
     throw new JspmError(`Resolved dependency ${pkgStr} with error:\n\n${errLog}\nPlease post an issue at jspm/project on GitHub, or by following the link below:\n\nhttps://github.com/jspm/project/issues/new?title=CDN%20build%20error%20for%20${encodeURIComponent(pkg.name + '@' + pkg.version)}&body=_Reporting%20CDN%20Build%20Error._%0A%0A%3C!--%20%20No%20further%20description%20necessary,%20just%20click%20%22Submit%20new%20issue%22%20--%3E`);
   }
+  console.error(`Unable to request ${cdnUrl}${pkgStr}/package.json - ${pjsonRes.status} ${pjsonRes.statusText || 'returned'}`);
   return false;
 }
 

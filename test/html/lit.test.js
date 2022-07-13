@@ -8,7 +8,8 @@ const generator = new Generator({
   resolutions: {
     'lit': '2.2.1',
     '@lit/reactive-element': '1.3.1',
-    'lit-html': '2.2.1'
+    'lit-html': '2.2.1',
+    'lit-element': '3.2.0'
   }
 });
 

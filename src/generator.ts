@@ -290,8 +290,8 @@ export class Generator {
   baseUrl: URL;
   mapUrl: URL;
   rootUrl: URL | null;
-  finishInstall: (success: boolean) => Promise<boolean | { pjsonChanged: boolean, lock: LockResolutions }> | null = null;
   installCnt = 0;
+  map: ImportMap;
 
   logStream: LogStream;
 
@@ -386,6 +386,7 @@ export class Generator {
     }
     this.traceMap = new TraceMap(this.mapUrl, {
       lock,
+      rootUrl: this.rootUrl || this.baseUrl,
       baseUrl: this.baseUrl,
       stdlib,
       env,
@@ -397,6 +398,9 @@ export class Generator {
       freeze,
       latest
     }, log, resolver);
+    this.map = new ImportMap(this.mapUrl);
+    if (inputMap)
+      this.map.extend(inputMap);
   }
 
   /**
@@ -413,30 +417,32 @@ export class Generator {
    * @param specifier Import specifier to trace
    * @param parentUrl Parent URL to trace this specifier from
    */
-  async traceInstall (specifier: string, parentUrl?: string | URL): Promise<{
+  async traceInstall (specifier: string): Promise<{
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
-    if (typeof parentUrl === 'string')
-      parentUrl = new URL(parentUrl);
     let error = false;
     if (this.installCnt++ === 0)
-      this.finishInstall = await this.traceMap.startInstall();
+      this.traceMap.startInstall();
+    await this.traceMap.processInputMap;
     try {
-      await this.traceMap.trace(specifier, parentUrl || this.baseUrl);
+      await this.traceMap.visit(specifier, { mode: 'new' });
+      this.traceMap.pin(specifier);
     }
     catch (e) {
       error = true;
       throw e;
     }
     finally {
-      if (--this.installCnt === 0)
-        await this.finishInstall(true);
-      if (!error)
-        return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+      if (--this.installCnt === 0) {
+        const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall();
+        this.map = map;
+        if (!error)
+          return { staticDeps, dynamicDeps };
+      }
     }
   }
-  
+
   /**
    * Generate and inject an import map for an HTML file
    *
@@ -479,7 +485,7 @@ export class Generator {
     htmlUrl, preload = false, integrity = false, whitespace = true, esModuleShims = true, comment = true
   }: {
     htmlUrl?: string | URL,
-    preload?: boolean,
+    preload?: boolean | 'all' | 'static',
     integrity?: boolean,
     whitespace?: boolean,
     esModuleShims?: string | boolean,
@@ -492,7 +498,6 @@ export class Generator {
     if (integrity)
       preload = true;
     const analysis = analyzeHtml(html, htmlUrl);
-    let preloadDeps: string[] = [];
     const preloadUrls = analysis.preloads.map(preload => preload.attrs.href?.value).filter(x => x);
     const { maps, lock } = await extractLockAndMap(analysis.map.json || {} as IImportMap, preloadUrls, htmlUrl || this.mapUrl, this.rootUrl || this.baseUrl, this.traceMap.resolver);
     for (const pkg of Object.keys(lock)) {
@@ -501,16 +506,21 @@ export class Generator {
       else
         this.traceMap.installer.installs[pkg] = lock[pkg];
     }
-    this.traceMap.map = new ImportMap(this.mapUrl).extend(maps);
+    if (this.installCnt !== 0)
+      throw new JspmError('htmlGenerate cannot run alongside other install ops');
+
+    this.traceMap.inputMap.extend(maps);
+    let staticDeps = [], dynamicDeps = [];
     await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
       if (isPlain(impt)) {
-        var { staticDeps } = await this.traceInstall(impt, this.baseUrl);
+        ({ staticDeps, dynamicDeps } = await this.traceInstall(impt));
       }
       else {
-        var { staticDeps } = await this.traceInstall(impt, analysis.base);
+        ({ staticDeps, dynamicDeps } = await this.traceInstall(impt));
       }
-      preloadDeps = preloadDeps.concat(staticDeps);
     }));
+
+    const preloadDeps = preload === true && integrity || preload === 'all' ? [...new Set([...staticDeps, ...dynamicDeps])] : staticDeps;
 
     const newlineTab = !whitespace ? analysis.newlineTab : analysis.newlineTab.includes('\n') ? analysis.newlineTab : '\n' + analysis.newlineTab;
 
@@ -579,6 +589,7 @@ export class Generator {
       (analysis.map.newScript ? newlineTab : '')
     );
 
+    this.installCnt = 0;
     return replacer.source;
   }
 
@@ -607,13 +618,9 @@ export class Generator {
    * ```
    * 
    */
-  async install (install: string | Install | (string | Install)[]): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
-    this.traceMap.clearLists();
+  async install (install: string | Install | (string | Install)[]): Promise<void | { staticDeps: string[], dynamicDeps: string[] }> {
     if (Array.isArray(install))
-      return await Promise.all(install.map(install => this.install(install))).then(() => ({
-        staticDeps: [...this.traceMap.staticList],
-        dynamicDeps: [...this.traceMap.dynamicList]
-      }));
+      return await Promise.all(install.map(install => this.install(install))).then(installs => installs.find(i => i));
     if (arguments.length !== 1)
       throw new Error('Install takes a single target string or object.');
     if (typeof install !== 'string' && install.subpaths !== undefined) {
@@ -625,26 +632,67 @@ export class Generator {
         target: (install as Install).target,
         alias: (install as Install).alias,
         subpath
-      }))).then(() => ({ staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] }));
+      }))).then(installs => installs.find(i => i));
     }
     let error = false;
     if (this.installCnt++ === 0)
-      this.finishInstall = await this.traceMap.startInstall();
+      this.traceMap.startInstall();
+    await this.traceMap.processInputMap;
     try {
       const { alias, target, subpath } = await installToTarget.call(this, install);
       await this.traceMap.add(alias, target);
-      await this.traceMap.trace(alias + subpath.slice(1), this.mapUrl);
+      await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new' });
+      this.traceMap.pin(alias + subpath.slice(1));
     }
     catch (e) {
       error = true;
       throw e;
     }
     finally {
-      if (--this.installCnt === 0)
-        await this.finishInstall(true);
-      if (!error)
-        return { staticDeps: [...this.traceMap.staticList], dynamicDeps: [...this.traceMap.dynamicList] };
+      if (--this.installCnt === 0) {
+        const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall();
+        this.map = map;
+        if (!error)
+          return { staticDeps, dynamicDeps };
+      }
     }
+  }
+
+  async uninstall (name: string | string[]) {
+    if (Array.isArray(name))
+      return await Promise.all(name.map(name => this.uninstall(name)));
+    if (this.installCnt++ === 0)
+      this.traceMap.startInstall();
+    await this.traceMap.processInputMap;
+    const idx = this.traceMap.pins.indexOf(name);
+    if (idx === -1)
+      throw new JspmError(`No "imports" entry for "${name}" to uninstall.`);
+    this.traceMap.pins.splice(idx, 1);
+    if (--this.installCnt === 0) {
+      const { map } = await this.traceMap.finishInstall();
+      this.map = map;
+    }
+  }
+
+  async extractMap (names: string | string[]) {
+    if (!Array.isArray(names))
+      names = [names];
+    if (this.installCnt++ !== 0)
+      throw new JspmError(`Cannot run extract map during installs`);
+    this.traceMap.startInstall();
+    await this.traceMap.processInputMap;
+    for (const name of names) {
+      if (!this.traceMap.pins.includes(name))
+        throw new JspmError(`No "${name}" entry in "imports" to extract.`);
+    }
+    if (--this.installCnt !== 0)
+      throw new JspmError(`Another install was started during extract map.`);
+    const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall(names);
+    map.flatten(this.rootUrl ? this.rootUrl : this.baseUrl);
+    if (this.rootUrl)
+      map.rebase(this.rootUrl.href, true);
+    map.sort();
+    return { map: map.toJSON(), staticDeps, dynamicDeps };
   }
 
   /**
@@ -657,7 +705,7 @@ export class Generator {
   resolve (specifier: string, parentUrl: URL | string = this.baseUrl) {
     if (typeof parentUrl === 'string')
       parentUrl = new URL(parentUrl, this.baseUrl);
-    const resolved = this.traceMap.map.resolve(specifier, parentUrl);
+    const resolved = this.map.resolve(specifier, parentUrl);
     if (resolved === null)
       throw new JspmError(`Unable to resolve "${specifier}" from ${parentUrl.href}`, 'MODULE_NOT_FOUND');
     return resolved;
@@ -667,7 +715,7 @@ export class Generator {
    * Get the import map JSON
    */
   get importMap () {
-    return this.traceMap.map;
+    return this.map;
   }
 
   /**
@@ -690,7 +738,7 @@ export class Generator {
   }
 
   getMap () {
-    const map = this.traceMap.map.clone();
+    const map = this.map.clone();
     map.flatten(this.rootUrl ? this.rootUrl : this.baseUrl);
     if (this.rootUrl)
       map.rebase(this.rootUrl.href, true);

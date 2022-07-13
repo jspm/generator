@@ -13,6 +13,5 @@ const generator = new Generator({
 
 await generator.install('@jspm/generator');
 
-
 const json = generator.getMap();
 assert.ok(JSON.stringify(json).length < 2000);
