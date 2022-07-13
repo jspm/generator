@@ -263,7 +263,7 @@ export class Resolver {
     }
     // Node.js core resolutions
     if (installer && url.startsWith('node:')) {
-      const resolution = await installer.installTarget(url.slice(5), installer.stdlibTarget, pkgUrl, false, 'nodelibs/' + url.slice(5), pkgUrl);
+      const resolution = await installer.installTarget(url.slice(5), installer.stdlibTarget, 'new', pkgUrl, false, 'nodelibs/' + url.slice(5), pkgUrl);
       let [installPkg, installExport] = resolution.split('|');
       if (!installPkg.endsWith('/'))
         installPkg += '/';
