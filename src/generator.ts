@@ -513,10 +513,14 @@ export class Generator {
     let staticDeps = [], dynamicDeps = [];
     await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
       if (isPlain(impt)) {
-        ({ staticDeps, dynamicDeps } = await this.traceInstall(impt));
+        const result = await this.traceInstall(impt);
+        if (result)
+          ({ staticDeps, dynamicDeps } = result);
       }
       else {
-        ({ staticDeps, dynamicDeps } = await this.traceInstall(impt));
+        const result = await this.traceInstall(impt);
+        if (result)
+          ({ staticDeps, dynamicDeps } = result);
       }
     }));
 
@@ -658,6 +662,17 @@ export class Generator {
     }
   }
 
+  async reinstall () {
+    if (this.installCnt++ === 0)
+      this.traceMap.startInstall();
+    await this.traceMap.processInputMap;
+    if (--this.installCnt === 0) {
+      const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall();
+      this.map = map;
+      return { staticDeps, dynamicDeps };
+    }
+  }
+
   async uninstall (name: string | string[]) {
     if (Array.isArray(name))
       return await Promise.all(name.map(name => this.uninstall(name)));
@@ -665,8 +680,10 @@ export class Generator {
       this.traceMap.startInstall();
     await this.traceMap.processInputMap;
     const idx = this.traceMap.pins.indexOf(name);
-    if (idx === -1)
+    if (idx === -1) {
+      this.installCnt--;
       throw new JspmError(`No "imports" entry for "${name}" to uninstall.`);
+    }
     this.traceMap.pins.splice(idx, 1);
     if (--this.installCnt === 0) {
       const { map } = await this.traceMap.finishInstall();
