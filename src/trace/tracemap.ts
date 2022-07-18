@@ -140,6 +140,8 @@ export default class TraceMap {
 
   async extractMap (pins: string[]) {
     const map = new ImportMap(this.mapBase);
+    // note this plucks custom top-level imports
+    // we may want better control over this
     map.extend(this.inputMap);
     // re-drive all the traces to convergence
     do {

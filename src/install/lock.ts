@@ -1,6 +1,7 @@
 import { IImportMap } from "@jspm/import-map";
 import { throwInternalError } from "../common/err.js";
 import { isPlain, relativeUrl, resolveUrl } from "../common/url.js";
+import { getPackageBase } from "../generator.js";
 import { Resolver } from "../trace/resolver.js";
 import { parsePkg } from "./package.js";
 
@@ -68,7 +69,7 @@ export function setResolution (resolutions: LockResolutions, name: string, pkgUr
 
 export async function extractLockAndMap (map: IImportMap, preloadUrls: string[], mapUrl: URL, rootUrl: URL, resolver: Resolver): Promise<{ lock: LockResolutions, maps: IImportMap }> {
   const lock: LockResolutions = {};
-  const maps: IImportMap = { imports: {}, scopes: {} };
+  const maps: IImportMap = { imports: Object.create(null), scopes: Object.create(null) };
 
   const mapBase = await resolver.getPackageBase(mapUrl.href);
 
@@ -76,11 +77,13 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
     const targetUrl = resolveUrl(map.imports[key], mapUrl, rootUrl).href;
     const providerPkg = resolver.parseUrlPkg(targetUrl);
     const resolvedKey = isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl).href;
-    const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : mapBase;
+    const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await getPackageBase(targetUrl);
     const parsed = isPlain(key) ? parsePkg(key) : null;
     if (parsed && await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
       // TODO: lockfile should really now be based on primary and scoped
-      setResolution(lock, resolvedKey, mapBase, pkgUrl, '');
+      if (key[0] !== '#') {
+        setResolution(lock, resolvedKey, mapBase, pkgUrl, '');
+      }
     }
     else {
       maps.imports[resolvedKey] = targetUrl;
@@ -94,14 +97,17 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
       const targetUrl = resolveUrl(scope[key], mapUrl, rootUrl).href;
       const providerPkg = resolver.parseUrlPkg(targetUrl);
       const resolvedKey = isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl).href;
-      const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : mapBase;
+      const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await getPackageBase(targetUrl);
       const parsed = isPlain(key) ? parsePkg(key) : null;
       if (parsed && await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
-        const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
-        setResolution(lock, resolvedKey, scopePkgUrl, resolver.pkgToUrl(providerPkg.pkg, providerPkg.source), '');
+        if (key[0] !== '#') {
+          const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
+          // Should this support the /|nodelibs/process style core syntax?
+          setResolution(lock, resolvedKey, scopePkgUrl, pkgUrl, '');
+        }
       }
       else {
-        (maps.scopes[resolvedScopeUrl] = map.scopes[resolvedScopeUrl] || {})[key] = targetUrl;
+        (maps.scopes[resolvedScopeUrl] = maps.scopes[resolvedScopeUrl] || Object.create(null))[key] = targetUrl;
       }
     }
   }
