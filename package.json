@@ -36,7 +36,7 @@
     "@babel/plugin-syntax-import-assertions": "^7.17.12",
     "@babel/preset-typescript": "^7.17.2",
     "@jspm/core": "^2.0.0-beta.8",
-    "@jspm/import-map": "^0.3.1",
+    "@jspm/import-map": "^1.0.4",
     "es-module-lexer": "^0.10.4",
     "ipfs-client": "^0.7.1",
     "make-fetch-happen": "^8.0.3",

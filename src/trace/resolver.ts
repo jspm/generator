@@ -11,6 +11,7 @@ import { Analysis, createSystemAnalysis, createCjsAnalysis, createEsmAnalysis, c
 // @ts-ignore
 import { getMapMatch } from '@jspm/import-map';
 import { Installer, PackageProvider } from '../install/installer.js';
+import { nodeBuiltinSet } from '../providers/node.js';
 
 let realpath, pathToFileURL;
 
@@ -274,8 +275,26 @@ export class Resolver {
   }
 
   // returns true or false whether this package subpath can resolve to the given target URL for some env value
+  // also handles "imports"
   async hasExportResolution (pkgUrl: string, subpath: string, target: string, originalSpecifier: string): Promise<boolean> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
+    if (originalSpecifier[0] === '#') {
+      if (pcfg.imports === undefined || pcfg.imports === null)
+        return false;
+      const match = getMapMatch(originalSpecifier, pcfg.imports as Record<string, ExportsTarget>);
+      if (!match)
+        return false;
+      const targets = enumeratePackageTargets(pcfg.imports[match], pkgUrl, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
+      for (const curTarget of targets) {
+        try {
+          if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target) {
+            return true;
+          }
+        }
+        catch {}
+      }
+      return false;
+    }
     if (pcfg.exports !== undefined && pcfg.exports !== null) {
       function allDotKeys (exports: Record<string, any>) {
         for (let p in exports) {
@@ -314,14 +333,20 @@ export class Resolver {
         return false;
       }
       else {
-        const match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
-        if (!match)
-          return false;
+        let match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
+        if (!match) {
+          if (nodeBuiltinSet.has(originalSpecifier)) {
+            match = getMapMatch('./nodelibs/' + originalSpecifier, pcfg.exports as Record<string, ExportsTarget>);
+          }
+          if (!match)
+            return false;
+        }
         const targets = enumeratePackageTargets(pcfg.exports[match], pkgUrl, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
         for (const curTarget of targets) {
           try {
-            if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target)
+            if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target) {
               return true;
+            }
           }
           catch {}
         }
@@ -463,7 +488,7 @@ export class Resolver {
   //   }
   // }
 
-  async analyze (resolvedUrl: string, parentUrl: URL, system: boolean, isRequire: boolean, retry = true): Promise<Analysis> {
+  async analyze (resolvedUrl: string, parentUrl: string, system: boolean, isRequire: boolean, retry = true): Promise<Analysis> {
     const res = await fetch(resolvedUrl, this.fetchOpts);
     switch (res.status) {
       case 200:

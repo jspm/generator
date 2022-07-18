@@ -12,7 +12,7 @@ import { analyzeHtml } from "./html/analyze.js";
 import { SemverRange } from 'sver';
 import { Replacer } from "./common/str.js";
 import { getIntegrity } from "./common/integrity.js";
-import { extractLockAndMap, LockResolutions, normalizeLock, resolveLock } from "./install/lock.js";
+import { extractLockAndMap, LockResolutions, normalizeLock } from "./install/lock.js";
 
 export { analyzeHtml }
 
@@ -50,7 +50,7 @@ export interface GeneratorOptions {
    * E.g. for `rootUrl: 'file:///path/to/project/public'`, any local module `public/local/mod.js` within the `public` folder
    * will be normalized to `/local/mod.js` in the output map.
    */
-  rootUrl?: URL | string;
+  rootUrl?: URL | string | null;
   /**
    * An authoritative initial import map.
    * 
@@ -384,9 +384,10 @@ export class Generator {
         this.mapUrl = new URL(this.mapUrl.href + '/');
       }
     }
-    this.traceMap = new TraceMap(this.mapUrl, {
+    this.traceMap = new TraceMap({
+      mapUrl: this.mapUrl,
       lock,
-      rootUrl: this.rootUrl || this.baseUrl,
+      rootUrl: this.rootUrl,
       baseUrl: this.baseUrl,
       stdlib,
       env,
@@ -398,7 +399,7 @@ export class Generator {
       freeze,
       latest
     }, log, resolver);
-    this.map = new ImportMap(this.mapUrl);
+    this.map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     if (inputMap)
       this.map.extend(inputMap);
   }
@@ -513,10 +514,14 @@ export class Generator {
     let staticDeps = [], dynamicDeps = [];
     await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
       if (isPlain(impt)) {
-        ({ staticDeps, dynamicDeps } = await this.traceInstall(impt));
+        const result = await this.traceInstall(impt);
+        if (result)
+          ({ staticDeps, dynamicDeps } = result);
       }
       else {
-        ({ staticDeps, dynamicDeps } = await this.traceInstall(impt));
+        const result = await this.traceInstall(impt);
+        if (result)
+          ({ staticDeps, dynamicDeps } = result);
       }
     }));
 
@@ -566,7 +571,7 @@ export class Generator {
           replacer.remove(module.attrs.integrity.start - (replacer.source[replacer.idx(module.attrs.integrity.start - 1)] === ' ' ? 1 : 0), module.attrs.integrity.end + 1);
         }
         const lastAttr = Object.keys(module.attrs).filter(attr => attr !== 'integrity').sort((a, b) => module.attrs[a].end > module.attrs[b].end ? -1 : 1)[0];
-        replacer.replace(module.attrs[lastAttr].end + 1, module.attrs[lastAttr].end + 1, ` integrity="${await getIntegrity(resolveUrl(module.attrs.src.value, this.mapUrl, this.rootUrl).href, this.traceMap.resolver.fetchOpts)}"`)
+        replacer.replace(module.attrs[lastAttr].end + 1, module.attrs[lastAttr].end + 1, ` integrity="${await getIntegrity(resolveUrl(module.attrs.src.value, this.mapUrl, this.rootUrl), this.traceMap.resolver.fetchOpts)}"`)
       }
     }
 
@@ -658,6 +663,17 @@ export class Generator {
     }
   }
 
+  async reinstall () {
+    if (this.installCnt++ === 0)
+      this.traceMap.startInstall();
+    await this.traceMap.processInputMap;
+    if (--this.installCnt === 0) {
+      const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall();
+      this.map = map;
+      return { staticDeps, dynamicDeps };
+    }
+  }
+
   async uninstall (name: string | string[]) {
     if (Array.isArray(name))
       return await Promise.all(name.map(name => this.uninstall(name)));
@@ -665,8 +681,10 @@ export class Generator {
       this.traceMap.startInstall();
     await this.traceMap.processInputMap;
     const idx = this.traceMap.pins.indexOf(name);
-    if (idx === -1)
+    if (idx === -1) {
+      this.installCnt--;
       throw new JspmError(`No "imports" entry for "${name}" to uninstall.`);
+    }
     this.traceMap.pins.splice(idx, 1);
     if (--this.installCnt === 0) {
       const { map } = await this.traceMap.finishInstall();
@@ -688,9 +706,7 @@ export class Generator {
     if (--this.installCnt !== 0)
       throw new JspmError(`Another install was started during extract map.`);
     const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall(names);
-    map.flatten(this.rootUrl ? this.rootUrl : this.baseUrl);
-    if (this.rootUrl)
-      map.rebase(this.rootUrl.href, true);
+    map.flatten();
     map.sort();
     return { map: map.toJSON(), staticDeps, dynamicDeps };
   }
@@ -739,10 +755,9 @@ export class Generator {
 
   getMap () {
     const map = this.map.clone();
-    map.flatten(this.rootUrl ? this.rootUrl : this.baseUrl);
-    if (this.rootUrl)
-      map.rebase(this.rootUrl.href, true);
+    map.flatten();
     map.sort();
+    map.rebase();
     return map.toJSON();
   }
 }

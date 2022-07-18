@@ -69,6 +69,81 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
  */
 ```
 
+### Working with Existing Import Maps
+
+An existing import map can be passed to the generator with the `inputMap` option for adding new packages to an existing map
+or modifying an existing map:
+
+```js
+const generator = new Generator({
+  env: ['production', 'module', 'browser'],
+  inputMap: {
+    "imports": {
+      "react": "https://ga.jspm.io/npm:react@17.0.1/dev.index.js"
+    },
+    "scopes": {
+      "https://ga.jspm.io/": {
+        "object-assign": "https://ga.jspm.io/npm:object-assign@4.1.0/index.js"
+      }
+    }
+  }
+});
+
+await generator.install('lit');
+console.log(generator.getMap());
+// {
+//   "imports": {
+//     "lit": "https://ga.jspm.io/npm:lit@2.2.7/index.js",
+//     "react": "https://ga.jspm.io/npm:react@17.0.1/index.js"
+//   },
+//   "scopes": {
+//     "https://ga.jspm.io/": {
+//       "@lit/reactive-element": "https://ga.jspm.io/npm:@lit/reactive-element@1.3.3/reactive-element.js",
+//       "lit-element/lit-element.js": "https://ga.jspm.io/npm:lit-element@3.2.1/lit-element.js",
+//       "lit-html": "https://ga.jspm.io/npm:lit-html@2.2.6/lit-html.js",
+//       "object-assign": "https://ga.jspm.io/npm:object-assign@4.1.0/index.js"
+//     }
+//   }
+// }
+```
+
+The generator treats the existing resolutions in the `inputMap` like a lockfile - they are respected as authoritative version resolutions so far as packages are not being updated.
+
+The `"imports"` in the `inputMap` are treated like package.json `"dependencies"` and scopes are pruned to remove any modules
+not reachable from the `"imports"`.
+
+The generator environment conditions will always update all existing mappings in the import map when running any install operation,
+unless those mappings are mapped to custom resolutions not corresponding to any export which are then treated as overrides.
+
+To perform pruning and re-resolution of the environment conditions the argumentless `generator.reinstall()` behaves something like an `npm install` with no arguments. It updates all conditional resolutions and adds any missing dependencies as necessary, while respecting all version locks and custom mappings:
+
+```js
+const generator = new Generator({
+  env: ['production', 'module', 'browser'],
+  inputMap: {
+    "imports": {
+      "custom": "/mapping.js",
+      "react": "https://ga.jspm.io/npm:react@17.0.1/dev.index.js"
+    }
+  }
+});
+
+await generator.reinstall();
+
+console.log(generator.getMap());
+// {
+//   "imports": {
+//     "custom": "/mapping.js",
+//     "react": "https://ga.jspm.io/npm:react@17.0.1/index.js"
+//   },
+//   "scopes": {
+//     "https://ga.jspm.io/": {
+//       "object-assign": "https://ga.jspm.io/npm:object-assign@4.1.0/index.js"
+//     }
+//   }
+// }
+```
+
 ### Generating HTML
 
 Instead of inputting modules and outputting an import map, the generator can directly trace
