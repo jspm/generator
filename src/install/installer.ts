@@ -115,7 +115,7 @@ export class Installer {
         provider: opts.defaultProvider.split('.')[0],
         layer: opts.defaultProvider.split('.')[1] || 'default'
       };
-    this.providers = registryProviders;
+    this.providers = Object.assign({}, registryProviders);
     if (opts.providers)
       Object.assign(this.providers, opts.providers);
 
