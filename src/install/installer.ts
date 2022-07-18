@@ -8,6 +8,7 @@ import { JspmError, throwInternalError } from "../common/err.js";
 import { nodeBuiltinSet } from '../providers/node.js';
 import { parseUrlPkg } from '../providers/jspm.js';
 import { getResolution, LockResolutions, pruneResolutions, setResolution, stringResolution } from './lock.js';
+import { registryProviders } from '../providers/index.js';
 
 export interface PackageProvider {
   provider: string;
@@ -77,6 +78,7 @@ export interface InstallOptions {
   resolutions?: Record<string, string>;
 
   defaultProvider?: string;
+  defaultRegistry?: string;
   providers?: Record<string, string>;
 }
 
@@ -92,6 +94,7 @@ export class Installer {
   added = new Map<string, InstallTarget>();
   hasLock = false;
   defaultProvider = { provider: 'jspm', layer: 'default' };
+  defaultRegistry = 'npm';
   providers: Record<string, string>;
   resolutions: Record<string, string>;
   log: Log;
@@ -105,12 +108,16 @@ export class Installer {
     this.opts = opts;
     this.hasLock = !!opts.lock;
     this.installs = opts.lock || {};
+    if (opts.defaultRegistry)
+      this.defaultRegistry = opts.defaultRegistry;
     if (opts.defaultProvider)
       this.defaultProvider = {
         provider: opts.defaultProvider.split('.')[0],
         layer: opts.defaultProvider.split('.')[1] || 'default'
       };
-    this.providers = opts.providers || {};
+    this.providers = registryProviders;
+    if (opts.providers)
+      Object.assign(this.providers, opts.providers);
 
     if (opts.stdlib) {
       if (isURL(opts.stdlib) || opts.stdlib[0] === '.') {
@@ -119,7 +126,7 @@ export class Installer {
           this.stdlibTarget.pathname = this.stdlibTarget.pathname.slice(0, -1);
       }
       else {
-        this.stdlibTarget = newPackageTarget(opts.stdlib, this.installBaseUrl);
+        this.stdlibTarget = newPackageTarget(opts.stdlib, this.installBaseUrl, this.defaultRegistry);
       }
     }
   }
@@ -212,7 +219,7 @@ export class Installer {
 
     let provider = this.defaultProvider;
     for (const name of Object.keys(this.providers)) {
-      if (target.name.startsWith(name) && (target.name.length === name.length || target.name[name.length] === '/')) {
+      if (name.endsWith(':') && target.registry === name.slice(0, -1) || target.name.startsWith(name) && (target.name.length === name.length || target.name[name.length] === '/')) {
         provider = { provider: this.providers[name], layer: 'default' };
         const layerIndex = provider.provider.indexOf('.');
         if (layerIndex !== -1) {
@@ -236,7 +243,7 @@ export class Installer {
 
     // resolutions are authoritative at the top-level
     if (this.resolutions[pkgName]) {
-      const resolutionTarget = newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, pkgName);
+      const resolutionTarget = newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, this.defaultRegistry, pkgName);
       if (JSON.stringify(target) !== JSON.stringify(resolutionTarget))
         return this.installTarget(pkgName, resolutionTarget, mode, pkgScope, pjsonPersist, subpath, parentUrl);
     }
@@ -274,7 +281,7 @@ export class Installer {
     }
 
     if (this.resolutions[pkgName]) {
-      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, pkgName), mode, pkgUrl, false, null, parentUrl);
+      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl.href, this.defaultRegistry, pkgName), mode, pkgUrl, false, null, parentUrl);
     }
 
     // resolution scope cascading for existing only
@@ -296,7 +303,7 @@ export class Installer {
     // package dependencies
     const installTarget = pcfg.dependencies?.[pkgName] || pcfg.peerDependencies?.[pkgName] || pcfg.optionalDependencies?.[pkgName] || pkgUrl === this.installBaseUrl && pcfg.devDependencies?.[pkgName];
     if (installTarget) {
-      const target = newPackageTarget(installTarget, pkgUrl, pkgName);
+      const target = newPackageTarget(installTarget, pkgUrl, this.defaultRegistry, pkgName);
       return this.installTarget(pkgName, target, mode, pkgUrl, false, null, parentUrl);
     }
 
@@ -305,7 +312,7 @@ export class Installer {
       return this.installs[this.installBaseUrl][pkgName];
 
     // global install fallback
-    const target = newPackageTarget('*', pkgUrl, pkgName);
+    const target = newPackageTarget('*', pkgUrl, this.defaultRegistry, pkgName);
     const exactInstall = await this.installTarget(pkgName, target, mode, pkgUrl, true, null, parentUrl);
     return exactInstall;
   }

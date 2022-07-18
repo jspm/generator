@@ -1,4 +1,4 @@
-import * as deno from './denoland.js';
+import * as denoland from './denoland.js';
 import * as jspm from './jspm.js';
 import * as skypack from './skypack.js';
 import * as jsdelivr from './jsdelivr.js';
@@ -18,7 +18,7 @@ export interface Provider {
 }
 
 export const defaultProviders: Record<string, Provider> = {
-  deno,
+  denoland,
   jsdelivr,
   jspm,
   node,
@@ -33,3 +33,8 @@ export function getProvider (name: string, providers: Record<string, Provider> =
     return provider;
   throw new Error('No ' + name + ' provider is defined.');
 }
+
+export const registryProviders: Record<string, string> = {
+  'denoland:': 'denoland',
+  'deno:': 'denoland'
+};
