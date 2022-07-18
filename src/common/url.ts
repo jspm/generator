@@ -25,12 +25,10 @@ else if (typeof document as any !== 'undefined') {
     baseUrl = new URL('../', new URL(location.href));
 }
 
-export function resolveUrl (url: string, mapUrl: URL, rootUrl: URL) {
-  if (url.startsWith('//'))
-    return new URL(url, rootUrl);
+export function resolveUrl (url: string, mapUrl: URL, rootUrl: URL | null): string {
   if (url.startsWith('/'))
-    return new URL(url.slice(1), rootUrl);
-  return new URL(url, mapUrl);
+    return rootUrl ? new URL('.' + url.slice(url[1] === '/' ? 1 : 0), rootUrl).href : url;
+  return new URL(url, mapUrl).href;
 }
 
 export function importedFrom (parentUrl?: string | URL) {

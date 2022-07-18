@@ -1,5 +1,5 @@
 import { type InstallOptions, InstallTarget, PackageProvider } from "../install/installer.js";
-import { importedFrom, isPlain, isURL } from "../common/url.js";
+import { importedFrom, isPlain, isURL, resolveUrl } from "../common/url.js";
 import { Installer } from "../install/installer.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { parsePkg } from "../install/package.js";
@@ -50,7 +50,7 @@ interface TraceEntry {
 interface VisitOpts {
   static?: boolean,
   mode: 'new' | 'existing',
-  visitor?: (specifier: string, parentUrl: URL, resolvedUrl: string, entry: TraceEntry) => Promise<boolean | void>
+  visitor?: (specifier: string, parentUrl: string, resolvedUrl: string, entry: TraceEntry) => Promise<boolean | void>
 };
 
 // The tracemap fully drives the installer
@@ -61,16 +61,18 @@ export default class TraceMap {
   opts: TraceMapOptions;
   tracedUrls: TraceGraph = {};
   inputMap: ImportMap;
-  mapBase: URL;
+  mapUrl: URL;
+  rootUrl: URL | null;
   pins: Array<string>;
   log: Log;
   resolver: Resolver;
   processInputMap: Promise<void>;
 
-  constructor (mapBase: URL, opts: TraceMapOptions, log: Log, resolver: Resolver) {
+  constructor (opts: TraceMapOptions, log: Log, resolver: Resolver) {
     this.log = log;
     this.resolver = resolver;
-    this.mapBase = mapBase;
+    this.mapUrl = opts.mapUrl;
+    this.rootUrl = opts.rootUrl || null;
     this.opts = opts;
     if (this.opts.env) {
       if (this.opts.env.includes('require'))
@@ -79,13 +81,13 @@ export default class TraceMap {
         this.opts.env.push('import');
       this.env = this.opts.env;
     }
-    this.inputMap = new ImportMap(this.mapBase);
+    this.inputMap = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     this.cjsEnv = this.env.map(e => e === 'import' ? 'require' : e);
-    this.installer = new Installer(this.mapBase, this.opts, this.log, this.resolver);
+    this.installer = new Installer(this.mapUrl, this.opts, this.log, this.resolver);
     this.pins = this.opts.inputMap ? Object.keys(this.opts.inputMap.imports || {}) : [];
     this.processInputMap = (async () => {
       if (!this.opts.inputMap) return;
-      const { maps, lock } = await extractLockAndMap(this.opts.inputMap, [], this.mapBase, this.opts.rootUrl, this.resolver);
+      const { maps, lock } = await extractLockAndMap(this.opts.inputMap, [], this.mapUrl, this.opts.rootUrl, this.resolver);
       this.inputMap.extend(maps);
       this.installer.installs = lock;
     })();
@@ -95,7 +97,7 @@ export default class TraceMap {
     return this.installer!.replace(target, pkgUrl, provider);
   }
 
-  async visit (specifier: string, opts: VisitOpts, parentUrl = this.mapBase, seen = new Set()) {
+  async visit (specifier: string, opts: VisitOpts, parentUrl = this.mapUrl.href, seen = new Set()) {
     if (seen.has(specifier + '##' + parentUrl))
       return;
     seen.add(specifier + '##' + parentUrl);
@@ -128,18 +130,17 @@ export default class TraceMap {
       if (stop) return;
     }
 
-    const resolvedURL = new URL(resolved);
     await Promise.all(allDeps.map(async dep => {
       if (dep.indexOf('*') !== -1) {
         this.log('todo', 'Handle wildcard trace ' + dep + ' in ' + resolved);
         return;
       }
-      await this.visit(dep, opts, resolvedURL, seen);
+      await this.visit(dep, opts, resolved, seen);
     }));
   }
 
   async extractMap (pins: string[]) {
-    const map = new ImportMap(this.mapBase);
+    const map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     // note this plucks custom top-level imports
     // we may want better control over this
     map.extend(this.inputMap);
@@ -156,24 +157,24 @@ export default class TraceMap {
     const dynamicList = new Set();
     const dynamics: [string, string][] = [];
     let list = staticList;
-    const visitor = async (specifier: string, parentUrl: URL, resolved: string, entry) => {
+    const visitor = async (specifier: string, parentUrl: string, resolved: string, entry) => {
       if (!staticList.has(resolved))
         list.add(resolved);
       for (const dep of entry.dynamicDeps) {
         dynamics.push([dep, resolved]);
       }
-      if (parentUrl.href === this.mapBase.href) {
+      if (parentUrl === this.mapUrl.href) {
         if (isPlain(specifier)) {
           const existing = map.imports[specifier];
-          if (!existing || existing !== resolved && this.tracedUrls?.[parentUrl.href]?.wasCJS)
+          if (!existing || existing !== resolved && this.tracedUrls?.[parentUrl]?.wasCJS)
             map.set(specifier, resolved);
         }
       }
       else {
-        const parentPkgUrl = await this.resolver.getPackageBase(parentUrl.href);
+        const parentPkgUrl = await this.resolver.getPackageBase(parentUrl);
         if (isPlain(specifier)) {
           const existing = map.scopes[parentPkgUrl]?.[specifier];
-          if (!existing || existing !== resolved && this.tracedUrls?.[parentUrl.href]?.wasCJS)
+          if (!existing || existing !== resolved && this.tracedUrls?.[parentUrl]?.wasCJS)
             map.set(specifier, resolved, parentPkgUrl);
         }
       }
@@ -186,7 +187,7 @@ export default class TraceMap {
     list = dynamicList;
     await Promise.all(dynamics.map(async ([specifier, parent]) => {
       // TODO: perf, stop on reentrancy. Important that reentrancy is specifier + parent duplication though.
-      await this.visit(specifier, { visitor, mode: 'existing' }, new URL(parent));
+      await this.visit(specifier, { visitor, mode: 'existing' }, parent);
     }));
 
     if (this.installer!.newInstalls)
@@ -211,7 +212,7 @@ export default class TraceMap {
   }
 
   async add (name: string, target: InstallTarget, persist = true): Promise<string> {
-    const installed = await this.installer!.installTarget(name, target, 'new', this.mapBase.href, persist, null, this.mapBase.href);
+    const installed = await this.installer!.installTarget(name, target, 'new', this.mapUrl.href, persist, null, this.mapUrl.href);
     return installed.slice(0, -1);
   }
 
@@ -235,14 +236,14 @@ export default class TraceMap {
   /**
    * @returns `resolved` - either a URL `string` pointing to the module or `null` if the specifier should be ignored.
    */
-  async resolve (specifier: string, parentUrl: URL, mode: 'new' | 'existing'): Promise<string> {
-    const env = this.tracedUrls[parentUrl.href]?.wasCJS ? this.cjsEnv : this.env;
+  async resolve (specifier: string, parentUrl: string, mode: 'new' | 'existing'): Promise<string> {
+    const env = this.tracedUrls[parentUrl]?.wasCJS ? this.cjsEnv : this.env;
 
-    const parentPkgUrl = await this.resolver.getPackageBase(parentUrl.href);
+    const parentPkgUrl = await this.resolver.getPackageBase(parentUrl);
     if (!parentPkgUrl)
       throwInternalError();
 
-    const parentIsCjs = this.tracedUrls[parentUrl.href]?.format === 'commonjs';
+    const parentIsCjs = this.tracedUrls[parentUrl]?.format === 'commonjs';
 
     if (!isPlain(specifier)) {
       let resolvedUrl = new URL(specifier, parentUrl);
@@ -251,7 +252,7 @@ export default class TraceMap {
       const resolvedHref = resolvedUrl.href;
       let finalized = await this.resolver.realPath(await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, env, this.installer, parentPkgUrl));
       // handle URL mappings
-      const urlResolved = this.inputMap.resolve(finalized, parentUrl, env) as string;
+      const urlResolved = this.inputMap.resolve(finalized, parentUrl) as string;
       const doNodeMaps = env.includes('deno') || (env.includes('browser') && !env.includes('electron'));
       // TODO: avoid this hack - perhaps solved by conditional maps
       if (urlResolved !== finalized && !urlResolved.startsWith('node:')) {
@@ -262,7 +263,7 @@ export default class TraceMap {
         this.inputMap.set(resolvedHref.endsWith('/') ? resolvedHref.slice(0, -1) : resolvedHref, finalized, parentPkgUrl);
         resolvedUrl = new URL(finalized);
       }
-      this.log('resolve', `${specifier} ${parentUrl.href} -> ${resolvedUrl}`);
+      this.log('resolve', `${specifier} ${parentUrl} -> ${resolvedUrl}`);
       return resolvedUrl.href;
     }
   
@@ -271,14 +272,14 @@ export default class TraceMap {
     const { pkgName, subpath } = parsed;
   
     // Subscope override
-    const scopeMatches = getScopeMatches(parentUrl, this.inputMap.scopes, this.inputMap.baseUrl);
+    const scopeMatches = getScopeMatches(parentUrl, this.inputMap.scopes, this.inputMap.mapUrl);
     const pkgSubscopes = scopeMatches.filter(([, url]) => url.startsWith(parentPkgUrl));
     if (pkgSubscopes.length) {
       for (const [scope] of pkgSubscopes) {
         const mapMatch = getMapMatch(specifier, this.inputMap.scopes[scope]);
         if (mapMatch) {
-          const resolved = await this.resolver.realPath(new URL(this.inputMap.scopes[scope][mapMatch] + specifier.slice(mapMatch.length), this.inputMap.baseUrl).href);
-          this.log('resolve', `${specifier} ${parentUrl.href} -> ${resolved}`);
+          const resolved = await this.resolver.realPath(resolveUrl(this.inputMap.scopes[scope][mapMatch] + specifier.slice(mapMatch.length), this.inputMap.mapUrl, this.inputMap.rootUrl));
+          this.log('resolve', `${specifier} ${parentUrl} -> ${resolved}`);
           return resolved;
         }
       }
@@ -289,26 +290,26 @@ export default class TraceMap {
     if (userScopeMatch) {
       const imports = this.inputMap.scopes[userScopeMatch[0]];
       const userImportsMatch = getMapMatch(specifier, imports);
-      const userImportsResolved = userImportsMatch ? await this.resolver.realPath(new URL(imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.inputMap.baseUrl).href) : null;
+      const userImportsResolved = userImportsMatch ? await this.resolver.realPath(resolveUrl(imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.inputMap.mapUrl, this.inputMap.rootUrl)) : null;
       if (userImportsResolved) {
-        this.log('resolve', `${specifier} ${parentUrl.href} -> ${userImportsResolved}`);
+        this.log('resolve', `${specifier} ${parentUrl} -> ${userImportsResolved}`);
         return userImportsResolved;
       }
     }
 
     // User import overrides
     const userImportsMatch = getMapMatch(specifier, this.inputMap.imports);
-    const userImportsResolved = userImportsMatch ? await this.resolver.realPath(new URL(this.inputMap.imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.inputMap.baseUrl).href) : null;
+    const userImportsResolved = userImportsMatch ? await this.resolver.realPath(resolveUrl(this.inputMap.imports[userImportsMatch] + specifier.slice(userImportsMatch.length), this.inputMap.mapUrl, this.inputMap.rootUrl)) : null;
     if (userImportsResolved) {
-      this.log('resolve', `${specifier} ${parentUrl.href} -> ${userImportsResolved}`);
+      this.log('resolve', `${specifier} ${parentUrl} -> ${userImportsResolved}`);
       return userImportsResolved;
     }
 
     // Own name import
     const pcfg = await this.resolver.getPackageConfig(parentPkgUrl) || {};
     if (pcfg.exports && pcfg.name === pkgName) {
-      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(parentPkgUrl, subpath, env, parentIsCjs, specifier, this.installer, parentUrl));
-      this.log('resolve', `${specifier} ${parentUrl.href} -> ${resolved}`);
+      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(parentPkgUrl, subpath, env, parentIsCjs, specifier, this.installer, new URL(parentUrl)));
+      this.log('resolve', `${specifier} ${parentUrl} -> ${resolved}`);
       return resolved;
     }
 
@@ -322,26 +323,26 @@ export default class TraceMap {
         return this.resolve(target, parentUrl, mode);
       }
       const resolved = await this.resolver.realPath(target);
-      this.log('resolve', `${specifier} ${parentUrl.href} -> ${resolved}`);
+      this.log('resolve', `${specifier} ${parentUrl} -> ${resolved}`);
       return resolved;
     }
 
     // @ts-ignore
-    const installed = await this.installer!.install(pkgName, mode, parentPkgUrl, subpath === './' ? false : true, parentUrl.href);
+    const installed = await this.installer!.install(pkgName, mode, parentPkgUrl, subpath === './' ? false : true, parentUrl);
     if (installed) {
       let [pkgUrl, subpathBase] = installed.split('|');
       if (subpathBase && !pkgUrl.endsWith('/'))
         pkgUrl += '/';
       const key = subpathBase ? './' + subpathBase + subpath.slice(1) : subpath;
-      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(pkgUrl, key, env, parentIsCjs, specifier, this.installer, parentUrl));
-      this.log('resolve', `${specifier} ${parentUrl.href} -> ${resolved}`);
+      const resolved = await this.resolver.realPath(await this.resolver.resolveExport(pkgUrl, key, env, parentIsCjs, specifier, this.installer, new URL(parentUrl)));
+      this.log('resolve', `${specifier} ${parentUrl} -> ${resolved}`);
       return resolved;
     }
 
     throw new JspmError(`No resolution in map for ${specifier}${importedFrom(parentUrl)}`);
   }
 
-  private async getTraceEntry (resolvedUrl: string, parentUrl: URL): Promise<TraceEntry | null> {
+  private async getTraceEntry (resolvedUrl: string, parentUrl: string): Promise<TraceEntry | null> {
     if (resolvedUrl in this.tracedUrls) {
       const entry = this.tracedUrls[resolvedUrl];
       await entry.promise;
@@ -351,7 +352,7 @@ export default class TraceMap {
       return null;
 
     if (resolvedUrl.endsWith('/'))
-      throw new JspmError(`Trailing "/" installs not supported installing ${resolvedUrl} for ${parentUrl.href}`);
+      throw new JspmError(`Trailing "/" installs not supported installing ${resolvedUrl} for ${parentUrl}`);
 
     const traceEntry: TraceEntry = this.tracedUrls[resolvedUrl] = {
       promise: null,
@@ -366,7 +367,7 @@ export default class TraceMap {
     };
 
     traceEntry.promise = (async () => {
-      const parentIsCjs = this.tracedUrls[parentUrl.href]?.format === 'commonjs';
+      const parentIsCjs = this.tracedUrls[parentUrl]?.format === 'commonjs';
 
       const { deps, dynamicDeps, cjsLazyDeps, size, format } = await this.resolver.analyze(resolvedUrl, parentUrl, this.opts.system, parentIsCjs);
       traceEntry.format = format;

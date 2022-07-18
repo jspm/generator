@@ -12,5 +12,5 @@ if (typeof document === 'undefined') {
   const json = generator.getMap();
 
   assert.equal(Object.keys(json.imports).length, 1);
-  assert.equal(Object.keys(json.scopes).length, 3);
+  assert.equal(Object.keys(json.scopes['../../node_modules/']).length, 4);
 }

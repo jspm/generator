@@ -488,7 +488,7 @@ export class Resolver {
   //   }
   // }
 
-  async analyze (resolvedUrl: string, parentUrl: URL, system: boolean, isRequire: boolean, retry = true): Promise<Analysis> {
+  async analyze (resolvedUrl: string, parentUrl: string, system: boolean, isRequire: boolean, retry = true): Promise<Analysis> {
     const res = await fetch(resolvedUrl, this.fetchOpts);
     switch (res.status) {
       case 200:

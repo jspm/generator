@@ -8,6 +8,7 @@ const generator = new Generator({
 });
 
 await generator.install({ target: './local/pkg', subpath: './custom' });
+
 const json = generator.getMap();
 
 assert.strictEqual(json.imports['localpkg/custom'], '/local/pkg/a.js');
