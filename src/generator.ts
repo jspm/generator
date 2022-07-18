@@ -75,6 +75,16 @@ export interface GeneratorOptions {
    */
   defaultProvider?: string;
   /**
+   * The default registry to use when no registry is provided to an install.
+   * Defaults to 'npm:'.
+   * 
+   * Registries are separated from providers because multiple providers can serve
+   * any public registry.
+   * 
+   * Internally, the default providers for registries are handled by the providers object
+   */
+  defaultRegistry?: string;
+  /**
    * The conditional environment resolutions to apply.
    * 
    * The conditions passed to the `env` option are environment conditions, as [supported by Node.js](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_conditions_definitions) in the package exports field.
@@ -159,13 +169,14 @@ export interface GeneratorOptions {
   /**
    * A map of custom scoped providers.
    * 
-   * The provider map allows setting custom providers for specific package names or package scopes.
+   * The provider map allows setting custom providers for specific package names, package scopes or registries.
    * For example, an organization with private packages with names like `npmpackage` and `@orgscope/...` can define the custom providers to reference these from a custom source:
    * 
    * ```js
    *   providers: {
    *     'npmpackage': 'nodemodules',
-   *     '@orgscope': 'nodemodules'
+   *     '@orgscope': 'nodemodules',
+   *     'npm:': 'nodemodules'
    *   }
    * ```
    * 
@@ -309,6 +320,7 @@ export class Generator {
    *     }
    *   },
    *   defaultProvider: 'jspm',
+   *   defaultRegistry: 'npm',
    *   providers: {
    *     '@orgscope': 'nodemodules'
    *   },
@@ -325,8 +337,9 @@ export class Generator {
     inputMap = undefined,
     env = ['browser', 'development', 'module'],
     defaultProvider = 'jspm',
+    defaultRegistry = 'npm',
     customProviders = undefined,
-    providers = {},
+    providers,
     resolutions = {},
     cache = true,
     stdlib = '@jspm/core',
@@ -392,6 +405,7 @@ export class Generator {
       stdlib,
       env,
       defaultProvider,
+      defaultRegistry,
       providers,
       inputMap,
       ignore,
@@ -644,7 +658,7 @@ export class Generator {
       this.traceMap.startInstall();
     await this.traceMap.processInputMap;
     try {
-      const { alias, target, subpath } = await installToTarget.call(this, install);
+      const { alias, target, subpath } = await installToTarget.call(this, install, this.traceMap.installer.defaultRegistry);
       await this.traceMap.add(alias, target);
       await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new' });
       this.traceMap.pin(alias + subpath.slice(1));
@@ -800,7 +814,7 @@ export async function fetch (url: string, opts: any = {}) {
  */
 export async function lookup (install: string | Install, { provider, cache }: LookupOptions = {}) {
   const generator = new Generator({ cache: !cache, defaultProvider: provider });
-  const { target, subpath, alias } = await installToTarget.call(generator, install);
+  const { target, subpath, alias } = await installToTarget.call(generator, install, generator.traceMap.installer.defaultRegistry);
   if (target instanceof URL)
     throw new Error('URL lookups not supported');
   const resolved = await generator.traceMap.resolver.resolveLatestTarget(target, true, generator.traceMap.installer.defaultProvider);
@@ -892,14 +906,14 @@ export async function getPackageBase (url: string | URL, { provider, cache }: Lo
   return generator.traceMap.resolver.getPackageBase(typeof url === 'string' ? url : url.href);
 }
 
-async function installToTarget (this: Generator, install: Install | string) {
+async function installToTarget (this: Generator, install: Install | string, defaultRegistry: string) {
   if (typeof install === 'string')
     install = { target: install };
   if (typeof install.target !== 'string')
     throw new Error('All installs require a "target" string.');
   if (install.subpath !== undefined && (typeof install.subpath !== 'string' || (install.subpath !== '.' && !install.subpath.startsWith('./'))))
     throw new Error(`Install subpath "${install.subpath}" must be a string equal to "." or starting with "./".${typeof install.subpath === 'string' ? `\nTry setting the subpath to "./${install.subpath}"` : ''}`);
-  const { alias, target, subpath } = await toPackageTarget(this.traceMap.resolver, install.target, this.baseUrl.href);
+  const { alias, target, subpath } = await toPackageTarget(this.traceMap.resolver, install.target, this.baseUrl.href, defaultRegistry);
   return {
     alias: install.alias || alias,
     target,

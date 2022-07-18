@@ -71,7 +71,7 @@ export async function parseUrlTarget (resolver: Resolver, targetStr: string, par
 }
 
 // ad-hoc determination of local path v remote package for eg "jspm deno react" v "jspm deno react@2" v "jspm deno ./react.ts" v "jspm deno react.ts"
-const supportedRegistries = ['npm', 'github', 'deno', 'nest'];
+const supportedRegistries = ['npm', 'github', 'deno', 'nest', 'denoland'];
 export function isPackageTarget (targetStr: string): boolean {
   if (isRelative(targetStr))
     return false;
@@ -100,7 +100,7 @@ export function pkgUrlToNiceString (resolver: Resolver, pkgUrl: string) {
   return pkgUrl;
 }
 
-export async function toPackageTarget (resolver: Resolver, targetStr: string, parentPkgUrl: string): Promise<{ alias: string, target: InstallTarget, subpath: '.' | `./${string}` }> {
+export async function toPackageTarget (resolver: Resolver, targetStr: string, parentPkgUrl: string, defaultRegistry: string): Promise<{ alias: string, target: InstallTarget, subpath: '.' | `./${string}` }> {
   const urlTarget = await parseUrlTarget(resolver, targetStr, parentPkgUrl);
   if (urlTarget)
     return urlTarget;
@@ -125,12 +125,12 @@ export async function toPackageTarget (resolver: Resolver, targetStr: string, pa
 
   return {
     alias,
-    target: newPackageTarget(pkg.pkgName, parentPkgUrl),
+    target: newPackageTarget(pkg.pkgName, parentPkgUrl, defaultRegistry),
     subpath: pkg.subpath as '.' | `./{string}`
   };
 }
 
-export function newPackageTarget (target: string, parentPkgUrl: string, depName?: string): InstallTarget {
+export function newPackageTarget (target: string, parentPkgUrl: string, defaultRegistry: string, depName?: string): InstallTarget {
   let registry: string, name: string, ranges: any[];
 
   const registryIndex = target.indexOf(':');
@@ -138,7 +138,7 @@ export function newPackageTarget (target: string, parentPkgUrl: string, depName?
   if (target.startsWith('./') || target.startsWith('../') || target.startsWith('/') || registryIndex === 1)
     return new URL(target, parentPkgUrl);
 
-  registry = registryIndex < 1 ? 'npm' : target.substr(0, registryIndex);
+  registry = registryIndex < 1 ? defaultRegistry : target.slice(0, registryIndex);
 
   if (registry === 'file')
     return new URL(target.slice(registry.length + 1), parentPkgUrl);
