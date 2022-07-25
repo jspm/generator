@@ -67,6 +67,15 @@ export function setResolution (resolutions: LockResolutions, name: string, pkgUr
   return true;
 }
 
+export function extendLock (resolutions: LockResolutions, newResolutions: LockResolutions) {
+  for (const pkg of Object.keys(newResolutions)) {
+    if (resolutions[pkg])
+      Object.assign(resolutions[pkg] = {}, newResolutions[pkg]);
+    else
+      resolutions[pkg] = newResolutions[pkg];
+  }
+}
+
 export async function extractLockAndMap (map: IImportMap, preloadUrls: string[], mapUrl: URL, rootUrl: URL | null, resolver: Resolver): Promise<{ lock: LockResolutions, maps: IImportMap }> {
   const lock: LockResolutions = {};
   const maps: IImportMap = { imports: Object.create(null), scopes: Object.create(null) };
@@ -74,19 +83,25 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
   const mapBase = await resolver.getPackageBase(mapUrl.href);
 
   for (const key of Object.keys(map.imports || {})) {
-    const resolvedKey = isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl);
-    const targetUrl = resolveUrl(map.imports[key], mapUrl, rootUrl);
-    if (targetUrl) {
-      const providerPkg = resolver.parseUrlPkg(targetUrl);
-      const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await getPackageBase(targetUrl);
-      const parsed = isPlain(key) ? parsePkg(key) : null;
-      if (parsed && await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
-        // TODO: lockfile should really now be based on primary and scoped
-        if (key[0] !== '#') {
-          setResolution(lock, resolvedKey, mapBase, pkgUrl, '');
+    let resolvedKey, targetUrl;
+    if (isPlain(key)) {
+      const parsed = parsePkg(key);
+      resolvedKey = parsed.pkgName;
+      targetUrl = resolveUrl(map.imports[key], mapUrl, rootUrl);
+      if (targetUrl) {
+        const providerPkg = resolver.parseUrlPkg(targetUrl);
+        const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await getPackageBase(targetUrl);
+        if (await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
+          // TODO: lockfile should really now be based on primary and scoped
+          if (key[0] !== '#') {
+            setResolution(lock, resolvedKey, mapBase, pkgUrl, '');
+          }
+          continue;
         }
-        continue;
       }
+    }
+    else {
+      resolvedKey = resolveUrl(key, mapUrl, rootUrl);
     }
     maps.imports[resolvedKey] = targetUrl ?? map.imports[key];
   }
@@ -95,21 +110,27 @@ export async function extractLockAndMap (map: IImportMap, preloadUrls: string[],
     const resolvedScopeUrl = resolveUrl(scopeUrl, mapUrl, rootUrl) ?? scopeUrl;
     const scope = map.scopes[scopeUrl];
     for (const key of Object.keys(scope)) {
-      const resolvedKey = isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl);
-      const targetUrl = resolveUrl(scope[key], mapUrl, rootUrl);
-      if (targetUrl) {
-        const providerPkg = resolver.parseUrlPkg(targetUrl);
-        const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await getPackageBase(targetUrl);
-        const parsed = isPlain(key) ? parsePkg(key) : null;
-        if (parsed && await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
-          if (key[0] !== '#') {
-            const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
-            setResolution(lock, resolvedKey, scopePkgUrl, pkgUrl, '');
+      let resolvedKey, targetUrl;
+      if (isPlain(key)) {
+        const parsed = parsePkg(key);
+        resolvedKey = parsed.pkgName;
+        targetUrl = resolveUrl(scope[key], mapUrl, rootUrl);
+        if (targetUrl) {
+          const providerPkg = resolver.parseUrlPkg(targetUrl);
+          const pkgUrl = providerPkg ? resolver.pkgToUrl(providerPkg.pkg, providerPkg.source) : await getPackageBase(targetUrl);
+          if (await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key)) {
+            if (key[0] !== '#') {
+              const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
+              setResolution(lock, resolvedKey, scopePkgUrl, pkgUrl, '');
+            }
+            continue;
           }
-          continue;
-        }
+        }  
       }
-      (maps.scopes[resolvedScopeUrl] = maps.scopes[resolvedScopeUrl] || Object.create(null))[key] = targetUrl;
+      else {
+        resolvedKey = resolveUrl(key, mapUrl, rootUrl);
+      }
+      (maps.scopes[resolvedScopeUrl] = maps.scopes[resolvedScopeUrl] || Object.create(null))[key] = targetUrl ?? scope[key];
     }
   }
 

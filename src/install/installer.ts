@@ -149,7 +149,7 @@ export class Installer {
       if (visited.has(name + '##' + pkgUrl))
         return;
       visited.add(name + '##' + pkgUrl);
-      const installUrl = await this.install(name, 'existing', pkgUrl);
+      const installUrl = await this.install(name, pkgUrl === this.installBaseUrl ? 'existing-primary' : 'existing-secondary', pkgUrl);
       const installPkgUrl = installUrl.split('|')[0] + (installUrl.indexOf('|') === -1 ? '' : '/');
       const deps = await this.resolver.getDepList(installPkgUrl);
       const existingDeps = Object.keys(this.installs[installPkgUrl] || {});
@@ -197,8 +197,8 @@ export class Installer {
     return replaced;
   }
 
-  async installTarget (pkgName: string, target: InstallTarget, mode: 'new' | 'existing', pkgScope: string, pjsonPersist: boolean, subpath: string | null, parentUrl: string): Promise<string> {
-    if (this.opts.freeze)
+  async installTarget (pkgName: string, target: InstallTarget, mode: 'new-primary' | 'existing-primary' | 'new-secondary' | 'existing-secondary', pkgScope: string, pjsonPersist: boolean, subpath: string | null, parentUrl: string): Promise<string> {
+    if (this.opts.freeze && mode.startsWith('existing'))
       throw new JspmError(`"${pkgName}" is not installed in the jspm lockfile, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
 
     if (pjsonPersist) {
@@ -230,7 +230,7 @@ export class Installer {
       }
     }
 
-    if (this.opts.freeze || mode === 'existing') {
+    if (this.opts.freeze || mode.startsWith('existing')) {
       const existingInstall = this.getBestMatch(target);
       if (existingInstall) {
         this.log('install', `${pkgName} ${pkgScope} -> ${existingInstall.registry}:${existingInstall.name}@${existingInstall.version}`);
@@ -271,7 +271,7 @@ export class Installer {
     return stringResolution(pkgUrl, subpath);
   }
 
-  async install (pkgName: string, mode: 'new' | 'existing', pkgUrl: string, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<string> {
+  async install (pkgName: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary', pkgUrl: string, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<string> {
     if (!this.installing)
       throwInternalError('Not installing');
     if (!this.opts.reset) {
@@ -285,7 +285,7 @@ export class Installer {
     }
 
     // resolution scope cascading for existing only
-    if (mode === 'existing' && !this.opts.reset) {
+    if (mode === 'existing-secondary' && !this.opts.reset) {
       for (const parentScope of enumerateParentScopes(pkgUrl)) {
         const resolution = this.installs[parentScope]?.[pkgName];
         if (resolution)
@@ -318,14 +318,20 @@ export class Installer {
   }
 
   private getBestMatch (matchPkg: PackageTarget): ExactPackage | null {
+    const seen = new Set();
     let bestMatch: ExactPackage | null = null;
-    for (const pkgUrl of Object.keys(this.installs)) {
-      const pkg = this.resolver.parseUrlPkg(pkgUrl);
-      if (pkg && this.inRange(pkg.pkg, matchPkg)) {
-        if (bestMatch)
-          bestMatch = Semver.compare(new Semver(bestMatch.version), pkg.pkg.version) === -1 ? pkg.pkg : bestMatch;
-        else
-          bestMatch = pkg.pkg;
+    for (const scope of Object.keys(this.installs)) {
+      for (const pkgUrl of Object.values(this.installs[scope])) {
+        if (seen.has(pkgUrl))
+          continue;
+        seen.add(pkgUrl);
+        const pkg = this.resolver.parseUrlPkg(pkgUrl);
+        if (pkg && this.inRange(pkg.pkg, matchPkg)) {
+          if (bestMatch)
+            bestMatch = Semver.compare(new Semver(bestMatch.version), pkg.pkg.version) === -1 ? pkg.pkg : bestMatch;
+          else
+            bestMatch = pkg.pkg;
+        }
       }
     }
     return bestMatch;

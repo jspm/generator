@@ -7,15 +7,13 @@ import { parsePkg } from "../install/package.js";
 import { ImportMap, IImportMap, getMapMatch, getScopeMatches } from '@jspm/import-map';
 import { resolvePackageTarget, Resolver } from "./resolver.js";
 import { Log } from "../common/log.js";
-import { extractLockAndMap } from "../install/lock.js";
+import { extendLock, extractLockAndMap } from "../install/lock.js";
 
 // TODO: options as trace-specific / stored as top-level per top-level load
 export interface TraceMapOptions extends InstallOptions {
   system?: boolean;
   env?: string[];
 
-  // input map
-  inputMap?: IImportMap;
   // do not trace dynamic imports
   static?: boolean;
 
@@ -49,7 +47,7 @@ interface TraceEntry {
 
 interface VisitOpts {
   static?: boolean,
-  mode: 'new' | 'existing',
+  mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary',
   visitor?: (specifier: string, parentUrl: string, resolvedUrl: string, entry: TraceEntry) => Promise<boolean | void>
 };
 
@@ -63,10 +61,10 @@ export default class TraceMap {
   inputMap: ImportMap;
   mapUrl: URL;
   rootUrl: URL | null;
-  pins: Array<string>;
+  pins: Array<string> = [];
   log: Log;
   resolver: Resolver;
-  processInputMap: Promise<void>;
+  processInputMap: Promise<void> = Promise.resolve();
 
   constructor (opts: TraceMapOptions, log: Log, resolver: Resolver) {
     this.log = log;
@@ -84,13 +82,20 @@ export default class TraceMap {
     this.inputMap = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     this.cjsEnv = this.env.map(e => e === 'import' ? 'require' : e);
     this.installer = new Installer(this.mapUrl, this.opts, this.log, this.resolver);
-    this.pins = this.opts.inputMap ? Object.keys(this.opts.inputMap.imports || {}) : [];
-    this.processInputMap = (async () => {
-      if (!this.opts.inputMap) return;
-      const { maps, lock } = await extractLockAndMap(this.opts.inputMap, [], this.mapUrl, this.opts.rootUrl, this.resolver);
+  }
+
+  async addInputMap (map: IImportMap, mapUrl: URL = this.mapUrl, rootUrl: URL | null = this.rootUrl, preloads?: string[]): Promise<void> {
+    return this.processInputMap = this.processInputMap.then(async () => {
+      const inMap = new ImportMap({ map, mapUrl, rootUrl }).rebase(this.mapUrl, this.rootUrl);
+      const pins = Object.keys(inMap.imports || []);
+      for (const pin of pins) {
+        if (!this.pins.includes(pin))
+          this.pins.push(pin);
+      }
+      const { maps, lock } = await extractLockAndMap(inMap, preloads, mapUrl, rootUrl, this.resolver);
       this.inputMap.extend(maps);
-      this.installer.installs = lock;
-    })();
+      extendLock(this.installer.installs, lock);
+    });
   }
 
   replace (target: InstallTarget, pkgUrl: string, provider: PackageProvider): boolean {
@@ -135,20 +140,22 @@ export default class TraceMap {
         this.log('todo', 'Handle wildcard trace ' + dep + ' in ' + resolved);
         return;
       }
+      if (opts.mode.endsWith('-primary'))
+        opts = { ...opts, mode: opts.mode.startsWith('new-') ? 'new-secondary' : 'existing-secondary' };
       await this.visit(dep, opts, resolved, seen);
     }));
   }
 
-  async extractMap (pins: string[]) {
+  async extractMap (modules: string[]) {
     const map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
-    // note this plucks custom top-level imports
+    // note this plucks custom top-level custom imports
     // we may want better control over this
     map.extend(this.inputMap);
     // re-drive all the traces to convergence
     do {
       this.installer!.newInstalls = false;
-      await Promise.all(pins.map(async pin => {
-        await this.visit(pin, { mode: 'existing', static: this.opts.static });
+      await Promise.all(modules.map(async module => {
+        await this.visit(module, { mode: 'existing-primary', static: this.opts.static });
       }));
     } while (this.installer!.newInstalls);
 
@@ -180,14 +187,14 @@ export default class TraceMap {
       }
     };
 
-    await Promise.all(pins.map(async pin => {
-      await this.visit(pin, { static: true, visitor, mode: 'existing' });
+    await Promise.all(modules.map(async module => {
+      await this.visit(module, { static: true, visitor, mode: 'existing-primary' });
     }));
 
     list = dynamicList;
     await Promise.all(dynamics.map(async ([specifier, parent]) => {
       // TODO: perf, stop on reentrancy. Important that reentrancy is specifier + parent duplication though.
-      await this.visit(specifier, { visitor, mode: 'existing' }, parent);
+      await this.visit(specifier, { visitor, mode: 'existing-secondary' }, parent);
     }));
 
     if (this.installer!.newInstalls)
@@ -200,8 +207,8 @@ export default class TraceMap {
     this.installer.startInstall();
   }
 
-  async finishInstall (pins = this.pins): Promise<{ map: ImportMap, staticDeps: string[], dynamicDeps: string[] }> {
-    const result = await this.extractMap(pins);
+  async finishInstall (modules = this.pins): Promise<{ map: ImportMap, staticDeps: string[], dynamicDeps: string[] }> {
+    const result = await this.extractMap(modules);
     this.installer.finishInstall();
     return result;
   }
@@ -212,7 +219,7 @@ export default class TraceMap {
   }
 
   async add (name: string, target: InstallTarget, persist = true): Promise<string> {
-    const installed = await this.installer!.installTarget(name, target, 'new', this.mapUrl.href, persist, null, this.mapUrl.href);
+    const installed = await this.installer!.installTarget(name, target, 'new-primary', this.mapUrl.href, persist, null, this.mapUrl.href);
     return installed.slice(0, -1);
   }
 
@@ -236,7 +243,7 @@ export default class TraceMap {
   /**
    * @returns `resolved` - either a URL `string` pointing to the module or `null` if the specifier should be ignored.
    */
-  async resolve (specifier: string, parentUrl: string, mode: 'new' | 'existing'): Promise<string> {
+  async resolve (specifier: string, parentUrl: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary'): Promise<string> {
     const env = this.tracedUrls[parentUrl]?.wasCJS ? this.cjsEnv : this.env;
 
     const parentPkgUrl = await this.resolver.getPackageBase(parentUrl);
