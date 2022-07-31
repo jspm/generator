@@ -38,12 +38,16 @@ export class Resolver {
     this.providers = Object.assign({}, this.providers, { [name]: provider });
   }
 
-  parseUrlPkg (url: string): { pkg: ExactPackage, source: { layer: string, provider: string } } | undefined {
+  parseUrlPkg (url: string): { pkg: ExactPackage, subpath: null | `./${string}`, source: { layer: string, provider: string } } | undefined {
     for (const provider of Object.keys(this.providers)) {
       const providerInstance = this.providers[provider];
       const result = providerInstance.parseUrlPkg.call(this, url);
       if (result)
-        return { pkg: 'pkg' in result ? result.pkg : result, source: { provider, layer: 'layer' in result ? result.layer : 'default' } };
+        return {
+          pkg: 'pkg' in result ? result.pkg : result,
+          source: { provider, layer: 'layer' in result ? result.layer : 'default' },
+          subpath: 'subpath' in result ? result.subpath : null
+        };
     }
     return null;
   }
@@ -156,7 +160,7 @@ export class Resolver {
     }
   }
 
-  async resolveLatestTarget (target: PackageTarget, unstable: boolean, { provider, layer }: PackageProvider, parentUrl?: string): Promise<ExactPackage> {
+  async resolveLatestTarget (target: PackageTarget, unstable: boolean, { provider, layer }: PackageProvider, parentUrl?: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` | null }> {
     // find the range to resolve latest
     let range: any;
     for (const possibleRange of target.ranges.sort(target.ranges[0].constructor.compare)) {
@@ -170,9 +174,12 @@ export class Resolver {
 
     const latestTarget = { registry: target.registry, name: target.name, range };
 
-    const pkg = await getProvider(provider, this.providers).resolveLatestTarget.call(this, latestTarget, unstable, layer, parentUrl);
-    if (pkg)
-      return pkg;
+    const pkg = await getProvider(provider, this.providers).resolveLatestTarget.call(this, latestTarget, unstable, layer, parentUrl) as ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null;
+    if (pkg) {
+      if ('pkg' in pkg)
+        return pkg;
+      return { pkg, subpath: null };
+    }
     throw new JspmError(`Unable to resolve package ${latestTarget.registry}:${latestTarget.name} to "${latestTarget.range}"${importedFrom(parentUrl)}`);
   }
 
@@ -264,19 +271,16 @@ export class Resolver {
     }
     // Node.js core resolutions
     if (installer && url.startsWith('node:')) {
-      const resolution = await installer.installTarget(url.slice(5), installer.stdlibTarget, 'new', pkgUrl, false, 'nodelibs/' + url.slice(5), pkgUrl);
-      let [installPkg, installExport] = resolution.split('|');
-      if (!installPkg.endsWith('/'))
-        installPkg += '/';
-      installExport = installExport.length ? './' + installExport : '.';
-      return this.finalizeResolve(await this.resolveExport(installPkg, installExport, env, parentIsCjs, url, installer, new URL(pkgUrl)), parentIsCjs, env, installer, installPkg);
+      const { installUrl } = await installer.installTarget(url.slice(5), installer.stdlibTarget, 'new-secondary', pkgUrl, pkgUrl);
+      return this.finalizeResolve(await this.resolveExport(installUrl, `./nodelibs/${url.slice(5)}`, env, parentIsCjs, url, installer, new URL(pkgUrl)), parentIsCjs, env, installer, installUrl);
     }
     return url;
   }
 
   // returns true or false whether this package subpath can resolve to the given target URL for some env value
   // also handles "imports"
-  async hasExportResolution (pkgUrl: string, subpath: string, target: string, originalSpecifier: string): Promise<boolean> {
+  // When "subpath" is ".", a possible subpath install string is returned
+  async hasExportResolution (pkgUrl: string, subpath: string, target: string, originalSpecifier: string): Promise<`./${string}` | boolean> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
     if (originalSpecifier[0] === '#') {
       if (pcfg.imports === undefined || pcfg.imports === null)
@@ -334,23 +338,23 @@ export class Resolver {
       }
       else {
         let match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
-        if (!match) {
-          if (nodeBuiltinSet.has(originalSpecifier)) {
-            match = getMapMatch('./nodelibs/' + originalSpecifier, pcfg.exports as Record<string, ExportsTarget>);
-          }
-          if (!match)
-            return false;
-        }
-        const targets = enumeratePackageTargets(pcfg.exports[match], pkgUrl, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
-        for (const curTarget of targets) {
-          try {
-            if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target) {
-              return true;
+        if (match) {
+          const targets = enumeratePackageTargets(pcfg.exports[match], pkgUrl, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
+          for (const curTarget of targets) {
+            try {
+              if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target) {
+                return true;
+              }
             }
+            catch {}
           }
-          catch {}
+          return false;
         }
-        return false;
+        if (subpath !== '.')
+          return false;
+        const parsed = this.parseUrlPkg(target);
+        if (parsed && parsed.subpath)
+          return parsed.subpath;
       }
     }
     else {
@@ -360,6 +364,9 @@ export class Resolver {
         }
         catch {}
       }
+      const parsed = this.parseUrlPkg(target);
+      if (parsed && parsed.subpath)
+        return parsed.subpath;
       try {
         if (typeof pcfg.main === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === target)
           return true;
@@ -382,6 +389,7 @@ export class Resolver {
       }
       catch {}
     }
+    return false;
   }
 
   // Note: updates here must be tracked in function above

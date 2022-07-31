@@ -39,14 +39,13 @@ const generator = new Generator({
   inputMap: primaryHtml,
   mapUrl: new URL('./index.html', import.meta.url),
   rootUrl: new URL('./local', import.meta.url),
-  env: ['production', 'browser'],
-  freeze: true
+  env: ['production', 'browser']
 });
 
 const esmsPkg = await generator.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, generator.traceMap.installer.defaultProvider);
 const esmsUrl = generator.traceMap.resolver.pkgToUrl(esmsPkg, generator.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
 
-await generator.install('lit/html.js');
+await generator.add('lit/html.js');
 
 const primaryHtmlProcessed = await generator.htmlInject(primaryHtml);
 

@@ -20,7 +20,8 @@ export function pkgToUrl (pkg: ExactPackage, layer: string) {
 }
 
 const exactPkgRegEx = /^(([a-z]+):)?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
-export function parseUrlPkg (url: string): { pkg: ExactPackage, layer: string } | undefined {
+export function parseUrlPkg (url: string): { pkg: ExactPackage, layer: string, subpath: `./${string}` | null } | undefined {
+  let subpath = null;
   let layer: string;
   if (url.startsWith(cdnUrl))
     layer = 'default';
@@ -29,8 +30,16 @@ export function parseUrlPkg (url: string): { pkg: ExactPackage, layer: string } 
   else
     return;
   const [,, registry, name, version] = url.slice((layer === 'default' ? cdnUrl : systemCdnUrl).length).match(exactPkgRegEx) || [];
-  if (registry && name && version)
-    return { pkg: { registry, name, version }, layer };
+  if (registry && name && version) {
+    if (registry === 'npm' && name === '@jspm/core' && url.includes('/nodelibs/')) {
+      subpath = `./nodelibs/${url.slice(url.indexOf('/nodelibs/') + 10).split('/')[1]}`;
+      if (subpath && subpath.endsWith('.js'))
+        subpath = subpath.slice(0, -3);
+      else
+        subpath = null;
+    }
+    return { pkg: { registry, name, version }, layer, subpath };
+  }
 }
 
 let resolveCache: Record<string, {
@@ -85,7 +94,7 @@ async function ensureBuild (pkg: ExactPackage, fetchOpts: any) {
   }
 }
 
-export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | null> {
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null> {
   const { registry, name, range } = target;
 
   // exact version optimization

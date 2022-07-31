@@ -8,21 +8,22 @@ const stdlibUrl = 'https://deno.land/std';
 
 export function pkgToUrl (pkg: ExactPackage) {
   if (pkg.registry === 'deno')
-    return stdlibUrl + '@' + pkg.version + '/' + pkg.name + '/';
+    return stdlibUrl + '@' + pkg.version + '/';
   if (pkg.registry === 'denoland')
     return cdnUrl + pkg.name + '@v' + pkg.version + '/';
   throw new Error(`Deno provider does not support the ${pkg.registry} registry`);
 }
 
-export function parseUrlPkg (url: string): ExactPackage | undefined {
+export function parseUrlPkg (url: string): { pkg: ExactPackage, subpath: `./${string}` | null, layer: string } | undefined {
+  let subpath = null;
   if (url.startsWith(stdlibUrl) && url[stdlibUrl.length] === '@') {
     const version = url.slice(stdlibUrl.length + 1, url.indexOf('/', stdlibUrl.length + 1));
-    let name = url.slice(stdlibUrl.length + version.length + 2);
-    if (name.endsWith('/mod.ts'))
-      name = name.slice(0, -7);
-    else if (name.endsWith('.ts'))
-      name = name.slice(0, -3);
-    return { registry: 'deno', name, version };
+    subpath = url.slice(stdlibUrl.length + version.length + 2);
+    if (subpath.endsWith('/mod.ts'))
+      subpath = subpath.slice(0, -7);
+    else if (subpath.endsWith('.ts'))
+      subpath = subpath.slice(0, -3);
+    return { pkg: { registry: 'deno', name: 'std', version }, layer: 'default', subpath: `./${subpath}/mod.ts` };
   }
   else if (url.startsWith(cdnUrl)) {
     const path = url.slice(cdnUrl.length);
@@ -30,15 +31,15 @@ export function parseUrlPkg (url: string): ExactPackage | undefined {
     if (versionIndex === -1)
       return;
     const sepIndex = path.indexOf('/', versionIndex);
-    return { registry: 'denoland', name: path.slice(0, versionIndex), version: path.slice(versionIndex + 2, sepIndex === -1 ? path.length : sepIndex) };
+    return { pkg: { registry: 'denoland', name: path.slice(0, versionIndex), version: path.slice(versionIndex + 2, sepIndex === -1 ? path.length : sepIndex) }, subpath: null, layer: 'default' };
   }
 }
 
-export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | null> {
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` | null } | null> {
   const { registry, name, range } = target;
 
   if (range.isExact)
-    return { registry, name, version: range.version.toString() };
+    return { pkg: { registry, name, version: range.version.toString() }, subpath: null };
 
   if (!range.isWildcard)
     throw new Error(`Version ranges are not supported looking up in the Deno registry currently, until an API is available.`);
@@ -55,5 +56,5 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   const res = await fetch((registry === 'denoland' ? cdnUrl : stdlibUrl + '/') + name + '/mod.ts', fetchOpts);
   if (!res.ok)
     throw new Error(`Deno: Unable to lookup ${(registry === 'denoland' ? cdnUrl : stdlibUrl + '/') + name}`);
-  return parseUrlPkg(res.url);
+  return { pkg: parseUrlPkg(res.url).pkg, subpath: registry === 'deno' ? `./${name}/mod.ts` : null  };
 }

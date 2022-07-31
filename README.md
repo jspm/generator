@@ -17,21 +17,28 @@ Node.js:
 npm install @jspm/generator
 ```
 
+Deno / Browser
+
+JSPM Generator can generate the import map for running itself in the browser or Deno. You can get an import map for JSPM generator here - https://generator.jspm.io/#U2NhYGBkDM0rySzJSU1hcMgqLsjVT0/NSy1KLMkvcjDUM9Az0E1KLUnUMzYGAIzzZ1AsAA.
+
 `@jspm/generator` only ships as an ES module, so to use it in Node.js add `"type": "module"` to your package.json file or write an `.mjs` to load it.
 
 ### Generating Import Maps
 
-By default the generator generates import maps against the JSPM CDN by treating the `defaultProvider: 'jspm'` option. This can be configured to other CDNs or sources including local `nodemodules`, see the next section on how to achieve this.
+JSPM Generator can be used to generate package maps against most common CDNs, defaulting to the JSPM CDN.
+
+Providers can be configured to other CDNs or even directly to node_modules via the [defaultProvider](#defaultprovider) and [providers](#providers) configuration options, including adding custom providers via the [customProvider](#customproviders) option.
 
 generate.mjs
 ```js
 import { Generator } from '@jspm/generator';
 
 const generator = new Generator({
+  // Set the map URL for relative normalization when installing local packages
   mapUrl: import.meta.url,
   defaultProvider: 'jspm', // this is the default defaultProvider
   // Always ensure to define your target environment to get a working map
-  // it is advisable to pass the "module" condition as supported by Webpack
+  // it is advisable to always pass the "module" condition as supported by Webpack
   env: ['production', 'browser', 'module'],
 });
 
@@ -48,7 +55,7 @@ await generator.install({ alias: 'react16', target: 'react@16' });
 await generator.install({ target: 'lit@2', subpath: './html.js' });
 
 // Install an export from a locally located package folder into the map
-// The package.json is used to determine the exports and dependencies.
+// The package.json "exports" and env conditions will be used to determine the mapped resolution
 await generator.install({ alias: 'mypkg', target: './packages/local-pkg', subpath: './feature' });
 
 console.log(JSON.stringify(generator.getMap(), null, 2));
@@ -107,10 +114,9 @@ console.log(generator.getMap());
 // }
 ```
 
-The generator treats the existing resolutions in the `inputMap` like a lockfile - they are respected as authoritative version resolutions so far as packages are not being updated.
+The generator carefully treats the existing resolutions in the `inputMap` like a lockfile, decomposing the map into locks, custom mappings and dependencies. Locks are respected as authoritative version resolutions so far as packages are not being updated.
 
-The `"imports"` in the `inputMap` are treated like package.json `"dependencies"` and scopes are pruned to remove any modules
-not reachable from the `"imports"`.
+The `"imports"` in the `inputMap` are treated as pinned dependencies like the npm package.json `"dependencies"` and all other mappings in scopes are pruned to remove any modules not reachable from these `"imports"`.
 
 The generator environment conditions will always update all existing mappings in the import map when running any install operation,
 unless those mappings are mapped to custom resolutions not corresponding to any export which are then treated as overrides.
@@ -143,6 +149,8 @@ console.log(generator.getMap());
 //   }
 // }
 ```
+
+In this way, maps can be treated as inputs and outputs of successive batches of generation operations.
 
 ### Generating HTML
 
