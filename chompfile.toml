@@ -15,13 +15,16 @@ target = 'dist'
 deps = ['lib/**/*.js', 'npm:install']
 template = 'rollup'
 [task.template-options]
-entries = [
+input = [
     'lib/generator.js',
     'lib/common/fetch-vscode.js',
     'lib/common/fetch-deno.js',
     'lib/common/fetch-node.js',
     'lib/common/fetch-native.js'
 ]
+onwarn = false
+[task.template-options.output]
+dir = 'dist'
 
 [[task]]
 target = 'lib/version.js'
@@ -59,7 +62,7 @@ run = 'node -C source $DEP'
 
 [[task]]
 name = 'test:browser'
-deps = ['build:ts', 'dist/*']
+deps = ['build:ts', 'dist/*', 'test/test.html']
 run = 'node test/server.mjs'
 
 [[task]]
@@ -76,28 +79,23 @@ run = '''
 '''
 
 [[task]]
-name = 'self-generate'
+target = 'test/test.html'
+dep = 'src/**/*.ts'
 engine = 'node'
 run = '''
     import { Generator } from '@jspm/generator';
-    import { readFile } from 'fs/promises';
-
-    const noTs = !process.env.TS;
+    import { readFile, writeFile } from 'fs/promises';
 
     const generator = new Generator({
-    mapUrl: 'about:blank',
-    inputMap: noTs ? {
-        imports: {
-        '@babel/core': 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.10/nodelibs/@empty.js',
-        '@babel/preset-typescript': 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.10/nodelibs/@empty.js'
-        }
-    } : {}
+        mapUrl: import.meta.url,
+        env: ['browser', 'module', 'production']
     });
 
-    const { version } = JSON.parse(await readFile(new URL('package.json', import.meta.url)));
+    await generator.add('@jspm/generator');
+    await generator.install('node:assert');
 
-    await generator.install(`@jspm/generator@${version}`);
-
-    const json = generator.getMap();
-    console.log(JSON.stringify(json, null, 2));
+    const html = await generator.htmlInject(await readFile(process.env.TARGET, 'utf8'), {
+        htmlUrl: new URL(process.env.TARGET, import.meta.url)
+    });
+    await writeFile(process.env.TARGET, html);
 '''
