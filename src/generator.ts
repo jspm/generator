@@ -500,7 +500,7 @@ export class Generator {
    * @param specifier Import specifier to trace
    */
   async traceInstall (specifier: string): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
-    return this.add(specifier);
+    return this.trace(specifier);
   }
 
   /**
@@ -508,7 +508,7 @@ export class Generator {
    * 
    * @deprecated Instead use:
    *   const pins = await generator.addMappings(html, mapUrl, rootUrl);
-   *   return await generator.htmlInject(html, { pins, mapUrl, rootUrl, preload, integrity, whitespace, esModuleShims, comment });
+   *   return await generator.htmlInject(html, { pins, htmlUrl: mapUrl, rootUrl, preload, integrity, whitespace, esModuleShims, comment });
    *
    * Traces the module scripts of the HTML via traceInstall and install
    * for URL-like specifiers and bare specifiers respectively.
@@ -568,6 +568,13 @@ export class Generator {
     return await this.htmlInject(html, { pins, htmlUrl: mapUrl, rootUrl, preload, integrity, whitespace, esModuleShims, comment });
   }
 
+  /**
+   * Inject the import map into the provided HTML source
+   * 
+   * @param html HTML source to inject into
+   * @param opts Injection options
+   * @returns HTML source with import map injection
+   */
   async htmlInject (html: string, {
     trace = false,
     pins = !trace,

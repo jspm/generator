@@ -170,10 +170,10 @@ const generator = new Generator({
   env: ['production', 'browser', 'module'],
 });
 
-const outHtml = await generator.htmlGenerate(`
+const outHtml = await generator.htmlInject(`
   <!doctype html>
   <script type="module">import 'react'</script>
-`, { esModuleShims: true });
+`, { trace: true, esModuleShims: true });
 
 /*
  * Outputs the HTML:
@@ -190,6 +190,10 @@ const outHtml = await generator.htmlGenerate(`
 
 The second HTML Generation options include:
 
+* `htmlUrl`: The URL of the HTML file for relative path handling in the map
+* `rootUrl`: The root URL of the HTML file for root-relative path handling in the map
+* `trace`: Whether to trace the HTML imports before injection (via `generator.trace`)
+* `pins`: List of top-level pinned `"imports"` to inject, or `true` to inject all (the default if not tracing).
 * `comment`: Defaults to `Built with @jspm/generator` comment, set to false or an empty string to remove.
 * `preload`: Boolean, injects `<link rel="modulepreload">` preload tags. By default only injects static dependencies. Set to `'all'` to inject dyamic import preloads as well (this is the default when applying `integrity`).
 * `whitespace`: Boolean, set to `false` to use minified JSON and preload injections
@@ -258,8 +262,11 @@ generate.mjs
 ```js
 // all static and dynamic dependencies necessary to execute app will be traced and
 // put into the map as necessary
-await generator.traceInstall('./app.js');
+await generator.trace('./app.js');
 ```
+
+The benefit of tracing is that it directly implements a Node.js-compatible resolver so that if you can trace something
+you can map it, without necessarily doing a full install into the top-level of the map.
 
 ### Import Map Object
 
@@ -313,8 +320,7 @@ For batch install jobs, the dependencies include all installs. When using separa
 
 ### Providers
 
-Supported providers include `"jspm"`, `"jspm.system"`, `"nodemodules"`, `"skypack"`, `"jsdelivr"`, `"unpkg"`, with all except
-`"nodemodules"` corresponding to their respective CDNs as the package source.
+Supported providers include `"jspm"`, `"jspm.system"`, `"nodemodules"`, `"skypack"`, `"jsdelivr"`, `"unpkg"`, `"deno"`, `"denoland"`, with all except `"nodemodules"` corresponding to their respective CDNs as the package source.
 
 The `"nodemodules"` provider does a traditional `node_modules` path search from the current module URL (eg for a
 `file:///` URL when generating maps for local code). When running over other URL protocols such as from the browser, the
@@ -358,6 +364,8 @@ const generator = new Generator();
 Log events recorded include `trace`, `resolve` and `install`.
 
 Note that the log messages are for debugging and not currently part of the semver contract of the project.
+
+Alternatively set the environment variable `JSPM_GENERATOR_LOG` to enable default console logging.
 
 ### Options
 
@@ -443,6 +451,10 @@ Default: {}<br/>
 _The import map to extend._
 
 An initial import map to start with - can be from a previous install or provide custom mappings.
+
+HTML source can also be provided, in which case the inline import map will be analyzed from that HTML source.
+
+The input map is treated as both a version lock, top-level list of _pins_ (`"imports"` installs) and custom mappings.
 
 #### ignore
 
