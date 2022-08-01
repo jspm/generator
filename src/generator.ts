@@ -469,7 +469,7 @@ export class Generator {
    * @param specifier Import specifier to trace
    * @param parentUrl Optional parent URL
    */
-  async add (specifier: string, parentUrl?: string): Promise<{
+  async trace (specifier: string, parentUrl?: string): Promise<{
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
@@ -565,7 +565,7 @@ export class Generator {
     if (typeof mapUrl === 'string')
       mapUrl = new URL(mapUrl);
     const pins = await this.addMappings(html, mapUrl, rootUrl);
-    return await this.htmlInject(html, { pins, mapUrl, rootUrl, preload, integrity, whitespace, esModuleShims, comment });
+    return await this.htmlInject(html, { pins, htmlUrl: mapUrl, rootUrl, preload, integrity, whitespace, esModuleShims, comment });
   }
 
   async htmlInject (html: string, {
@@ -603,7 +603,7 @@ export class Generator {
     let modules = pins === true ? this.traceMap.pins : Array.isArray(pins) ? pins : [];
     if (trace) {
       const impts = [...new Set([...analysis.staticImports, ...analysis.dynamicImports])];
-      await Promise.all(impts.map(impt => this.traceInstall(impt)));
+      await Promise.all(impts.map(impt => this.trace(impt)));
       modules = [...new Set([...modules, ...impts])];
     }
 
