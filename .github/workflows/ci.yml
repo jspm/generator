@@ -39,7 +39,7 @@ jobs:
     strategy:
       matrix:
         node: [14.x, 16.x]
-        deno: ['1.12.0']
+        deno: ['1']
     steps:
     - uses: actions/checkout@v2
       with:
@@ -63,6 +63,4 @@ jobs:
     #     ipfs daemon &
     - run: npm install
     - run: chomp test
-      env:
-        DENO_BIN: /opt/hostedtoolcache/deno/${{ matrix.deno }}/x64/deno
     # - run: IPFS_API=/ip4/127.0.0.1/tcp/5001 npm run test:node

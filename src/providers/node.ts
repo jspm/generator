@@ -1,4 +1,7 @@
-import { ExactPackage } from "../install/package.js";
+import { ExactPackage, LatestPackageTarget } from "../install/package.js";
+import { Resolver } from "../trace/resolver.js";
+import { resolveLatestTarget as jspmResolveLatestTarget, pkgToUrl as jspmPkgToUrl } from './jspm.js';
+import { SemverRange } from 'sver';
 
 export const nodeBuiltinSet = new Set<string>([
   '_http_agent',         '_http_client',        '_http_common',
@@ -27,7 +30,7 @@ export const nodeBuiltinSet = new Set<string>([
 
 export function pkgToUrl (pkg: ExactPackage) {
   if (pkg.registry !== 'node')
-    throw new Error('Node a Node.js URL');
+    return jspmPkgToUrl(pkg, 'default');
   return 'node:' + pkg.name;
 }
 
@@ -41,6 +44,10 @@ export async function getPackageConfig () {
   return null;
 }
 
-export async function resolveLatestTarget (): Promise<ExactPackage> {
-  throw new Error('No version resolution is provided for node:_ builtins');
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` } | null> {
+  let resolved = (await jspmResolveLatestTarget.call(this, { registry: 'npm', name: '@jspm/core', range: new SemverRange('*') }, unstable, _layer, parentUrl)) as ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null;
+  if (!resolved)
+    return null;
+  const pkg = 'pkg' in resolved ? resolved.pkg : resolved;
+  return { pkg, subpath: `./nodelibs/${target.name}` };
 }

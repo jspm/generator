@@ -9,9 +9,9 @@ import { PackageConfig, ExactPackage, LatestPackageTarget } from '../install/pac
 import { Resolver } from '../trace/resolver.js';
 
 export interface Provider {
-  parseUrlPkg (this: Resolver, url: string): ExactPackage | { pkg: ExactPackage, layer: string } | undefined;
+  parseUrlPkg (this: Resolver, url: string): ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null, layer: string } | undefined;
   pkgToUrl (this: Resolver, pkg: ExactPackage, layer: string): string;
-  resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, layer: string, parentUrl: string): Promise<ExactPackage | null>;
+  resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, layer: string, parentUrl: string): Promise<ExactPackage | { pkg: ExactPackage, subpath: `./${string}` } | null>;
 
   getPackageConfig? (this: Resolver, pkgUrl: string): Promise<PackageConfig | null | undefined>;
   // getFileList? (this: Resolver, pkgUrl: string): Promise<string[]>;
@@ -36,5 +36,6 @@ export function getProvider (name: string, providers: Record<string, Provider> =
 
 export const registryProviders: Record<string, string> = {
   'denoland:': 'denoland',
-  'deno:': 'denoland'
+  'deno:': 'denoland',
+  'node:': 'node'
 };

@@ -1,5 +1,5 @@
-import { baseUrl as _baseUrl, isPlain, relativeUrl, resolveUrl } from "./common/url.js";
-import { ExactPackage, toPackageTarget } from "./install/package.js";
+import { baseUrl as _baseUrl, relativeUrl, resolveUrl } from "./common/url.js";
+import { ExactPackage, PackageConfig, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 // @ts-ignore
 import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
@@ -12,7 +12,8 @@ import { analyzeHtml } from "./html/analyze.js";
 import { SemverRange } from 'sver';
 import { Replacer } from "./common/str.js";
 import { getIntegrity } from "./common/integrity.js";
-import { extractLockAndMap, LockResolutions, normalizeLock } from "./install/lock.js";
+import { LockResolutions, normalizeLock } from "./install/lock.js";
+import process from 'process';
 
 export { analyzeHtml }
 
@@ -344,7 +345,6 @@ export class Generator {
     cache = true,
     stdlib = '@jspm/core',
     ignore = [],
-    lock = {},
     freeze,
     latest,
     ipfsAPI
@@ -366,6 +366,13 @@ export class Generator {
       }
     }
     this.logStream = logStream;
+    if (process.env.JSPM_GENERATOR_LOG) {
+      (async () => {
+        for await (const { type, message } of this.logStream()) {
+          console.log(type, message);
+        }
+      })();
+    }
 
     if (mapUrl && !baseUrl) {
       mapUrl = typeof mapUrl === 'string' ? new URL(mapUrl, _baseUrl) : mapUrl;
@@ -399,7 +406,6 @@ export class Generator {
     }
     this.traceMap = new TraceMap({
       mapUrl: this.mapUrl,
-      lock,
       rootUrl: this.rootUrl,
       baseUrl: this.baseUrl,
       stdlib,
@@ -407,7 +413,6 @@ export class Generator {
       defaultProvider,
       defaultRegistry,
       providers,
-      inputMap,
       ignore,
       resolutions,
       freeze,
@@ -415,7 +420,39 @@ export class Generator {
     }, log, resolver);
     this.map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     if (inputMap)
-      this.map.extend(inputMap);
+      this.addMappings(inputMap);
+  }
+
+  /**
+   * Add new custom mappings and lock resolutions to the input map
+   * of the generator, which are then applied in subsequent installs.
+   * 
+   * @param jsonOrHtml The mappings are parsed as JSON data object or string, falling
+   * back to reading an inline import map from an HTML file.
+   * @param mapUrl An optional URL for the map to handle relative resolutions, defaults to generator mapUrl
+   * @param rootUrl An optional root URL for the map to handle root resolutions, defaults to generator rootUrl
+   * @returns The list of modules pinned by this import map or HTML
+   * 
+   */
+  async addMappings (jsonOrHtml: string | IImportMap, mapUrl: string | URL = this.mapUrl, rootUrl: string | URL = this.rootUrl, preloads?: string[]): Promise<string[]> {
+    if (typeof mapUrl === 'string')
+      mapUrl = new URL(mapUrl, this.baseUrl);
+    if (typeof rootUrl === 'string')
+      rootUrl = new URL(rootUrl, this.baseUrl);
+    let htmlModules: string[] | undefined;
+    if (typeof jsonOrHtml === 'string') {
+      try {
+        jsonOrHtml = JSON.parse(jsonOrHtml) as IImportMap;
+      }
+      catch {
+        const analysis = analyzeHtml(jsonOrHtml as string, mapUrl);
+        jsonOrHtml = (analysis.map.json || {}) as IImportMap;
+        preloads = (preloads || []).concat(analysis.preloads.map(preload => preload.attrs.href?.value).filter(x => x));
+        htmlModules = [...new Set([...analysis.staticImports, ...analysis.dynamicImports])];
+      }
+    }
+    await this.traceMap.addInputMap(jsonOrHtml, mapUrl, rootUrl, preloads);
+    return htmlModules || [...this.traceMap.pins];
   }
 
   /**
@@ -426,13 +463,13 @@ export class Generator {
   }
 
   /**
-   * Trace a module and install all dependencies necessary into the map
+   * Trace and pin a module, installing all dependencies necessary into the map
    * to support its execution including static and dynamic module imports.
    * 
-   * @param specifier Import specifier to trace
-   * @param parentUrl Parent URL to trace this specifier from
+   * @param specifier Import specifier to pin
+   * @param parentUrl Optional parent URL
    */
-  async traceInstall (specifier: string): Promise<{
+  async pin (specifier: string, parentUrl?: string): Promise<{
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
@@ -441,7 +478,7 @@ export class Generator {
       this.traceMap.startInstall();
     await this.traceMap.processInputMap;
     try {
-      await this.traceMap.visit(specifier, { mode: 'new' });
+      await this.traceMap.visit(specifier, { mode: 'new-primary' }, parentUrl);
       this.traceMap.pin(specifier);
     }
     catch (e) {
@@ -459,7 +496,19 @@ export class Generator {
   }
 
   /**
+   * @deprecated Renamed to "trace" instead.
+   * @param specifier Import specifier to trace
+   */
+  async traceInstall (specifier: string): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
+    return this.pin(specifier);
+  }
+
+  /**
    * Generate and inject an import map for an HTML file
+   * 
+   * @deprecated Instead use:
+   *   const pins = await generator.addMappings(html, mapUrl, rootUrl);
+   *   return await generator.htmlInject(html, { pins, htmlUrl: mapUrl, rootUrl, preload, integrity, whitespace, esModuleShims, comment });
    *
    * Traces the module scripts of the HTML via traceInstall and install
    * for URL-like specifiers and bare specifiers respectively.
@@ -497,9 +546,50 @@ export class Generator {
    * 
    */
   async htmlGenerate (html: string, {
-    htmlUrl, preload = false, integrity = false, whitespace = true, esModuleShims = true, comment = true
+    mapUrl,
+    rootUrl,
+    preload = false,
+    integrity = false,
+    whitespace = true,
+    esModuleShims = true,
+    comment = true
   }: {
+    mapUrl?: string | URL,
+    rootUrl?: string | URL | null,
+    preload?: boolean | 'all' | 'static',
+    integrity?: boolean,
+    whitespace?: boolean,
+    esModuleShims?: string | boolean,
+    comment?: boolean | string
+  } = {}): Promise<string> {
+    if (typeof mapUrl === 'string')
+      mapUrl = new URL(mapUrl);
+    const pins = await this.addMappings(html, mapUrl, rootUrl);
+    return await this.htmlInject(html, { pins, htmlUrl: mapUrl, rootUrl, preload, integrity, whitespace, esModuleShims, comment });
+  }
+
+  /**
+   * Inject the import map into the provided HTML source
+   * 
+   * @param html HTML source to inject into
+   * @param opts Injection options
+   * @returns HTML source with import map injection
+   */
+  async htmlInject (html: string, {
+    trace = false,
+    pins = !trace,
+    htmlUrl,
+    rootUrl,
+    preload = false,
+    integrity = false,
+    whitespace = true,
+    esModuleShims = true,
+    comment = true
+  }: {
+    pins?: string[] | boolean,
+    trace?: string[] | boolean,
     htmlUrl?: string | URL,
+    rootUrl?: string | URL | null,
     preload?: boolean | 'all' | 'static',
     integrity?: boolean,
     whitespace?: boolean,
@@ -512,32 +602,19 @@ export class Generator {
       htmlUrl = new URL(htmlUrl);
     if (integrity)
       preload = true;
-    const analysis = analyzeHtml(html, htmlUrl);
-    const preloadUrls = analysis.preloads.map(preload => preload.attrs.href?.value).filter(x => x);
-    const { maps, lock } = await extractLockAndMap(analysis.map.json || {} as IImportMap, preloadUrls, htmlUrl || this.mapUrl, this.rootUrl || this.baseUrl, this.traceMap.resolver);
-    for (const pkg of Object.keys(lock)) {
-      if (this.traceMap.installer.installs[pkg])
-        Object.assign(this.traceMap.installer.installs[pkg] = {}, lock[pkg]);
-      else
-        this.traceMap.installer.installs[pkg] = lock[pkg];
-    }
     if (this.installCnt !== 0)
       throw new JspmError('htmlGenerate cannot run alongside other install ops');
 
-    this.traceMap.inputMap.extend(maps);
-    let staticDeps = [], dynamicDeps = [];
-    await Promise.all([...new Set([...analysis.staticImports, ...analysis.dynamicImports])].map(async impt => {
-      if (isPlain(impt)) {
-        const result = await this.traceInstall(impt);
-        if (result)
-          ({ staticDeps, dynamicDeps } = result);
-      }
-      else {
-        const result = await this.traceInstall(impt);
-        if (result)
-          ({ staticDeps, dynamicDeps } = result);
-      }
-    }));
+    const analysis = analyzeHtml(html, htmlUrl);
+
+    let modules = pins === true ? this.traceMap.pins : Array.isArray(pins) ? pins : [];
+    if (trace) {
+      const impts = [...new Set([...analysis.staticImports, ...analysis.dynamicImports])];
+      await Promise.all(impts.map(impt => this.pin(impt)));
+      modules = [...new Set([...modules, ...impts])];
+    }
+
+    const { map, staticDeps, dynamicDeps } = await this.extractMap(modules, htmlUrl, rootUrl);
 
     const preloadDeps = preload === true && integrity || preload === 'all' ? [...new Set([...staticDeps, ...dynamicDeps])] : staticDeps;
 
@@ -547,7 +624,7 @@ export class Generator {
 
     let esms = '';
     if (esModuleShims) {
-      const esmsPkg = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, this.traceMap.installer.defaultProvider);
+      const { pkg: esmsPkg } = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, this.traceMap.installer.defaultProvider);
       const esmsUrl = this.traceMap.resolver.pkgToUrl(esmsPkg, this.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
       esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${integrity ? ` integrity="${await getIntegrity(esmsUrl, this.traceMap.resolver.fetchOpts)}"` : ''}></script>${newlineTab}`;
     }
@@ -601,14 +678,13 @@ export class Generator {
       esms +
       '<script type="importmap">' +
       (whitespace ? newlineTab : '') +
-      JSON.stringify(this.getMap(), null, whitespace ? 2 : 0).replace(/\n/g, newlineTab) +
+      JSON.stringify(map, null, whitespace ? 2 : 0).replace(/\n/g, newlineTab) +
       (whitespace ? newlineTab : '') +
       '</script>' +
       preloads +
       (analysis.map.newScript ? newlineTab : '')
     );
 
-    this.installCnt = 0;
     return replacer.source;
   }
 
@@ -660,7 +736,7 @@ export class Generator {
     try {
       const { alias, target, subpath } = await installToTarget.call(this, install, this.traceMap.installer.defaultRegistry);
       await this.traceMap.add(alias, target);
-      await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new' });
+      await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new-primary' });
       this.traceMap.pin(alias + subpath.slice(1));
     }
     catch (e) {
@@ -706,22 +782,24 @@ export class Generator {
     }
   }
 
-  async extractMap (names: string | string[]) {
-    if (!Array.isArray(names))
-      names = [names];
+  async extractMap (pins: string | string[], mapUrl?: URL | string, rootUrl?: URL | string | null) {
+    if (typeof mapUrl === 'string')
+      mapUrl = new URL(mapUrl, this.baseUrl);
+    if (typeof rootUrl === 'string')
+      rootUrl = new URL(rootUrl, this.baseUrl);
+    if (!Array.isArray(pins))
+      pins = [pins];
     if (this.installCnt++ !== 0)
       throw new JspmError(`Cannot run extract map during installs`);
     this.traceMap.startInstall();
     await this.traceMap.processInputMap;
-    for (const name of names) {
-      if (!this.traceMap.pins.includes(name))
-        throw new JspmError(`No "${name}" entry in "imports" to extract.`);
-    }
     if (--this.installCnt !== 0)
       throw new JspmError(`Another install was started during extract map.`);
-    const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall(names);
+    const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall(pins);
+    map.rebase(mapUrl, rootUrl);
     map.flatten();
     map.sort();
+    map.combineSubpaths();
     return { map: map.toJSON(), staticDeps, dynamicDeps };
   }
 
@@ -767,20 +845,14 @@ export class Generator {
     };
   }
 
-  getMap () {
+  getMap (mapUrl?: string | URL, rootUrl?: string | URL | null) {
     const map = this.map.clone();
+    map.rebase(mapUrl, rootUrl);
     map.flatten();
     map.sort();
-    map.rebase();
+    map.combineSubpaths();
     return map.toJSON();
   }
-}
-
-export interface HtmlInjector {
-  setMap: (map: any) => void;
-  clearPreloads: () => void;
-  
-  toString: () => string;
 }
 
 export interface LookupOptions {
@@ -817,7 +889,7 @@ export async function lookup (install: string | Install, { provider, cache }: Lo
   const { target, subpath, alias } = await installToTarget.call(generator, install, generator.traceMap.installer.defaultRegistry);
   if (target instanceof URL)
     throw new Error('URL lookups not supported');
-  const resolved = await generator.traceMap.resolver.resolveLatestTarget(target, true, generator.traceMap.installer.defaultProvider);
+  const resolved = await generator.traceMap.resolver.resolveLatestTarget(target, true, generator.traceMap.installer.getProvider(target));
   return {
     install: {
       target: {
@@ -828,7 +900,8 @@ export async function lookup (install: string | Install, { provider, cache }: Lo
       subpath,
       alias
     },
-    resolved
+    resolved: resolved.pkg,
+    subpath: resolved.subpath
   };
 }
 
@@ -854,7 +927,7 @@ export async function lookup (install: string | Install, { provider, cache }: Lo
  * }
  * ```
  */
-export async function getPackageConfig (pkg: string | URL | ExactPackage, { provider, cache }: LookupOptions = {}) {
+export async function getPackageConfig (pkg: string | URL | ExactPackage, { provider, cache }: LookupOptions = {}): Promise<PackageConfig | null> {
   const generator = new Generator({ cache: !cache, defaultProvider: provider });
   if (typeof pkg === 'object' && 'name' in pkg)
     pkg = generator.traceMap.resolver.pkgToUrl(pkg, generator.traceMap.installer.defaultProvider);
