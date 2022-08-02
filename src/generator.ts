@@ -1,5 +1,5 @@
 import { baseUrl as _baseUrl, relativeUrl, resolveUrl } from "./common/url.js";
-import { ExactPackage, toPackageTarget } from "./install/package.js";
+import { ExactPackage, PackageConfig, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 // @ts-ignore
 import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
@@ -927,7 +927,7 @@ export async function lookup (install: string | Install, { provider, cache }: Lo
  * }
  * ```
  */
-export async function getPackageConfig (pkg: string | URL | ExactPackage, { provider, cache }: LookupOptions = {}) {
+export async function getPackageConfig (pkg: string | URL | ExactPackage, { provider, cache }: LookupOptions = {}): Promise<PackageConfig | null> {
   const generator = new Generator({ cache: !cache, defaultProvider: provider });
   if (typeof pkg === 'object' && 'name' in pkg)
     pkg = generator.traceMap.resolver.pkgToUrl(pkg, generator.traceMap.installer.defaultProvider);

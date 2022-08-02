@@ -7,7 +7,7 @@ import { parsePkg } from "../install/package.js";
 import { ImportMap, IImportMap, getMapMatch, getScopeMatches } from '@jspm/import-map';
 import { resolvePackageTarget, Resolver } from "./resolver.js";
 import { Log } from "../common/log.js";
-import { extendLock, extractLockAndMap } from "../install/lock.js";
+import { extendConstraints, extendLock, extractLockConstraintsAndMap } from "../install/lock.js";
 
 function isMappableScheme (specifier) {
   return specifier.startsWith('node:');
@@ -103,9 +103,10 @@ export default class TraceMap {
         if (!this.pins.includes(pin))
           this.pins.push(pin);
       }
-      const { maps, lock } = await extractLockAndMap(inMap, preloads, mapUrl, rootUrl, this.resolver);
+      const { maps, lock, constraints } = await extractLockConstraintsAndMap(inMap, preloads, mapUrl, rootUrl, this.installer.defaultRegistry, this.resolver);
       this.inputMap.extend(maps);
       extendLock(this.installer.installs, lock);
+      extendConstraints(this.installer.constraints, constraints);
     });
   }
 

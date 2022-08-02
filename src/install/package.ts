@@ -2,13 +2,12 @@ import { JspmError } from "../common/err.js";
 import { baseUrl, isRelative } from "../common/url.js";
 // @ts-ignore
 import sver from 'sver';
+const { SemverRange } = sver;
 // @ts-ignore
 import convertRange from 'sver/convert-range.js';
 import { InstallTarget } from "./installer.js";
 import { Resolver } from "../trace/resolver.js";
 import { urlToNiceStr } from "../common/url.js";
-
-const { SemverRange } = sver;
 
 export interface ExactPackage {
   registry: string;
@@ -48,7 +47,7 @@ export interface LatestPackageTarget {
 }
 
 const supportedProtocols = ['https', 'http', 'data', 'file', 'ipfs'];
-export async function parseUrlTarget (resolver: Resolver, targetStr: string, parentUrl?: string): Promise<{ alias: string, target: URL, subpath: '.' | `./${string}` } | undefined> {
+export async function parseUrlTarget (resolver: Resolver, targetStr: string, parentUrl?: URL): Promise<{ alias: string, target: URL, subpath: '.' | `./${string}` } | undefined> {
   const registryIndex = targetStr.indexOf(':');
   if (isRelative(targetStr) || registryIndex !== -1 && supportedProtocols.includes(targetStr.slice(0, registryIndex))) {
     const subpathIndex = targetStr.indexOf('|');
@@ -100,7 +99,7 @@ export function pkgUrlToNiceString (resolver: Resolver, pkgUrl: string) {
   return pkgUrl;
 }
 
-export async function toPackageTarget (resolver: Resolver, targetStr: string, parentPkgUrl: string, defaultRegistry: string): Promise<{ alias: string, target: InstallTarget, subpath: '.' | `./${string}` }> {
+export async function toPackageTarget (resolver: Resolver, targetStr: string, parentPkgUrl: URL, defaultRegistry: string): Promise<{ alias: string, target: InstallTarget, subpath: '.' | `./${string}` }> {
   const urlTarget = await parseUrlTarget(resolver, targetStr, parentPkgUrl);
   if (urlTarget)
     return urlTarget;
@@ -130,7 +129,7 @@ export async function toPackageTarget (resolver: Resolver, targetStr: string, pa
   };
 }
 
-export function newPackageTarget (target: string, parentPkgUrl: string, defaultRegistry: string, depName?: string): InstallTarget {
+export function newPackageTarget (target: string, parentPkgUrl: URL, defaultRegistry: string, depName?: string): InstallTarget {
   let registry: string, name: string, ranges: any[];
 
   const registryIndex = target.indexOf(':');
