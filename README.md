@@ -192,7 +192,7 @@ The second HTML Generation options include:
 
 * `htmlUrl`: The URL of the HTML file for relative path handling in the map
 * `rootUrl`: The root URL of the HTML file for root-relative path handling in the map
-* `trace`: Whether to trace the HTML imports before injection (via `generator.trace`)
+* `trace`: Whether to trace the HTML imports before injection (via `generator.pin`)
 * `pins`: List of top-level pinned `"imports"` to inject, or `true` to inject all (the default if not tracing).
 * `comment`: Defaults to `Built with @jspm/generator` comment, set to false or an empty string to remove.
 * `preload`: Boolean, injects `<link rel="modulepreload">` preload tags. By default only injects static dependencies. Set to `'all'` to inject dyamic import preloads as well (this is the default when applying `integrity`).
@@ -253,20 +253,25 @@ modules have yet executed on the page. For dynamic import map injection workflow
 for each import map and injecting it into this frame can be used to get around this constraint for
 in-page refreshing application workflows.
 
-### Trace Installs
+### Traced Pins
 
-Instead of installing specific packages into the map, you can also just trace a local
-module directly and JSPM will generate the scoped mappings to support that modules execution:
+Instead of installing specific packages into the map, you can also just trace any module
+module directly and JSPM will generate the scoped mappings to support that modules execution.
+
+We do this via `generator.pin` because we want to be explicit that this graph is being included
+in the import map (unused mappings are always pruned if not pinned as "imports" or custom pins).
 
 generate.mjs
 ```js
 // all static and dynamic dependencies necessary to execute app will be traced and
 // put into the map as necessary
-await generator.trace('./app.js');
+await generator.pin('./app.js');
 ```
 
 The benefit of tracing is that it directly implements a Node.js-compatible resolver so that if you can trace something
 you can map it, without necessarily doing a full install into the top-level of the map.
+
+Tracing will fully respect contextual package.json dependencies as with installs, per the universal resolution semantics.
 
 ### Import Map Object
 

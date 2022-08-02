@@ -463,13 +463,13 @@ export class Generator {
   }
 
   /**
-   * Trace a module and install all dependencies necessary into the map
+   * Trace and pin a module, installing all dependencies necessary into the map
    * to support its execution including static and dynamic module imports.
    * 
-   * @param specifier Import specifier to trace
+   * @param specifier Import specifier to pin
    * @param parentUrl Optional parent URL
    */
-  async trace (specifier: string, parentUrl?: string): Promise<{
+  async pin (specifier: string, parentUrl?: string): Promise<{
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
@@ -496,11 +496,11 @@ export class Generator {
   }
 
   /**
-   * @deprecated Renamed to "add" instead.
+   * @deprecated Renamed to "trace" instead.
    * @param specifier Import specifier to trace
    */
   async traceInstall (specifier: string): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
-    return this.trace(specifier);
+    return this.pin(specifier);
   }
 
   /**
@@ -610,7 +610,7 @@ export class Generator {
     let modules = pins === true ? this.traceMap.pins : Array.isArray(pins) ? pins : [];
     if (trace) {
       const impts = [...new Set([...analysis.staticImports, ...analysis.dynamicImports])];
-      await Promise.all(impts.map(impt => this.trace(impt)));
+      await Promise.all(impts.map(impt => this.pin(impt)));
       modules = [...new Set([...modules, ...impts])];
     }
 
