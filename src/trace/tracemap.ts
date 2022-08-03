@@ -114,10 +114,10 @@ export default class TraceMap {
     return this.installer!.replace(target, pkgUrl, provider);
   }
 
-  async visit (specifier: string, opts: VisitOpts, parentUrl = null, seen = new Set()) {
-    if (seen.has(specifier + '##' + parentUrl))
+  async visit (specifier: string, opts: VisitOpts, parentUrl = null, seen = new Set<`${string}##${string}`>()) {
+    if (seen.has(`${specifier}##${parentUrl}`))
       return;
-    seen.add(specifier + '##' + parentUrl);
+    seen.add(`${specifier}##${parentUrl}`);
 
     // This should probably be baseUrl?
     const resolved = await this.resolve(specifier, parentUrl || this.mapUrl.href, opts.mode);
@@ -157,6 +157,8 @@ export default class TraceMap {
         opts = { ...opts, mode: opts.mode.startsWith('new-') ? 'new-secondary' : 'existing-secondary' };
       await this.visit(dep, opts, resolved, seen);
     }));
+
+    return seen;
   }
 
   async extractMap (modules: string[]) {
@@ -200,14 +202,16 @@ export default class TraceMap {
       }
     };
 
+    const allSeen = new Set<`${string}##${string}`>();
     await Promise.all(modules.map(async module => {
-      await this.visit(module, { static: true, visitor, mode: 'existing-primary' });
+      const seen = await this.visit(module, { static: true, visitor, mode: 'existing-primary' });
+      for (const item of seen)
+        allSeen.add(item);
     }));
 
     list = dynamicList;
     await Promise.all(dynamics.map(async ([specifier, parent]) => {
-      // TODO: perf, stop on reentrancy. Important that reentrancy is specifier + parent duplication though.
-      await this.visit(specifier, { visitor, mode: 'existing-secondary' }, parent);
+      await this.visit(specifier, { visitor, mode: 'existing-secondary' }, parent, allSeen);
     }));
 
     if (this.installer!.newInstalls)
