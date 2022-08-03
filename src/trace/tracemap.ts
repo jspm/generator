@@ -114,7 +114,7 @@ export default class TraceMap {
     return this.installer!.replace(target, pkgUrl, provider);
   }
 
-  async visit (specifier: string, opts: VisitOpts, parentUrl = null, seen = new Set<`${string}##${string}`>()) {
+  async visit (specifier: string, opts: VisitOpts, parentUrl = null, seen = new Set()) {
     if (seen.has(`${specifier}##${parentUrl}`))
       return;
     seen.add(`${specifier}##${parentUrl}`);
@@ -123,7 +123,7 @@ export default class TraceMap {
     const resolved = await this.resolve(specifier, parentUrl || this.mapUrl.href, opts.mode);
 
     // TODO: support ignoring prefixes?
-    if (this.opts.ignore?.includes(specifier)) return null;
+    if (this.opts.ignore?.includes(specifier)) return;
 
     const entry = await this.getTraceEntry(resolved, parentUrl || this.mapUrl.href);
     if (!entry)
@@ -157,8 +157,6 @@ export default class TraceMap {
         opts = { ...opts, mode: opts.mode.startsWith('new-') ? 'new-secondary' : 'existing-secondary' };
       await this.visit(dep, opts, resolved, seen);
     }));
-
-    return seen;
   }
 
   async extractMap (modules: string[]) {
@@ -202,16 +200,14 @@ export default class TraceMap {
       }
     };
 
-    const allSeen = new Set<`${string}##${string}`>();
+    const seen = new Set();
     await Promise.all(modules.map(async module => {
-      const seen = await this.visit(module, { static: true, visitor, mode: 'existing-primary' });
-      for (const item of seen)
-        allSeen.add(item);
+      await this.visit(module, { static: true, visitor, mode: 'existing-primary' }, null, seen);
     }));
 
     list = dynamicList;
     await Promise.all(dynamics.map(async ([specifier, parent]) => {
-      await this.visit(specifier, { visitor, mode: 'existing-secondary' }, parent, allSeen);
+      await this.visit(specifier, { visitor, mode: 'existing-secondary' }, parent, seen);
     }));
 
     if (this.installer!.newInstalls)
