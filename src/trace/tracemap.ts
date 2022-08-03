@@ -115,15 +115,15 @@ export default class TraceMap {
   }
 
   async visit (specifier: string, opts: VisitOpts, parentUrl = null, seen = new Set()) {
-    if (seen.has(specifier + '##' + parentUrl))
+    if (seen.has(`${specifier}##${parentUrl}`))
       return;
-    seen.add(specifier + '##' + parentUrl);
+    seen.add(`${specifier}##${parentUrl}`);
 
     // This should probably be baseUrl?
     const resolved = await this.resolve(specifier, parentUrl || this.mapUrl.href, opts.mode);
 
     // TODO: support ignoring prefixes?
-    if (this.opts.ignore?.includes(specifier)) return null;
+    if (this.opts.ignore?.includes(specifier)) return;
 
     const entry = await this.getTraceEntry(resolved, parentUrl || this.mapUrl.href);
     if (!entry)
@@ -200,14 +200,14 @@ export default class TraceMap {
       }
     };
 
+    const seen = new Set();
     await Promise.all(modules.map(async module => {
-      await this.visit(module, { static: true, visitor, mode: 'existing-primary' });
+      await this.visit(module, { static: true, visitor, mode: 'existing-primary' }, null, seen);
     }));
 
     list = dynamicList;
     await Promise.all(dynamics.map(async ([specifier, parent]) => {
-      // TODO: perf, stop on reentrancy. Important that reentrancy is specifier + parent duplication though.
-      await this.visit(specifier, { visitor, mode: 'existing-secondary' }, parent);
+      await this.visit(specifier, { visitor, mode: 'existing-secondary' }, parent, seen);
     }));
 
     if (this.installer!.newInstalls)
