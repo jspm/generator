@@ -2,6 +2,10 @@ import { Analysis } from "./analysis";
 
 let babel;
 
+export function setBabel (_babel) {
+  babel = _babel;
+}
+
 export async function createCjsAnalysis (imports: any, source: string, url: string): Promise<Analysis> {
   if (!babel)
     ({ default: babel } = await import('@babel/core'));

@@ -11,9 +11,12 @@ import { Analysis, createSystemAnalysis, createCjsAnalysis, createEsmAnalysis, c
 // @ts-ignore
 import { getMapMatch } from '@jspm/import-map';
 import { Installer, PackageProvider } from '../install/installer.js';
-import { nodeBuiltinSet } from '../providers/node.js';
 
 let realpath, pathToFileURL;
+
+export function setPathFns (_realpath, _pathToFileURL) {
+  realpath = _realpath, pathToFileURL = _pathToFileURL;
+}
 
 export class Resolver {
   log: Log;

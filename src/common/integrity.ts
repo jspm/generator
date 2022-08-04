@@ -2,6 +2,9 @@
 import { fetch } from '#fetch';
 
 let createHash;
+export function setCreateHash (_createHash) {
+  createHash = _createHash;
+}
 
 export async function getIntegrity (url, fetchOpts) {
   if (!createHash)

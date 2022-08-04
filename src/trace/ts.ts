@@ -2,6 +2,10 @@ import { Analysis } from "./analysis";
 
 let babel, babelPresetTs, babelPluginImportAssertions;
 
+export function setBabel (_babel, _babelPresetTs, _babelPluginImportAssertions) {
+  babel = _babel, babelPresetTs = _babelPresetTs, babelPluginImportAssertions = _babelPluginImportAssertions;
+}
+
 const globalConsole = globalThis.console;
 const dummyConsole = {
   log () {}, warn () {}, memory () {}, assert() {}, clear() {}, count() {}, countReset() {}, debug () {},
