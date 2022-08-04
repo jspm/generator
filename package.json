@@ -29,6 +29,7 @@
   },
   "exports": {
     "source": "./lib/generator.js",
+    "deno": "./dist/generator-deno.js",
     "default": "./dist/generator.js"
   },
   "dependencies": {

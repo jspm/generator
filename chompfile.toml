@@ -16,6 +16,7 @@ deps = ['lib/**/*.js', 'npm:install']
 template = 'rollup'
 [task.template-options]
 input = [
+    'lib/generator-deno.js',
     'lib/generator.js',
     'lib/common/fetch-vscode.js',
     'lib/common/fetch-deno.js',
@@ -23,6 +24,7 @@ input = [
     'lib/common/fetch-native.js'
 ]
 onwarn = false
+clear-dir = true
 [task.template-options.output]
 dir = 'dist'
 
