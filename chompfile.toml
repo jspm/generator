@@ -1,6 +1,6 @@
 version = 0.1
 
-extensions = ['chomp@0.1:swc', '../chomp-extensions/rollup.js']
+extensions = ['chomp@0.1:swc', 'chomp@0.1:rollup']
 
 default-task = 'build'
 
