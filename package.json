@@ -37,7 +37,7 @@
     "@babel/preset-typescript": "^7.17.2",
     "@jspm/core": "^2.0.0-beta.8",
     "@jspm/import-map": "^1.0.4",
-    "es-module-lexer": "^0.10.4",
+    "es-module-lexer": "^1.0.2",
     "ipfs-client": "^0.7.1",
     "make-fetch-happen": "^8.0.3",
     "sver": "^1.8.3"
