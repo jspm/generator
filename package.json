@@ -28,7 +28,10 @@
     }
   },
   "exports": {
-    "source": "./lib/generator.js",
+    "source": {
+      "deno": "./lib/generator-deno.js",
+      "default": "./lib/generator.js"
+    },
     "deno": "./dist/generator-deno.js",
     "default": "./dist/generator.js"
   },
