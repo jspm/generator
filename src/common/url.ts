@@ -21,9 +21,9 @@ else if (typeof document as any !== 'undefined') {
   const baseEl: any | null = document.querySelector('base[href]');
   if (baseEl)
     baseUrl = new URL(baseEl.href + (baseEl.href.endsWith('/') ? '' : '/'));
-  else if (typeof location !== 'undefined')
-    baseUrl = new URL('../', new URL(location.href));
 }
+if (!baseUrl && typeof location !== 'undefined')
+  baseUrl = new URL('../', new URL(location.href));
 
 export function resolveUrl (url: string, mapUrl: URL, rootUrl: URL | null): string {
   if (url.startsWith('/'))
