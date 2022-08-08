@@ -21,7 +21,7 @@ else if (typeof document as any !== 'undefined') {
   baseUrl = new URL(document.baseURI);
 }
 if (!baseUrl && typeof location !== 'undefined') {
-  baseUrl = new URL('../', new URL(location.href));
+  baseUrl = new URL(location.href);
 }
 
 export function resolveUrl (url: string, mapUrl: URL, rootUrl: URL | null): string {
