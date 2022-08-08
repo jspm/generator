@@ -18,11 +18,10 @@ else if (typeof process !== 'undefined' && process.versions.node) {
   baseUrl = new URL('file://' + process.cwd() + '/');
 }
 else if (typeof document as any !== 'undefined') {
-  const baseEl: any | null = document.querySelector('base[href]');
-  if (baseEl)
-    baseUrl = new URL(baseEl.href + (baseEl.href.endsWith('/') ? '' : '/'));
-  else if (typeof location !== 'undefined')
-    baseUrl = new URL('../', new URL(location.href));
+  baseUrl = new URL(document.baseURI);
+}
+if (!baseUrl && typeof location !== 'undefined') {
+  baseUrl = new URL(location.href);
 }
 
 export function resolveUrl (url: string, mapUrl: URL, rootUrl: URL | null): string {
