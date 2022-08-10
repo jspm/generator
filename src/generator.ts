@@ -627,10 +627,9 @@ export class Generator {
       const { pkg: esmsPkg } = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, this.traceMap.installer.defaultProvider);
       const esmsUrl = this.traceMap.resolver.pkgToUrl(esmsPkg, this.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
       esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${integrity ? ` integrity="${await getIntegrity(esmsUrl, this.traceMap.resolver.fetchOpts)}"` : ''}></script>${newlineTab}`;
-    }
-
-    if (esModuleShims !== undefined && analysis.esModuleShims) {
-      replacer.remove(analysis.esModuleShims.start, analysis.esModuleShims.end, true);
+      
+      if (analysis.esModuleShims)
+        replacer.remove(analysis.esModuleShims.start, analysis.esModuleShims.end, true);
     }
 
     for (const preload of analysis.preloads) {
