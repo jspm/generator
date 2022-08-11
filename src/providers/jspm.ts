@@ -116,55 +116,55 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
     // Deno wat?
     if (lookup instanceof Promise)
       lookup = await lookup;
-    if (lookup) {
-      if (lookup instanceof Promise)
-        throwInternalError();
-      this.log('resolve', `${target.registry}:${target.name}@${range} -> WILDCARD ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-      await ensureBuild(lookup, this.fetchOpts);
-      return lookup;
-    }
+    if (!lookup)
+      return null;
+    this.log('resolve', `${target.registry}:${target.name}@${range} -> WILDCARD ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+    await ensureBuild(lookup, this.fetchOpts);
+    return lookup;
   }
-  else if (range.isExact && range.version.tag) {
+  if (range.isExact && range.version.tag) {
     const tag = range.version.tag;
     let lookup = await (cache.tags[tag] || (cache.tags[tag] = lookupRange.call(this, registry, name, tag, unstable, parentUrl)));
     // Deno wat?
     if (lookup instanceof Promise)
-    lookup = await lookup;
-    if (lookup) {
-      if (lookup instanceof Promise)
-        throwInternalError();
-      this.log('resolve', `${target.registry}:${target.name}@${range} -> TAG ${tag}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-      await ensureBuild(lookup, this.fetchOpts);
-      return lookup;
-    }
+      lookup = await lookup;
+    if (!lookup)
+      return null;
+    this.log('resolve', `${target.registry}:${target.name}@${range} -> TAG ${tag}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+    await ensureBuild(lookup, this.fetchOpts);
+    return lookup;
   }
-  else if (range.isMajor) {
+  let stableFallback = false;
+  if (range.isMajor) {
     const major = range.version.major;
     let lookup = await (cache.majors[major] || (cache.majors[major] = lookupRange.call(this, registry, name, major, unstable, parentUrl)));
     // Deno wat?
     if (lookup instanceof Promise)
       lookup = await lookup;
-    if (lookup) {
-      if (lookup instanceof Promise)
-        throwInternalError();
+    if (!lookup)
+      return null;
+    // if the latest major is actually a downgrade, use the latest minor version (fallthrough)
+    // note this might miss later major prerelease versions, which should strictly be supported via a pkg@X@ unstable major lookup
+    if (range.version.gt(lookup.version)) {
+      stableFallback = true;
+    }
+    else {
       this.log('resolve', `${target.registry}:${target.name}@${range} -> MAJOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
       await ensureBuild(lookup, this.fetchOpts);
       return lookup;
     }
   }
-  else if (range.isStable) {
+  if (stableFallback || range.isStable) {
     const minor = `${range.version.major}.${range.version.minor}`;
     let lookup = await (cache.minors[minor] || (cache.minors[minor] = lookupRange.call(this, registry, name, minor, unstable, parentUrl)));
     // Deno wat?
     if (lookup instanceof Promise)
       lookup = await lookup;
-    if (lookup) {
-      if (lookup instanceof Promise)
-        throwInternalError();
-      this.log('resolve', `${target.registry}:${target.name}@${range} -> MINOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
-      await ensureBuild(lookup, this.fetchOpts);
-      return lookup;
-    }
+    if (!lookup)
+      return null;
+    this.log('resolve', `${target.registry}:${target.name}@${range} -> MINOR ${lookup.version}${parentUrl ? ' [' + parentUrl + ']' : ''}`);
+    await ensureBuild(lookup, this.fetchOpts);
+    return lookup;
   }
   return null;
 }
