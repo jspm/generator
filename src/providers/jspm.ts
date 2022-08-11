@@ -157,6 +157,8 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   if (stableFallback || range.isStable) {
     const minor = `${range.version.major}.${range.version.minor}`;
     let lookup = await (cache.minors[minor] || (cache.minors[minor] = lookupRange.call(this, registry, name, minor, unstable, parentUrl)));
+    // in theory a similar downgrade to the above can happen for stable prerelease ranges ~1.2.3-pre being downgraded to 1.2.2
+    // this will be solved by the pkg@X.Y@ unstable minor lookup
     // Deno wat?
     if (lookup instanceof Promise)
       lookup = await lookup;
