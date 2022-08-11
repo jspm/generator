@@ -5,14 +5,11 @@ import assert from 'assert';
   const generator = new Generator({
     inputMap: {
       "imports": {
-        "react": "https://ga.jspm.io/npm:react@17.0.1/dev.index.js",
-        "react-dom": "https://ga.jspm.io/npm:react-dom@17.0.1/dev.index.js"
+        "react": "https://ga.jspm.io/npm:react@17.0.1/dev.index.js"
       },
       "scopes": {
         "https://ga.jspm.io/": {
-          "object-assign": "https://ga.jspm.io/npm:object-assign@4.1.0/index.js",
-          "scheduler": "https://ga.jspm.io/npm:scheduler@0.20.1/dev.index.js",
-          "scheduler/tracing": "https://ga.jspm.io/npm:scheduler@0.20.1/dev.tracing.js"
+          "object-assign": "https://ga.jspm.io/npm:object-assign@4.1.0/index.js"
         }
       }
     },
@@ -21,11 +18,11 @@ import assert from 'assert';
     env: ['production', 'browser']
   });
 
-  await generator.uninstall('react-dom');
+  await generator.update('react');
   const json = generator.getMap();
 
-  assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@17.0.1/index.js');
-  assert.strictEqual(json.scopes['https://ga.jspm.io/']['object-assign'], 'https://ga.jspm.io/npm:object-assign@4.1.0/index.js');
+  assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@17.0.2/index.js');
+  assert.strictEqual(json.scopes['https://ga.jspm.io/']['object-assign'], 'https://ga.jspm.io/npm:object-assign@4.1.1/index.js');
   assert.strictEqual(Object.keys(json.imports).length, 1);
   assert.strictEqual(Object.keys(json.scopes['https://ga.jspm.io/']).length, 1);
 }
@@ -51,7 +48,9 @@ import assert from 'assert';
     env: ['production', 'browser']
   });
 
-  await generator.uninstall(['lit', 'lit/']);
+  await generator.update('lit');
   const json = generator.getMap();
-  assert.strictEqual(Object.keys(json).length, 0);
+
+  assert.strictEqual(json.imports.lit, 'https://ga.jspm.io/npm:lit@2.2.8/index.js');
+  assert.strictEqual(json.imports['lit/directive.js'], 'https://ga.jspm.io/npm:lit@2.2.8/directive.js');
 }

@@ -14,6 +14,7 @@ import { Replacer } from "./common/str.js";
 import { getIntegrity } from "./common/integrity.js";
 import { LockResolutions, normalizeLock } from "./install/lock.js";
 import process from 'process';
+import { InstallTarget } from "./install/installer.js";
 
 export { analyzeHtml }
 
@@ -277,7 +278,7 @@ export interface ModuleAnalysis {
 }
 
 export interface Install {
-  target: string;
+  target: string | InstallTarget;
   subpath?: '.' | `./${string}`;
   subpaths?: ('.' | `./${string}`)[];
   alias?: string;
@@ -733,7 +734,13 @@ export class Generator {
       this.traceMap.startInstall();
     await this.traceMap.processInputMap;
     try {
-      const { alias, target, subpath } = await installToTarget.call(this, install, this.traceMap.installer.defaultRegistry);
+      let alias, target, subpath;
+      if (typeof install === 'string' || typeof install.target === 'string') {
+        ({ alias, target, subpath } = await installToTarget.call(this, install, this.traceMap.installer.defaultRegistry));
+      }
+      else {
+        ({ alias, target, subpath } = install);
+      }
       await this.traceMap.add(alias, target);
       await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new-primary' });
       this.traceMap.pin(alias + subpath.slice(1));
@@ -763,18 +770,68 @@ export class Generator {
     }
   }
 
-  async uninstall (name: string | string[]) {
-    if (Array.isArray(name))
-      return await Promise.all(name.map(name => this.uninstall(name)));
+  
+  async update (pkgNames?: string | string[]) {
+    if (typeof pkgNames === 'string')
+      pkgNames = [pkgNames];
     if (this.installCnt++ === 0)
       this.traceMap.startInstall();
     await this.traceMap.processInputMap;
-    const idx = this.traceMap.pins.indexOf(name);
-    if (idx === -1) {
-      this.installCnt--;
-      throw new JspmError(`No "imports" entry for "${name}" to uninstall.`);
+    const primaryResolutions = this.traceMap.installer.installs.primary;
+    const primaryConstraints = this.traceMap.installer.constraints.primary;
+    if (!pkgNames)
+      pkgNames = Object.keys(primaryResolutions);
+    const installs: Install[] = [];
+    for (const name of pkgNames) {
+      const resolution = primaryResolutions[name];
+      if (!resolution) {
+        this.installCnt--;
+        throw new JspmError(`No "imports" package entry for "${name}" to update. Note update takes package names not package specifiers.`);
+      }
+      const subpaths = this.traceMap.pins.filter(pin => pin === name || pin.startsWith(name) && pin[name.length] === '/').map(pin => `.${pin.slice(name.length)}` as '.' | `./${string}`);
+      // use package.json range if present
+      if (primaryConstraints[name]) {
+        installs.push({ alias: name, subpaths, target: primaryConstraints[name] });
+      }
+      // otherwise synthetize a range from the current package version
+      else {
+        const pkg = this.traceMap.resolver.parseUrlPkg(resolution.installUrl);
+        if (!pkg)
+          throw new Error(`Unable to determine a package version lookup for ${name}. Make sure it is supported as a provider package.`);
+        const target = { registry: pkg.pkg.registry, name: pkg.pkg.name, ranges: [new SemverRange('^' + pkg.pkg.version)] };
+        installs.push({ alias: name, subpaths, target });
+      }
     }
-    this.traceMap.pins.splice(idx, 1);
+    await this.install(installs);
+    if (--this.installCnt === 0) {
+      const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall();
+      this.map = map;
+      return { staticDeps, dynamicDeps };
+    }
+  }
+
+  async uninstall (names: string | string[]) {
+    if (typeof names === 'string')
+      names = [names];
+    if (this.installCnt++ === 0)
+      this.traceMap.startInstall();
+    await this.traceMap.processInputMap;
+    let pins = this.traceMap.pins;
+    const unusedNames = new Set([...names]);
+    for (let i = 0; i < pins.length; i++) {
+      const pin = pins[i];
+      const pinNames = names.filter(name => name === pin || name.endsWith('/') && pin.startsWith(name));
+      if (pinNames.length) {
+        pins.splice(i--, 1);
+        for (const name of pinNames)
+          unusedNames.delete(name);
+      }
+    }
+    if (unusedNames.size) {
+      this.installCnt--;
+      throw new JspmError(`No "imports" entry for "${[...unusedNames][0]}" to uninstall.`);
+    }
+    this.traceMap.pins = pins;
     if (--this.installCnt === 0) {
       const { map } = await this.traceMap.finishInstall();
       this.map = map;
@@ -985,7 +1042,7 @@ async function installToTarget (this: Generator, install: Install | string, defa
     throw new Error('All installs require a "target" string.');
   if (install.subpath !== undefined && (typeof install.subpath !== 'string' || (install.subpath !== '.' && !install.subpath.startsWith('./'))))
     throw new Error(`Install subpath "${install.subpath}" must be a string equal to "." or starting with "./".${typeof install.subpath === 'string' ? `\nTry setting the subpath to "./${install.subpath}"` : ''}`);
-  const { alias, target, subpath } = await toPackageTarget(this.traceMap.resolver, install.target, this.baseUrl.href, defaultRegistry);
+  const { alias, target, subpath } = await toPackageTarget(this.traceMap.resolver, install.target as string, this.baseUrl, defaultRegistry);
   return {
     alias: install.alias || alias,
     target,
