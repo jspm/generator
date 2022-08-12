@@ -497,7 +497,7 @@ export class Generator {
   }
 
   /**
-   * @deprecated Renamed to "trace" instead.
+   * @deprecated Renamed to "pin" instead.
    * @param specifier Import specifier to trace
    */
   async traceInstall (specifier: string): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
