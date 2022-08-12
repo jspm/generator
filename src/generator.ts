@@ -625,7 +625,7 @@ export class Generator {
 
     let esms = '';
     if (esModuleShims) {
-      const { pkg: esmsPkg } = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, false, this.traceMap.installer.defaultProvider);
+      const { pkg: esmsPkg } = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')], unstable: false }, this.traceMap.installer.defaultProvider);
       const esmsUrl = this.traceMap.resolver.pkgToUrl(esmsPkg, this.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
       esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${integrity ? ` integrity="${await getIntegrity(esmsUrl, this.traceMap.resolver.fetchOpts)}"` : ''}></script>${newlineTab}`;
       
@@ -798,7 +798,7 @@ export class Generator {
         const pkg = this.traceMap.resolver.parseUrlPkg(resolution.installUrl);
         if (!pkg)
           throw new Error(`Unable to determine a package version lookup for ${name}. Make sure it is supported as a provider package.`);
-        const target = { registry: pkg.pkg.registry, name: pkg.pkg.name, ranges: [new SemverRange('^' + pkg.pkg.version)] };
+        const target = { registry: pkg.pkg.registry, name: pkg.pkg.name, ranges: [new SemverRange('^' + pkg.pkg.version)], unstable: false };
         installs.push({ alias: name, subpaths, target });
       }
     }
@@ -945,7 +945,7 @@ export async function lookup (install: string | Install, { provider, cache }: Lo
   const { target, subpath, alias } = await installToTarget.call(generator, install, generator.traceMap.installer.defaultRegistry);
   if (target instanceof URL)
     throw new Error('URL lookups not supported');
-  const resolved = await generator.traceMap.resolver.resolveLatestTarget(target, true, generator.traceMap.installer.getProvider(target));
+  const resolved = await generator.traceMap.resolver.resolveLatestTarget(target, generator.traceMap.installer.getProvider(target));
   return {
     install: {
       target: {

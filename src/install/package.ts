@@ -38,12 +38,14 @@ export interface PackageTarget {
   registry: string;
   name: string;
   ranges: any[];
+  unstable: boolean;
 }
 
 export interface LatestPackageTarget {
   registry: string;
   name: string;
   range: any;
+  unstable: boolean;
 }
 
 const supportedProtocols = ['https', 'http', 'data', 'file', 'ipfs'];
@@ -146,10 +148,13 @@ export function newPackageTarget (target: string, parentPkgUrl: URL, defaultRegi
     return new URL(target);
 
   const versionIndex = target.lastIndexOf('@');
+  let unstable = false;
   if (versionIndex > registryIndex + 1) {
     name = target.slice(registryIndex + 1, versionIndex);
     const version = target.slice(versionIndex + 1);
     ranges = (depName || SemverRange.isValid(version)) ? [new SemverRange(version)] : version.split('||').map(v => convertRange(v));
+    if (version === '')
+      unstable = true;
   }
   else if (registryIndex === -1 && depName) {
     name = depName;
@@ -167,7 +172,7 @@ export function newPackageTarget (target: string, parentPkgUrl: URL, defaultRegi
   if (targetNameLen > 2 || targetNameLen === 1 && name[0] === '@')
     throw new JspmError(`Invalid package target ${target}`);
 
-  return { registry, name, ranges };
+  return { registry, name, ranges, unstable };
 }
 
 export function pkgToStr (pkg: ExactPackage) {

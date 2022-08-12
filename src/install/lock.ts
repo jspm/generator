@@ -174,16 +174,16 @@ function packageTargetFromExact (pkg: ExactPackage, permitDowngrades = false): P
   const { registry, name, version } = pkg;
   const v = new Semver(version);
   if (v.tag)
-    return { registry, name, ranges: [new SemverRange(version)] };;
+    return { registry, name, ranges: [new SemverRange(version)], unstable: false };;
   if (permitDowngrades) {
     if (v.major !== 0)
-      return { registry, name, ranges: [new SemverRange(v.major) ]};
+      return { registry, name, ranges: [new SemverRange(v.major) ], unstable: false};
     if (v.minor !== 0)
-      return { registry, name, ranges: [new SemverRange(v.major + '.' + v.minor) ]};
-    return { registry, name, ranges: [new SemverRange(version) ]};
+      return { registry, name, ranges: [new SemverRange(v.major + '.' + v.minor) ], unstable: false };
+    return { registry, name, ranges: [new SemverRange(version) ], unstable: false };
   }
   else {
-    return { registry, name, ranges: [new SemverRange('^' + version)] };
+    return { registry, name, ranges: [new SemverRange('^' + version)], unstable: false };
   }
 }
 

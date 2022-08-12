@@ -166,7 +166,7 @@ export class Resolver {
     }
   }
 
-  async resolveLatestTarget (target: PackageTarget, unstable: boolean, { provider, layer }: PackageProvider, parentUrl?: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` | null }> {
+  async resolveLatestTarget (target: PackageTarget, { provider, layer }: PackageProvider, parentUrl?: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` | null }> {
     // find the range to resolve latest
     let range: any;
     for (const possibleRange of target.ranges.sort(target.ranges[0].constructor.compare)) {
@@ -178,9 +178,9 @@ export class Resolver {
       }
     }
 
-    const latestTarget = { registry: target.registry, name: target.name, range };
+    const latestTarget = { registry: target.registry, name: target.name, range, unstable: target.unstable };
 
-    const pkg = await getProvider(provider, this.providers).resolveLatestTarget.call(this, latestTarget, unstable, layer, parentUrl) as ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null;
+    const pkg = await getProvider(provider, this.providers).resolveLatestTarget.call(this, latestTarget, layer, parentUrl) as ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null;
     if (pkg) {
       if ('pkg' in pkg)
         return pkg;

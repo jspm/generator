@@ -232,7 +232,7 @@ export class Installer {
         return this.installTarget(pkgName, resolutionTarget, mode, pkgScope, parentUrl);
     }
 
-    const latest = await this.resolver.resolveLatestTarget(target, false, provider, parentUrl);
+    const latest = await this.resolver.resolveLatestTarget(target, provider, parentUrl);
     const latestUrl = this.resolver.pkgToUrl(latest.pkg, provider);
     const installed = getInstallsFor(this.constraints, latest.pkg.registry, latest.pkg.name);
     if (!this.opts.freeze && !this.tryUpgradeAllTo(latest.pkg, latestUrl, installed)) {
@@ -294,7 +294,7 @@ export class Installer {
 
     // node.js core
     if (nodeBuiltins && nodeBuiltinSet.has(pkgName)) {
-      return this.installTarget(pkgName, { registry: 'node', name: pkgName, ranges: [new SemverRange('*')] }, mode, pkgScope, parentUrl);
+      return this.installTarget(pkgName, { registry: 'node', name: pkgName, ranges: [new SemverRange('*')], unstable: true }, mode, pkgScope, parentUrl);
     }
 
     // package dependencies

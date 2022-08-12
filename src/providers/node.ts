@@ -44,8 +44,8 @@ export async function getPackageConfig () {
   return null;
 }
 
-export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` } | null> {
-  let resolved = (await jspmResolveLatestTarget.call(this, { registry: 'npm', name: '@jspm/core', range: new SemverRange('*') }, unstable, _layer, parentUrl)) as ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null;
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, _layer: string, parentUrl: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` } | null> {
+  let resolved = (await jspmResolveLatestTarget.call(this, { registry: 'npm', name: '@jspm/core', range: new SemverRange('*') }, _layer, parentUrl)) as ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null;
   if (!resolved)
     return null;
   const pkg = 'pkg' in resolved ? resolved.pkg : resolved;

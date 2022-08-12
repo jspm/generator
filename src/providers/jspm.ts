@@ -94,8 +94,8 @@ async function ensureBuild (pkg: ExactPackage, fetchOpts: any) {
   }
 }
 
-export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null> {
-  const { registry, name, range } = target;
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, _layer: string, parentUrl: string): Promise<ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null> {
+  const { registry, name, range, unstable } = target;
 
   // exact version optimization
   if (range.isExact && !range.version.tag) {
