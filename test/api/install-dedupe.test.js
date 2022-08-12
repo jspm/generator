@@ -24,4 +24,4 @@ const generator = new Generator({
 await generator.install('lit@2.3/html.js');
 const json = generator.getMap();
 
-assert.strictEqual(json.imports.lit, 'https://ga.jspm.io/npm:lit@2.3.0-next.1/index.js');
+assert.strictEqual(json.imports.lit, 'https://ga.jspm.io/npm:lit@2.3.0/index.js');
