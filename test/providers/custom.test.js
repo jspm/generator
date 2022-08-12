@@ -17,7 +17,7 @@ const generator = new Generator({
           return { registry: 'npm', name, version };
         }
       },
-      resolveLatestTarget ({ registry, name, range }, unstable, layer, parentUrl) {
+      resolveLatestTarget ({ registry, name, range, unstable }, layer, parentUrl) {
         return { registry, name, version: '3.6.0' };
       }
     }

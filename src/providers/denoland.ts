@@ -35,7 +35,7 @@ export function parseUrlPkg (url: string): { pkg: ExactPackage, subpath: `./${st
   }
 }
 
-export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, unstable: boolean, _layer: string, parentUrl: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` | null } | null> {
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, _layer: string, parentUrl: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` | null } | null> {
   const { registry, name, range } = target;
 
   if (range.isExact)
