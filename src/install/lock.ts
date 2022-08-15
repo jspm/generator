@@ -70,30 +70,44 @@ export function pruneResolutions (resolutions: LockResolutions, to: [string, str
   return newResolutions;
 }
 
-export function getResolution (resolutions: LockResolutions, name: string, pkgScope: string | null, flattenedSubpath: `.${string}` | null): InstalledResolution | null {
+function enumerateParentScopes (url: string): `${string}/`[] {
+  const parentScopes: `${string}/`[] = [];
+  let separatorIndex = url.lastIndexOf('/');
+  const protocolIndex = url.indexOf('://') + 1;
+  if (separatorIndex !== url.length - 1)
+    throw new Error('Internal error: expected package URL');
+  while ((separatorIndex = url.lastIndexOf('/', separatorIndex - 1)) !== protocolIndex) {
+    parentScopes.push(url.slice(0, separatorIndex + 1) as `${string}/`);
+  }
+  return parentScopes;
+}
+
+export function getResolution (resolutions: LockResolutions, name: string, pkgScope: `${string}/` | null): InstalledResolution | null {
   if (pkgScope && !pkgScope.endsWith('/'))
     throwInternalError(pkgScope);
   if (!pkgScope)
     return resolutions.primary[name] || null;
   const scope = resolutions.secondary[pkgScope];
-  if (scope)
-    return scope[name] || null;
+  return scope?.[name] ?? null;
+}
+
+export function getFlattenedResolution (resolutions: LockResolutions, name: string, pkgScope: `${string}/`, flattenedSubpath: `.${string}`): InstalledResolution | null {
   // no current scope -> check the flattened scopes
-  if (flattenedSubpath) {
-    for (const scopeUrl of Object.keys(resolutions.flattened).sort((a, b) => a.length > b.length ? -1 : 1) as `${string}/`[]) {
-      if (!pkgScope.startsWith(scopeUrl))
-        continue;
-      const flatResolutions = resolutions.flattened[scopeUrl][name];
-      if (!flatResolutions)
-        continue;
-      for (const flatResolution of flatResolutions) {
-        if (flatResolution.export === flattenedSubpath ||
-            flatResolution.export.endsWith('/') && flattenedSubpath.startsWith(flatResolution.export)) {
-          return flatResolution.resolution;
-        }
+  const parentScopes = enumerateParentScopes(pkgScope);
+  for (const scopeUrl of parentScopes) {
+    if (!resolutions.flattened[scopeUrl])
+      continue;
+    const flatResolutions = resolutions.flattened[scopeUrl][name];
+    if (!flatResolutions)
+      continue;
+    for (const flatResolution of flatResolutions) {
+      if (flatResolution.export === flattenedSubpath ||
+          flatResolution.export.endsWith('/') && flattenedSubpath.startsWith(flatResolution.export)) {
+        return flatResolution.resolution;
       }
     }
   }
+  return null;  
 }
 
 export function setConstraint (constraints: VersionConstraints, name: string, target: PackageTarget, pkgScope: string | null = null) {
@@ -103,7 +117,7 @@ export function setConstraint (constraints: VersionConstraints, name: string, ta
     (constraints.secondary[pkgScope] = constraints.secondary[pkgScope] || Object.create(null))[name] = target;
 }
 
-export function setResolution (resolutions: LockResolutions, name: string, installUrl: `${string}/`, pkgScope: string | null = null, installSubpath: `./${string}` | null = null) {
+export function setResolution (resolutions: LockResolutions, name: string, installUrl: `${string}/`, pkgScope: `${string}/` | null = null, installSubpath: `./${string}` | null = null) {
   if (pkgScope && !pkgScope.endsWith('/'))
     throwInternalError(pkgScope);
   if (pkgScope === null) {
@@ -199,7 +213,7 @@ function packageTargetFromExact (pkg: ExactPackage, permitDowngrades = false): P
 
 export interface PackageInstall {
   alias: string;
-  pkgScope: string | null;
+  pkgScope: `${string}/` | null;
   ranges: any[];
 }
 
@@ -210,7 +224,7 @@ export function getInstallsFor (constraints: VersionConstraints, registry: strin
     if (target.registry === registry && target.name === name)
       installs.push({ alias, pkgScope: null, ranges: target.ranges });
   }
-  for (const pkgScope of Object.keys(constraints.secondary)) {
+  for (const pkgScope of Object.keys(constraints.secondary) as `${string}/`[]) {
     const scope = constraints.secondary[pkgScope];
     for (const alias of Object.keys(scope)) {
       const target = scope[alias];

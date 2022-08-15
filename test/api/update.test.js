@@ -22,7 +22,7 @@ import assert from 'assert';
   const json = generator.getMap();
 
   assert.strictEqual(json.imports.react, 'https://ga.jspm.io/npm:react@17.0.2/index.js');
-  assert.strictEqual(json.scopes['https://ga.jspm.io/']['object-assign'], 'https://ga.jspm.io/npm:object-assign@4.1.0/index.js');
+  assert.strictEqual(json.scopes['https://ga.jspm.io/']['object-assign'], 'https://ga.jspm.io/npm:object-assign@4.1.1/index.js');
   assert.strictEqual(Object.keys(json.imports).length, 1);
   assert.strictEqual(Object.keys(json.scopes['https://ga.jspm.io/']).length, 1);
 }

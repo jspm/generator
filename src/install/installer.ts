@@ -7,7 +7,7 @@ import { isURL } from "../common/url.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { nodeBuiltinSet } from '../providers/node.js';
 import { parseUrlPkg } from '../providers/jspm.js';
-import { getInstallsFor, getResolution, InstalledResolution, LockResolutions, PackageInstall, pruneResolutions, setConstraint, setResolution, VersionConstraints } from './lock.js';
+import { getFlattenedResolution, getInstallsFor, getResolution, InstalledResolution, LockResolutions, PackageInstall, pruneResolutions, setConstraint, setResolution, VersionConstraints } from './lock.js';
 import { registryProviders } from '../providers/index.js';
 
 export interface PackageProvider {
@@ -153,7 +153,7 @@ export class Installer {
       targetUrl = target.href;
     }
     else {
-      const pkg = this.getBestMatch(target);
+      const pkg = this.getBestExistingMatch(target);
       if (!pkg) {
         if (this.installs.secondary[replacePkgUrl])
           return false;
@@ -195,7 +195,7 @@ export class Installer {
     return provider;
   }
 
-  async installTarget (pkgName: string, target: InstallTarget, mode: 'new-primary' | 'existing-primary' | 'new-secondary' | 'existing-secondary', pkgScope: string | null, parentUrl: string): Promise<InstalledResolution> {
+  async installTarget (pkgName: string, target: InstallTarget, mode: 'new-primary' | 'existing-primary' | 'new-secondary' | 'existing-secondary', pkgScope: `${string}/` | null, parentUrl: string): Promise<InstalledResolution> {
     if (mode.endsWith('-primary') && pkgScope !== null) {
       throw new Error('Should have null scope for primary');
     }
@@ -203,7 +203,14 @@ export class Installer {
       throw new Error('Should not have null scope for secondary');
     }
     if (this.opts.freeze && mode.startsWith('existing'))
-      throw new JspmError(`"${pkgName}" is not installed in the jspm lockfile, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
+      throw new JspmError(`"${pkgName}" is not installed in the current map to freeze install, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
+
+    // resolutions are authoritative at the top-level
+    if (this.resolutions[pkgName]) {
+      const resolutionTarget = newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl, this.defaultRegistry, pkgName);
+      if (JSON.stringify(target) !== JSON.stringify(resolutionTarget))
+        return this.installTarget(pkgName, resolutionTarget, mode, pkgScope, parentUrl);
+    }
 
     if (target instanceof URL) {
       this.log('install', `${pkgName} ${pkgScope} -> ${target.href}`);
@@ -215,7 +222,7 @@ export class Installer {
     const provider = this.getProvider(target);
 
     if ((this.opts.freeze || mode.startsWith('existing') || mode.endsWith('secondary')) && !this.opts.latest) {
-      const pkg = this.getBestMatch(target);
+      const pkg = this.getBestExistingMatch(target);
       if (pkg) {
         this.log('install', `${pkgName} ${pkgScope} -> ${pkg} (existing match)`);
         const installUrl = this.resolver.pkgToUrl(pkg, provider);
@@ -225,19 +232,12 @@ export class Installer {
       }
     }
 
-    // resolutions are authoritative at the top-level
-    if (this.resolutions[pkgName]) {
-      const resolutionTarget = newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl, this.defaultRegistry, pkgName);
-      if (JSON.stringify(target) !== JSON.stringify(resolutionTarget))
-        return this.installTarget(pkgName, resolutionTarget, mode, pkgScope, parentUrl);
-    }
-
     const latest = await this.resolver.resolveLatestTarget(target, provider, parentUrl);
     const latestUrl = this.resolver.pkgToUrl(latest.pkg, provider);
     const installed = getInstallsFor(this.constraints, latest.pkg.registry, latest.pkg.name);
     if (!this.opts.freeze && !this.tryUpgradeAllTo(latest.pkg, latestUrl, installed)) {
       if (!mode.endsWith('-primary') && !this.opts.latest) {
-        const pkg = this.getBestMatch(target);
+        const pkg = this.getBestExistingMatch(target);
         // cannot upgrade to latest -> stick with existing resolution (if compatible)
         if (pkg) {
           this.log('install', `${pkgName} ${pkgScope} -> ${pkg.registry}:${pkg.name}@${pkg.version} (existing match not latest)`);
@@ -256,7 +256,7 @@ export class Installer {
     return { installUrl: latestUrl, installSubpath: latest.subpath };
   }
 
-  async install (pkgName: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary', pkgScope: string | null = null, flattenedSubpath: `.${string}` | null = null, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<InstalledResolution> {
+  async install (pkgName: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary', pkgScope: `${string}/` | null = null, flattenedSubpath: `.${string}` | null = null, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<InstalledResolution> {
     if (mode.endsWith('-primary') && pkgScope !== null) {
       throw new Error('Should have null scope for primary');
     }
@@ -265,32 +265,32 @@ export class Installer {
     }
     if (!this.installing)
       throwInternalError('Not installing');
-    if (!this.opts.reset) {
-      const existingUrl = getResolution(this.installs, pkgName, pkgScope, flattenedSubpath);
-      if (existingUrl && !this.opts.reset)
-        return existingUrl;
-    }
 
-    if (this.resolutions[pkgName]) {
+    if (this.resolutions[pkgName])
       return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl, this.defaultRegistry, pkgName), mode, pkgScope, parentUrl);
-    }
 
-    // resolution scope cascading for existing only
-    if (mode === 'existing-secondary' && !this.opts.reset) {
-      for (const parentScope of enumerateParentScopes(pkgScope)) {
-        const resolution = getResolution(this.installs, pkgName, parentScope, flattenedSubpath);
-        if (resolution)
-          return resolution;
+    if (!this.opts.reset) {
+      const existingResolution = getResolution(this.installs, pkgName, pkgScope);
+      if (existingResolution)
+        return existingResolution;
+      // flattened resolution cascading for secondary
+      if (mode === 'existing-secondary' && !this.opts.latest || mode === 'new-secondary' && this.opts.freeze) {
+        const flattenedResolution = getFlattenedResolution(this.installs, pkgName, pkgScope, flattenedSubpath);
+        // resolved flattened resolutions become real resolutions as they get picked up
+        if (flattenedResolution) {
+          this.newInstalls = setResolution(this.installs, pkgName, flattenedResolution.installUrl, pkgScope, flattenedResolution.installSubpath);
+          return flattenedResolution;
+        }
       }
     }
 
+    // setup for dependencies
     if (!pkgScope)
       pkgScope = await this.resolver.getPackageBase(parentUrl);
-
-    const pcfg = await this.resolver.getPackageConfig(pkgScope) || {};
-
     if (mode.endsWith('-primary'))
       mode = mode.replace('-primary', '-secondary') as 'new-secondary' | 'existing-secondary';
+
+    const pcfg = await this.resolver.getPackageConfig(pkgScope) || {};
 
     // node.js core
     if (nodeBuiltins && nodeBuiltinSet.has(pkgName)) {
@@ -306,7 +306,7 @@ export class Installer {
 
     // import map "imports"
     if (this.installs.primary[pkgName])
-      return getResolution(this.installs, pkgName, null, null);
+      return getResolution(this.installs, pkgName, null);
 
     // global install fallback
     const target = newPackageTarget('*', new URL(pkgScope), this.defaultRegistry, pkgName);
@@ -321,14 +321,19 @@ export class Installer {
       pkgUrls.add(pkgUrl.installUrl);
     }
     for (const scope of Object.keys(this.installs.secondary) as `${string}/`[]) {
-      for (const pkgUrl of Object.values(this.installs.secondary[scope])) {
-        pkgUrls.add(pkgUrl.installUrl);
+      for (const { installUrl } of Object.values(this.installs.secondary[scope])) {
+        pkgUrls.add(installUrl);
+      }
+    }
+    for (const flatScope of Object.keys(this.installs.flattened) as `${string}/`[]) {
+      for (const { resolution: { installUrl }} of Object.values(this.installs.flattened[flatScope]).flat()) {
+        pkgUrls.add(installUrl);
       }
     }
     return pkgUrls;
   }
 
-  private getBestMatch (matchPkg: PackageTarget): ExactPackage | null {
+  private getBestExistingMatch (matchPkg: PackageTarget): ExactPackage | null {
     let bestMatch: ExactPackage | null = null;
     for (const pkgUrl of this.pkgUrls) {
       const pkg = this.resolver.parseUrlPkg(pkgUrl);
@@ -361,7 +366,7 @@ export class Installer {
 
     // if every installed version can support this new version, update them all
     for (const { alias, pkgScope } of installed) {
-      const resolution = getResolution(this.installs, alias, pkgScope, null);
+      const resolution = getResolution(this.installs, alias, pkgScope);
       if (!resolution)
         continue;
       const { installSubpath } = resolution;
@@ -375,7 +380,7 @@ export class Installer {
   private upgradeSupportedTo (pkg: ExactPackage, pkgUrl: `${string}/`, installed: PackageInstall[]) {
     const pkgVersion = new Semver(pkg.version);
     for (const { alias, pkgScope, ranges } of installed) {
-      const resolution = getResolution(this.installs, alias, pkgScope, null);
+      const resolution = getResolution(this.installs, alias, pkgScope);
       if (!resolution)
         continue;
       if (!ranges.some(range => range.has(pkgVersion, true)))
@@ -384,16 +389,4 @@ export class Installer {
       this.newInstalls = setResolution(this.installs, alias, pkgUrl, pkgScope, installSubpath);
     }
   }
-}
-
-function enumerateParentScopes (url: string): string[] {
-  const parentScopes: string[] = [];
-  let separatorIndex = url.lastIndexOf('/');
-  const protocolIndex = url.indexOf('://') + 1;
-  if (separatorIndex !== url.length - 1)
-    throw new Error('Internal error: expected package URL');
-  while ((separatorIndex = url.lastIndexOf('/', separatorIndex - 1)) !== protocolIndex) {
-    parentScopes.push(url.slice(0, separatorIndex + 1));
-  }
-  return parentScopes;
 }

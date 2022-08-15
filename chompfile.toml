@@ -12,7 +12,7 @@ run = 'typedoc src/generator.ts'
 [[task]]
 name = 'build'
 target = 'dist'
-deps = ['lib/**/*.js', 'npm:install']
+deps = ['lib', 'npm:install']
 template = 'rollup'
 [task.template-options]
 input = [
@@ -27,6 +27,10 @@ onwarn = false
 clear-dir = true
 [task.template-options.output]
 dir = 'dist'
+
+[[task]]
+target = 'lib'
+deps = ['lib/**/*.js']
 
 [[task]]
 target = 'lib/version.js'
@@ -58,9 +62,9 @@ deps = [
 [[task]]
 name = 'unit:#'
 serial = true
-deps = ['test/##.test.js', 'lib/**/*']
+deps = ['test/##.test.js', 'lib']
 display = 'dot'
-run = 'node -C source $DEP'
+run = 'node -C source --enable-source-maps $DEP'
 
 [[task]]
 name = 'test:browser'
