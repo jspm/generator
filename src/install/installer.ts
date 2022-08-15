@@ -63,7 +63,7 @@ export class Installer {
   newInstalls = false;
   // @ts-ignore
   stdlibTarget: InstallTarget;
-  installBaseUrl: string;
+  installBaseUrl: `${string}/`;
   added = new Map<string, InstallTarget>();
   hasLock = false;
   defaultProvider = { provider: 'jspm', layer: 'default' };
@@ -73,14 +73,14 @@ export class Installer {
   log: Log;
   resolver: Resolver;
 
-  constructor (baseUrl: URL, opts: InstallOptions, log: Log, resolver: Resolver) {
+  constructor (baseUrl: `${string}/`, opts: InstallOptions, log: Log, resolver: Resolver) {
     this.log = log;
     this.resolver = resolver;
     this.resolutions = opts.resolutions || {};
-    this.installBaseUrl = baseUrl.href;
+    this.installBaseUrl = baseUrl;
     this.opts = opts;
     this.hasLock = !!opts.lock;
-    this.installs = opts.lock || { primary: Object.create(null), secondary: Object.create(null) };
+    this.installs = opts.lock || { primary: Object.create(null), secondary: Object.create(null), flattened: Object.create(null) };
     this.constraints = { primary: Object.create(null), secondary: Object.create(null) };
     if (opts.defaultRegistry)
       this.defaultRegistry = opts.defaultRegistry;
@@ -128,7 +128,7 @@ export class Installer {
 
   async lockInstall (installs: string[], pkgUrl = this.installBaseUrl, prune = true) {
     const visited = new Set<string>();
-    const visitInstall = async (name: string, pkgUrl: string): Promise<void> => {
+    const visitInstall = async (name: string, pkgUrl: `${string}/`): Promise<void> => {
       if (visited.has(name + '##' + pkgUrl))
         return;
       visited.add(name + '##' + pkgUrl);
@@ -147,7 +147,7 @@ export class Installer {
     }
   }
 
-  replace (target: InstallTarget, replacePkgUrl: string, provider: PackageProvider): boolean {
+  replace (target: InstallTarget, replacePkgUrl: `${string}/`, provider: PackageProvider): boolean {
     let targetUrl: string;
     if (target instanceof URL) {
       targetUrl = target.href;
@@ -207,7 +207,7 @@ export class Installer {
 
     if (target instanceof URL) {
       this.log('install', `${pkgName} ${pkgScope} -> ${target.href}`);
-      const installUrl = target.href + (target.href.endsWith('/') ? '' : '/');
+      const installUrl = target.href + (target.href.endsWith('/') ? '' : '/') as `${string}/`;
       this.newInstalls = setResolution(this.installs, pkgName, installUrl, pkgScope);
       return { installUrl, installSubpath: null };
     }
@@ -256,7 +256,7 @@ export class Installer {
     return { installUrl: latestUrl, installSubpath: latest.subpath };
   }
 
-  async install (pkgName: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary', pkgScope: string | null = null, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<InstalledResolution> {
+  async install (pkgName: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary', pkgScope: string | null = null, flattenedSubpath: `.${string}` | null = null, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<InstalledResolution> {
     if (mode.endsWith('-primary') && pkgScope !== null) {
       throw new Error('Should have null scope for primary');
     }
@@ -266,7 +266,7 @@ export class Installer {
     if (!this.installing)
       throwInternalError('Not installing');
     if (!this.opts.reset) {
-      const existingUrl = getResolution(this.installs, pkgName, pkgScope);
+      const existingUrl = getResolution(this.installs, pkgName, pkgScope, flattenedSubpath);
       if (existingUrl && !this.opts.reset)
         return existingUrl;
     }
@@ -278,7 +278,7 @@ export class Installer {
     // resolution scope cascading for existing only
     if (mode === 'existing-secondary' && !this.opts.reset) {
       for (const parentScope of enumerateParentScopes(pkgScope)) {
-        const resolution = getResolution(this.installs, pkgName, parentScope);
+        const resolution = getResolution(this.installs, pkgName, parentScope, flattenedSubpath);
         if (resolution)
           return resolution;
       }
@@ -306,7 +306,7 @@ export class Installer {
 
     // import map "imports"
     if (this.installs.primary[pkgName])
-      return getResolution(this.installs, pkgName, null);
+      return getResolution(this.installs, pkgName, null, null);
 
     // global install fallback
     const target = newPackageTarget('*', new URL(pkgScope), this.defaultRegistry, pkgName);
@@ -320,7 +320,7 @@ export class Installer {
     for (const pkgUrl of Object.values(this.installs.primary)) {
       pkgUrls.add(pkgUrl.installUrl);
     }
-    for (const scope of Object.keys(this.installs.secondary)) {
+    for (const scope of Object.keys(this.installs.secondary) as `${string}/`[]) {
       for (const pkgUrl of Object.values(this.installs.secondary[scope])) {
         pkgUrls.add(pkgUrl.installUrl);
       }
@@ -347,7 +347,7 @@ export class Installer {
   }
 
   // upgrade all existing packages to this package if possible
-  private tryUpgradeAllTo (pkg: ExactPackage, pkgUrl: string, installed: PackageInstall[]): boolean {
+  private tryUpgradeAllTo (pkg: ExactPackage, pkgUrl: `${string}/`, installed: PackageInstall[]): boolean {
     const pkgVersion = new Semver(pkg.version);
 
     let allCompatible = true;
@@ -361,7 +361,7 @@ export class Installer {
 
     // if every installed version can support this new version, update them all
     for (const { alias, pkgScope } of installed) {
-      const resolution = getResolution(this.installs, alias, pkgScope);
+      const resolution = getResolution(this.installs, alias, pkgScope, null);
       if (!resolution)
         continue;
       const { installSubpath } = resolution;
@@ -372,10 +372,10 @@ export class Installer {
   }
 
   // upgrade some exsiting packages to the new install
-  private upgradeSupportedTo (pkg: ExactPackage, pkgUrl: string, installed: PackageInstall[]) {
+  private upgradeSupportedTo (pkg: ExactPackage, pkgUrl: `${string}/`, installed: PackageInstall[]) {
     const pkgVersion = new Semver(pkg.version);
     for (const { alias, pkgScope, ranges } of installed) {
-      const resolution = getResolution(this.installs, alias, pkgScope);
+      const resolution = getResolution(this.installs, alias, pkgScope, null);
       if (!resolution)
         continue;
       if (!ranges.some(range => range.has(pkgVersion, true)))

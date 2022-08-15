@@ -20,8 +20,17 @@ export interface LockResolutions {
     [pkgName: string]: InstalledResolution;
   };
   secondary: {
-    [pkgUrl: string]: {
+    [pkgUrl: `${string}/`]: {
       [pkgName: string]: InstalledResolution;
+    }
+  };
+  // resolutions on non-package boundaries due to scope flattening which conflate version information
+  // for example you might have separate export subpaths resolving different versions of the same package
+  // FlatInstalledResolution[] captures this flattened variation of install resolutions while still
+  // being keyed by the root scope + package name lookup
+  flattened: {
+    [scopeUrl: `${string}/`]: {
+      [pkgName: string]: FlatInstalledResolution[];
     }
   };
 }
@@ -31,49 +40,24 @@ export interface VersionConstraints {
     [pkgName: string]: PackageTarget;
   };
   secondary: {
-    [pkgUrl: string]: {
+    [pkgUrl: `${string}/`]: {
       [pkgName: string]: PackageTarget;
     }
   }
 }
 
 export interface InstalledResolution {
-  installUrl: string;
+  installUrl: `${string}/`;
   installSubpath: `./${string}` | null;
 }
 
-export function normalizeLock (resolutions: LockResolutions, baseUrl: URL) {
-  const outResolutions: LockResolutions = { primary: Object.create(null), secondary: Object.create(null) };
-  for (const key of Object.keys(resolutions.primary)) {
-    outResolutions.primary[key].installUrl = relativeUrl(new URL(resolutions.primary[key].installUrl), baseUrl);
-  }
-  for (const pkgUrl of Object.keys(resolutions.secondary)) {
-    const normalizedPkgUrl = relativeUrl(new URL(pkgUrl), baseUrl);
-    const pkgResolutions = outResolutions.secondary[normalizedPkgUrl] = {};
-    for (const key of Object.keys(resolutions.secondary[pkgUrl])) {
-      pkgResolutions[key] = relativeUrl(new URL(resolutions.secondary[pkgUrl][key].installUrl), baseUrl);
-    }
-  }
-  return outResolutions;
-}
-
-export function resolveLock (resolutions: LockResolutions, baseUrl: URL) {
-  const outResolutions: LockResolutions = { primary: Object.create(null), secondary: Object.create(null) };
-  for (const key of Object.keys(resolutions.primary)) {
-    outResolutions.primary[key].installUrl = new URL(resolutions.primary[key].installUrl, baseUrl).href;
-  }
-  for (const pkgUrl of Object.keys(resolutions.secondary)) {
-    const resolvedPkgUrl = new URL(pkgUrl, baseUrl).href;
-    const pkgResolutions = outResolutions.secondary[resolvedPkgUrl] = {};
-    for (const key of Object.keys(resolutions.secondary[pkgUrl])) {
-      pkgResolutions[key] = new URL(resolutions.secondary[pkgUrl][key].installUrl, baseUrl).href;
-    }
-  }
-  return outResolutions;
+export interface FlatInstalledResolution {
+  export: `.${string}`;
+  resolution: InstalledResolution;
 }
 
 export function pruneResolutions (resolutions: LockResolutions, to: [string, string | null][]): LockResolutions {
-  const newResolutions: LockResolutions = { primary: Object.create(null), secondary: Object.create(null) };
+  const newResolutions: LockResolutions = { primary: Object.create(null), secondary: Object.create(null), flattened: Object.create(null) };
   for (const [name, parent] of to) {
     if (!parent) {
       newResolutions.primary[name] = resolutions.primary[name];
@@ -86,10 +70,30 @@ export function pruneResolutions (resolutions: LockResolutions, to: [string, str
   return newResolutions;
 }
 
-export function getResolution (resolutions: LockResolutions, name: string, pkgScope: string | null = null): InstalledResolution | null {
+export function getResolution (resolutions: LockResolutions, name: string, pkgScope: string | null, flattenedSubpath: `.${string}` | null): InstalledResolution | null {
   if (pkgScope && !pkgScope.endsWith('/'))
     throwInternalError(pkgScope);
-  return (!pkgScope ? resolutions.primary : resolutions.secondary[pkgScope] || {})[name] || null;
+  if (!pkgScope)
+    return resolutions.primary[name] || null;
+  const scope = resolutions.secondary[pkgScope];
+  if (scope)
+    return scope[name] || null;
+  // no current scope -> check the flattened scopes
+  if (flattenedSubpath) {
+    for (const scopeUrl of Object.keys(resolutions.flattened).sort((a, b) => a.length > b.length ? -1 : 1) as `${string}/`[]) {
+      if (!pkgScope.startsWith(scopeUrl))
+        continue;
+      const flatResolutions = resolutions.flattened[scopeUrl][name];
+      if (!flatResolutions)
+        continue;
+      for (const flatResolution of flatResolutions) {
+        if (flatResolution.export === flattenedSubpath ||
+            flatResolution.export.endsWith('/') && flattenedSubpath.startsWith(flatResolution.export)) {
+          return flatResolution.resolution;
+        }
+      }
+    }
+  }
 }
 
 export function setConstraint (constraints: VersionConstraints, name: string, target: PackageTarget, pkgScope: string | null = null) {
@@ -99,7 +103,7 @@ export function setConstraint (constraints: VersionConstraints, name: string, ta
     (constraints.secondary[pkgScope] = constraints.secondary[pkgScope] || Object.create(null))[name] = target;
 }
 
-export function setResolution (resolutions: LockResolutions, name: string, installUrl: string, pkgScope: string | null = null, installSubpath: `./${string}` | null = null) {
+export function setResolution (resolutions: LockResolutions, name: string, installUrl: `${string}/`, pkgScope: string | null = null, installSubpath: `./${string}` | null = null) {
   if (pkgScope && !pkgScope.endsWith('/'))
     throwInternalError(pkgScope);
   if (pkgScope === null) {
@@ -128,6 +132,12 @@ export function extendLock (resolutions: LockResolutions, newResolutions: LockRe
       Object.assign(resolutions[pkgUrl] = Object.create(null), newResolutions[pkgUrl]);
     else
       resolutions.secondary[pkgUrl] = newResolutions.secondary[pkgUrl];
+  }
+  for (const scopeUrl of Object.keys(newResolutions.flattened)) {
+    if (resolutions[scopeUrl])
+      Object.assign(resolutions[scopeUrl], newResolutions[scopeUrl]);
+    else
+      resolutions.flattened[scopeUrl] = newResolutions.flattened[scopeUrl];
   }
 }
 
@@ -212,7 +222,7 @@ export function getInstallsFor (constraints: VersionConstraints, registry: strin
 }
 
 export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls: string[], mapUrl: URL, rootUrl: URL | null, defaultRegistry: string, resolver: Resolver): Promise<{ lock: LockResolutions, constraints: VersionConstraints, maps: IImportMap }> {
-  const lock: LockResolutions = { primary: Object.create(null), secondary: Object.create(null) };
+  const lock: LockResolutions = { primary: Object.create(null), secondary: Object.create(null), flattened: Object.create(null) };
   const maps: IImportMap = { imports: Object.create(null), scopes: Object.create(null) };
 
   // Primary version constraints taken from the map configuration base (if found)
@@ -240,6 +250,8 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
             // If there is no constraint, we just make one as the semver major on the current version
             if (!constraints.primary[resolvedKey])
               constraints.primary[resolvedKey] = providerPkg ? packageTargetFromExact(providerPkg.pkg) : pkgUrl;
+            // In the case of subpaths having diverging versions, we force convergence on one version
+            // Only scopes permit unpacking
             setResolution(lock, resolvedKey, pkgUrl, null, exportSubpath === true ? null : exportSubpath);
           }
           continue;
@@ -255,6 +267,7 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
   for (const scopeUrl of Object.keys(map.scopes || {})) {
     const resolvedScopeUrl = resolveUrl(scopeUrl, mapUrl, rootUrl) ?? scopeUrl;
     const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
+    const flattenedScope = new URL(scopePkgUrl).pathname === '/';
     pkgUrls.add(scopePkgUrl);
     const scope = map.scopes[scopeUrl];
     for (const key of Object.keys(scope)) {
@@ -270,7 +283,20 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
           const exportSubpath = await resolver.hasExportResolution(pkgUrl, parsed.subpath, targetUrl, key);
           if (exportSubpath) {
             if (key[0] !== '#') {
-              setResolution(lock, resolvedKey, pkgUrl, scopePkgUrl, exportSubpath === true ? null : exportSubpath);
+              if (flattenedScope) {
+                const flattened = (lock.flattened[scopePkgUrl] = lock.flattened[scopePkgUrl] || {});
+                flattened[resolvedKey] = flattened[resolvedKey] || [];
+                flattened[resolvedKey].push({
+                  export: parsed.subpath,
+                  resolution: {
+                    installUrl: pkgUrl,
+                    installSubpath: exportSubpath === true ? null : exportSubpath
+                  }
+                })
+              }
+              else {
+                setResolution(lock, resolvedKey, pkgUrl, scopePkgUrl, exportSubpath === true ? null : exportSubpath);
+              }
             }
             continue;
           }

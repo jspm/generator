@@ -6,8 +6,8 @@ import { fetch } from '#fetch';
 import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
 
-export function pkgToUrl (pkg: ExactPackage) {
-  return new URL(pkg.version + pkg.name + '/').href;
+export function pkgToUrl (pkg: ExactPackage): `${string}/` {
+  return `${new URL(pkg.version + pkg.name).href}/`;
 }
 
 export function parseUrlPkg (this: Resolver, url: string): ExactPackage | undefined {

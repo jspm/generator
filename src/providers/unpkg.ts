@@ -2,8 +2,8 @@ import { ExactPackage } from "../install/package.js";
 
 const cdnUrl = 'https://unpkg.com/';
 
-export function pkgToUrl (pkg: ExactPackage) {
-  return cdnUrl + pkg.name + '@' + pkg.version + '/';
+export function pkgToUrl (pkg: ExactPackage): `${string}/` {
+  return `${cdnUrl}${pkg.name}@${pkg.version}/`;
 }
 
 const exactPkgRegEx = /^((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;

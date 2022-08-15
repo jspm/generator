@@ -92,7 +92,7 @@ export default class TraceMap {
     }
     this.inputMap = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     this.cjsEnv = this.env.map(e => e === 'import' ? 'require' : e);
-    this.installer = new Installer(this.mapUrl, this.opts, this.log, this.resolver);
+    this.installer = new Installer(this.mapUrl.pathname.endsWith('/') ? this.mapUrl.href as `${string}/` : `${this.mapUrl.href}/`, this.opts, this.log, this.resolver);
   }
 
   async addInputMap (map: IImportMap, mapUrl: URL = this.mapUrl, rootUrl: URL | null = this.rootUrl, preloads?: string[]): Promise<void> {
@@ -110,7 +110,7 @@ export default class TraceMap {
     });
   }
 
-  replace (target: InstallTarget, pkgUrl: string, provider: PackageProvider): boolean {
+  replace (target: InstallTarget, pkgUrl: `${string}/`, provider: PackageProvider): boolean {
     return this.installer!.replace(target, pkgUrl, provider);
   }
 
@@ -348,7 +348,7 @@ export default class TraceMap {
     }
 
     // @ts-ignore
-    const installed = await this.installer!.install(pkgName, mode, mode.endsWith('primary') ? null : parentPkgUrl, subpath === './' ? false : true, parentUrl);
+    const installed = await this.installer!.install(pkgName, mode, mode.endsWith('primary') ? null : parentPkgUrl, subpath, subpath === './' ? false : true, parentUrl);
     if (installed) {
       const { installUrl, installSubpath } = installed;
       const key = installSubpath ? installSubpath + subpath.slice(1) : subpath;

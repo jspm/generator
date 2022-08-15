@@ -12,7 +12,7 @@ import { analyzeHtml } from "./html/analyze.js";
 import { SemverRange } from 'sver';
 import { Replacer } from "./common/str.js";
 import { getIntegrity } from "./common/integrity.js";
-import { LockResolutions, normalizeLock } from "./install/lock.js";
+import { LockResolutions } from "./install/lock.js";
 import process from 'process';
 import { InstallTarget } from "./install/installer.js";
 
@@ -460,7 +460,7 @@ export class Generator {
    * Retrieve the lockfile data from the installer
    */
   getLock (): LockResolutions {
-    return normalizeLock(this.traceMap.installer.installs, this.baseUrl);
+    return JSON.parse(JSON.stringify(this.traceMap.installer.installs));
   }
 
   /**
