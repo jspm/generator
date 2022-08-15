@@ -72,7 +72,7 @@ deps = ['build:ts', 'dist/*', 'test/test.html']
 run = 'node test/server.mjs'
 
 [[task]]
-name = 'test:watch'
+name = 'test:browser:watch'
 env = { WATCH_MODE = '1' }
 run = 'node test/server.mjs'
 
