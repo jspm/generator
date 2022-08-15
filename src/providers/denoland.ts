@@ -6,11 +6,11 @@ import { fetch } from '#fetch';
 const cdnUrl = 'https://deno.land/x/';
 const stdlibUrl = 'https://deno.land/std';
 
-export function pkgToUrl (pkg: ExactPackage) {
+export function pkgToUrl (pkg: ExactPackage): `${string}/` {
   if (pkg.registry === 'deno')
-    return stdlibUrl + '@' + pkg.version + '/';
+    return `${stdlibUrl}@${pkg.version}/`;
   if (pkg.registry === 'denoland')
-    return cdnUrl + pkg.name + '@v' + pkg.version + '/';
+    return `${cdnUrl}${pkg.name}@v${pkg.version}/`;
   throw new Error(`Deno provider does not support the ${pkg.registry} registry`);
 }
 

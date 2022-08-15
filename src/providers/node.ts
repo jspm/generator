@@ -28,16 +28,19 @@ export const nodeBuiltinSet = new Set<string>([
   'zlib'
 ]);
 
-export function pkgToUrl (pkg: ExactPackage) {
+export function pkgToUrl (pkg: ExactPackage): `${string}/` {
   if (pkg.registry !== 'node')
     return jspmPkgToUrl(pkg, 'default');
-  return 'node:' + pkg.name;
+  return `node:${pkg.name}/`;
 }
 
 export function parseUrlPkg (url: string): ExactPackage | undefined {
   if (!url.startsWith('node:'))
     return;
-  return { registry: 'node', name: url.slice(5), version: '' };
+  let name = url.slice(5);
+  if (name.endsWith('/'))
+    name = name.slice(0, -1);
+  return { registry: 'node', name, version: '' };
 }
 
 export async function getPackageConfig () {

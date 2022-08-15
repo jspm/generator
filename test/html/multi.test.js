@@ -78,6 +78,7 @@ assert.strictEqual(primaryHtmlProcessed, `<!doctype html>
 {
   const generator = new Generator({
     inputMap: primaryHtmlProcessed,
+    freeze: true,
     env: ['production', 'browser']
   });
   assert.strictEqual(await generator.htmlInject(primaryHtmlProcessed), primaryHtmlProcessed);

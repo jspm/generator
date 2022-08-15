@@ -15,8 +15,8 @@ const apiUrl = 'https://api.jspm.io/';
 const BUILD_POLL_TIME = 5 * 60 * 1000;
 const BUILD_POLL_INTERVAL = 5 * 1000;
 
-export function pkgToUrl (pkg: ExactPackage, layer: string) {
-  return (layer === 'system' ? systemCdnUrl : cdnUrl) + pkgToStr(pkg) + '/';
+export function pkgToUrl (pkg: ExactPackage, layer: string): `${string}/` {
+  return `${layer === 'system' ? systemCdnUrl : cdnUrl}${pkgToStr(pkg)}/`;
 }
 
 const exactPkgRegEx = /^(([a-z]+):)?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;

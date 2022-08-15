@@ -55,11 +55,11 @@ export class Resolver {
     return null;
   }
 
-  pkgToUrl (pkg: ExactPackage, { provider, layer }: PackageProvider): string {
+  pkgToUrl (pkg: ExactPackage, { provider, layer }: PackageProvider): `${string}/` {
     return getProvider(provider, this.providers).pkgToUrl.call(this, pkg, layer);
   }
 
-  async getPackageBase (url: string) {
+  async getPackageBase (url: string): Promise<`${string}/`> {
     const pkg = this.parseUrlPkg(url);
     if (pkg)
       return this.pkgToUrl(pkg.pkg, pkg.source);
@@ -69,16 +69,16 @@ export class Resolver {
       testUrl = new URL('./', url);
     }
     catch {
-      return url;
+      return url as `${string}/`;
     }
-    const rootUrl = new URL('/', testUrl).href;
+    const rootUrl = new URL('/', testUrl).href as `${string}/`;
     do {
       let responseUrl;
       if (responseUrl = await this.checkPjson(testUrl.href))
-        return new URL('.', responseUrl).href;
+        return new URL('.', responseUrl).href as `${string}/`;
       // No package base -> use directory itself
       if (testUrl.href === rootUrl)
-        return new URL('./', url).href;
+        return new URL('./', url).href as `${string}/`;
     } while (testUrl = new URL('../', testUrl));
   }
 

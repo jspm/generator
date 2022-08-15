@@ -2,8 +2,8 @@ import { ExactPackage } from "../install/package.js";
 
 const cdnUrl = 'https://cdn.jsdelivr.net/';
 
-export function pkgToUrl (pkg: ExactPackage) {
-  return cdnUrl + pkg.registry + '/' + pkg.name + '@' + pkg.version + '/';
+export function pkgToUrl (pkg: ExactPackage): `${string}/` {
+  return `${cdnUrl}${pkg.registry}/${pkg.name}@${pkg.version}/`;
 }
 
 const exactPkgRegEx = /^([^\/]+)\/((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;

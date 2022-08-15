@@ -10,7 +10,7 @@ import { Resolver } from '../trace/resolver.js';
 
 export interface Provider {
   parseUrlPkg (this: Resolver, url: string): ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null, layer: string } | undefined;
-  pkgToUrl (this: Resolver, pkg: ExactPackage, layer: string): string;
+  pkgToUrl (this: Resolver, pkg: ExactPackage, layer: string): `${string}/`;
   resolveLatestTarget (this: Resolver, target: LatestPackageTarget, layer: string, parentUrl: string): Promise<ExactPackage | { pkg: ExactPackage, subpath: `./${string}` } | null>;
 
   getPackageConfig? (this: Resolver, pkgUrl: string): Promise<PackageConfig | null | undefined>;
