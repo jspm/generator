@@ -10,4 +10,5 @@ const generator = new Generator({
 await generator.traceInstall('localpkg/jquery');
 const json = generator.getMap();
 
+assert.ok(json.imports['localpkg/jquery']);
 assert.ok(json.scopes['./'].jquery.includes('@2'));

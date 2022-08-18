@@ -521,6 +521,8 @@ export class Resolver {
 
   async analyze (resolvedUrl: string, parentUrl: string, system: boolean, isRequire: boolean, retry = true): Promise<Analysis> {
     const res = await fetch(resolvedUrl, this.fetchOpts);
+    if (!res)
+      throw new JspmError(`Unable to fetch URL "${resolvedUrl}" for ${parentUrl}`);
     switch (res.status) {
       case 200:
       case 304:

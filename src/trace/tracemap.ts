@@ -1,5 +1,5 @@
 import { type InstallOptions, InstallTarget, PackageProvider } from "../install/installer.js";
-import { importedFrom, isPlain, isURL, resolveUrl } from "../common/url.js";
+import { importedFrom, isKnownProtocol, isMappableScheme, isPlain, isURL, resolveUrl } from "../common/url.js";
 import { Installer } from "../install/installer.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { parsePkg } from "../install/package.js";
@@ -8,17 +8,6 @@ import { ImportMap, IImportMap, getMapMatch, getScopeMatches } from '@jspm/impor
 import { resolvePackageTarget, Resolver } from "./resolver.js";
 import { Log } from "../common/log.js";
 import { extendConstraints, extendLock, extractLockConstraintsAndMap } from "../install/lock.js";
-
-function isMappableScheme (specifier) {
-  return specifier.startsWith('node:');
-}
-function isKnownProtocol (protocol) {
-  return protocol === 'file:' ||
-      protocol === 'https:' ||
-      protocol === 'http:' ||
-      protocol === 'node:' ||
-      protocol === 'data:';
-}
 
 // TODO: options as trace-specific / stored as top-level per top-level load
 export interface TraceMapOptions extends InstallOptions {
@@ -58,6 +47,7 @@ interface TraceEntry {
 
 interface VisitOpts {
   static?: boolean,
+  traceinstall?: boolean,
   mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary',
   visitor?: (specifier: string, parentUrl: string | null, resolvedUrl: string, entry: TraceEntry) => Promise<boolean | void>
 };
@@ -115,15 +105,15 @@ export default class TraceMap {
   }
 
   async visit (specifier: string, opts: VisitOpts, parentUrl = null, seen = new Set()) {
+    // TODO: support ignoring prefixes?
+    if (this.opts.ignore?.includes(specifier)) return;
+
     if (seen.has(`${specifier}##${parentUrl}`))
       return;
     seen.add(`${specifier}##${parentUrl}`);
 
     // This should probably be baseUrl?
     const resolved = await this.resolve(specifier, parentUrl || this.mapUrl.href, opts.mode);
-
-    // TODO: support ignoring prefixes?
-    if (this.opts.ignore?.includes(specifier)) return;
 
     const entry = await this.getTraceEntry(resolved, parentUrl || this.mapUrl.href);
     if (!entry)
@@ -148,18 +138,27 @@ export default class TraceMap {
       if (stop) return;
     }
 
+    // Trace install first bare specifier -> pin and start scoping
+    const traceinstall = opts.traceinstall;
+    if (traceinstall && (isPlain(specifier) || isMappableScheme(specifier))) {
+      if (this.pins.indexOf(specifier) === -1)
+        this.pins.push(specifier);
+      opts = { ...opts, traceinstall: false };
+    }
+
     await Promise.all(allDeps.map(async dep => {
       if (dep.indexOf('*') !== -1) {
         this.log('todo', 'Handle wildcard trace ' + dep + ' in ' + resolved);
         return;
       }
-      if (opts.mode.endsWith('-primary'))
+      if (opts.mode.endsWith('-primary') && !traceinstall)
         opts = { ...opts, mode: opts.mode.startsWith('new-') ? 'new-secondary' : 'existing-secondary' };
       await this.visit(dep, opts, resolved, seen);
     }));
   }
 
   async extractMap (modules: string[]) {
+    console.log(this.installer.installs);
     const map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     // note this plucks custom top-level custom imports
     // we may want better control over this
@@ -224,11 +223,6 @@ export default class TraceMap {
     const result = await this.extractMap(modules);
     this.installer.finishInstall();
     return result;
-  }
-
-  pin (specifier: string) {
-    if (!this.pins.includes(specifier))
-      this.pins.push(specifier);
   }
 
   async add (name: string, target: InstallTarget): Promise<string> {

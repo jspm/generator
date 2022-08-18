@@ -7,6 +7,18 @@ declare global {
   var process: any;
 }
 
+export function isMappableScheme (specifier) {
+  return specifier.startsWith('node:');
+}
+
+export function isKnownProtocol (protocol) {
+  return protocol === 'file:' ||
+      protocol === 'https:' ||
+      protocol === 'http:' ||
+      protocol === 'node:' ||
+      protocol === 'data:';
+}
+
 export let baseUrl: URL;
 // @ts-ignore
 if (typeof Deno !== 'undefined') {

@@ -45,7 +45,7 @@ const generator = new Generator({
 const { pkg: esmsPkg } = await generator.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')] }, generator.traceMap.installer.defaultProvider);
 const esmsUrl = generator.traceMap.resolver.pkgToUrl(esmsPkg, generator.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
 
-await generator.pin('lit/html.js');
+await generator.traceInstall('lit/html.js');
 
 const primaryHtmlProcessed = await generator.htmlInject(primaryHtml);
 
@@ -83,6 +83,9 @@ assert.strictEqual(primaryHtmlProcessed, `<!doctype html>
   });
   assert.strictEqual(await generator.htmlInject(primaryHtmlProcessed), primaryHtmlProcessed);
 }
+
+console.log('HTML INJECT');
+console.log(generator.traceMap.pins);
 
 // Sub-page extraction where sub-page has a specific import path to preload
 const subpageHtml = await generator.htmlInject(`<!doctype html>

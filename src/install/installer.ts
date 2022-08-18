@@ -197,7 +197,7 @@ export class Installer {
 
   async installTarget (pkgName: string, target: InstallTarget, mode: 'new-primary' | 'existing-primary' | 'new-secondary' | 'existing-secondary', pkgScope: `${string}/` | null, parentUrl: string): Promise<InstalledResolution> {
     if (mode.endsWith('-primary') && pkgScope !== null) {
-      throw new Error('Should have null scope for primary');
+      throw new Error('Should have null scope for secondary');
     }
     if (mode.endsWith('-secondary') && pkgScope === null) {
       throw new Error('Should not have null scope for secondary');
@@ -257,6 +257,7 @@ export class Installer {
   }
 
   async install (pkgName: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary', pkgScope: `${string}/` | null = null, flattenedSubpath: `.${string}` | null = null, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<InstalledResolution> {
+    console.log(pkgName, mode, pkgScope);
     if (mode.endsWith('-primary') && pkgScope !== null) {
       throw new Error('Should have null scope for primary');
     }
@@ -284,13 +285,8 @@ export class Installer {
       }
     }
 
-    // setup for dependencies
-    if (!pkgScope)
-      pkgScope = await this.resolver.getPackageBase(parentUrl);
-    if (mode.endsWith('-primary'))
-      mode = mode.replace('-primary', '-secondary') as 'new-secondary' | 'existing-secondary';
-
-    const pcfg = await this.resolver.getPackageConfig(pkgScope) || {};
+    const definitelyPkgScope = pkgScope || await this.resolver.getPackageBase(parentUrl);
+    const pcfg = await this.resolver.getPackageConfig(definitelyPkgScope) || {};
 
     // node.js core
     if (nodeBuiltins && nodeBuiltinSet.has(pkgName)) {
@@ -300,7 +296,7 @@ export class Installer {
     // package dependencies
     const installTarget = pcfg.dependencies?.[pkgName] || pcfg.peerDependencies?.[pkgName] || pcfg.optionalDependencies?.[pkgName] || pkgScope === this.installBaseUrl && pcfg.devDependencies?.[pkgName];
     if (installTarget) {
-      const target = newPackageTarget(installTarget, new URL(pkgScope), this.defaultRegistry, pkgName);
+      const target = newPackageTarget(installTarget, new URL(definitelyPkgScope), this.defaultRegistry, pkgName);
       return this.installTarget(pkgName, target, mode, pkgScope, parentUrl);
     }
 
@@ -309,7 +305,7 @@ export class Installer {
       return getResolution(this.installs, pkgName, null);
 
     // global install fallback
-    const target = newPackageTarget('*', new URL(pkgScope), this.defaultRegistry, pkgName);
+    const target = newPackageTarget('*', new URL(definitelyPkgScope), this.defaultRegistry, pkgName);
     const exactInstall = await this.installTarget(pkgName, target, mode, pkgScope, parentUrl);
     return exactInstall;
   }
