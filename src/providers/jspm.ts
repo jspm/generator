@@ -8,13 +8,8 @@ import { Resolver } from "../trace/resolver.js";
 // @ts-ignore
 import { fetch } from '#fetch';
 
-export function setBeta () {
-  curCdnUrl= cacheFlyCdnUrl;
-}
-
 const cdnUrl = 'https://ga.jspm.io/';
 const cacheFlyCdnUrl = 'https://jspm001.cachefly.net/';
-let curCdnUrl = cdnUrl;
 const systemCdnUrl = 'https://ga.system.jspm.io/';
 const apiUrl = 'https://api.jspm.io/';
 
@@ -63,16 +58,16 @@ export function clearResolveCache () {
 
 async function checkBuildOrError (pkg: ExactPackage, fetchOpts: any): Promise<boolean> {
   const pkgStr = pkgToStr(pkg);
-  const pjsonRes = await fetch(`${curCdnUrl}${pkgStr}/package.json`, fetchOpts);
+  const pjsonRes = await fetch(`${cdnUrl}${pkgStr}/package.json`, fetchOpts);
   if (pjsonRes.ok)
     return true;
   // no package.json! Check if there's a build error:
-  const errLogRes = await fetch(`${curCdnUrl}${pkgStr}/_error.log`, fetchOpts);
+  const errLogRes = await fetch(`${cdnUrl}${pkgStr}/_error.log`, fetchOpts);
   if (errLogRes.ok) {
     const errLog = await errLogRes.text();
     throw new JspmError(`Resolved dependency ${pkgStr} with error:\n\n${errLog}\nPlease post an issue at jspm/project on GitHub, or by following the link below:\n\nhttps://github.com/jspm/project/issues/new?title=CDN%20build%20error%20for%20${encodeURIComponent(pkg.name + '@' + pkg.version)}&body=_Reporting%20CDN%20Build%20Error._%0A%0A%3C!--%20%20No%20further%20description%20necessary,%20just%20click%20%22Submit%20new%20issue%22%20--%3E`);
   }
-  console.error(`Unable to request ${curCdnUrl}${pkgStr}/package.json - ${pjsonRes.status} ${pjsonRes.statusText || 'returned'}`);
+  console.error(`Unable to request ${cdnUrl}${pkgStr}/package.json - ${pjsonRes.status} ${pjsonRes.statusText || 'returned'}`);
   return false;
 }
 
@@ -180,7 +175,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
 }
 
 function pkgToLookupUrl (pkg: ExactPackage, edge = false) {
-  return `${curCdnUrl}${pkg.registry}:${pkg.name}${pkg.version ? '@' + pkg.version : edge ? '@' : ''}`;
+  return `${cdnUrl}${pkg.registry}:${pkg.name}${pkg.version ? '@' + pkg.version : edge ? '@' : ''}`;
 }
 async function lookupRange (this: Resolver, registry: string, name: string, range: string, unstable: boolean, parentUrl?: string): Promise<ExactPackage | null> {
   const res = await fetch(pkgToLookupUrl({ registry, name, version: range }, unstable), this.fetchOpts);
