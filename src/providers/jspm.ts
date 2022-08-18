@@ -9,6 +9,7 @@ import { Resolver } from "../trace/resolver.js";
 import { fetch } from '#fetch';
 
 const cdnUrl = 'https://ga.jspm.io/';
+const cacheFlyCdnUrl = 'https://jspm001.cachefly.net/';
 const systemCdnUrl = 'https://ga.system.jspm.io/';
 const apiUrl = 'https://api.jspm.io/';
 
@@ -16,7 +17,7 @@ const BUILD_POLL_TIME = 5 * 60 * 1000;
 const BUILD_POLL_INTERVAL = 5 * 1000;
 
 export function pkgToUrl (pkg: ExactPackage, layer: string): `${string}/` {
-  return `${layer === 'system' ? systemCdnUrl : cdnUrl}${pkgToStr(pkg)}/`;
+  return `${layer === 'system' ? systemCdnUrl : layer === 'cachefly' ? cacheFlyCdnUrl : cdnUrl}${pkgToStr(pkg)}/`;
 }
 
 const exactPkgRegEx = /^(([a-z]+):)?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
@@ -25,11 +26,13 @@ export function parseUrlPkg (url: string): { pkg: ExactPackage, layer: string, s
   let layer: string;
   if (url.startsWith(cdnUrl))
     layer = 'default';
+  else if (url.startsWith(cacheFlyCdnUrl))
+    layer = 'cachefly';
   else if (url.startsWith(systemCdnUrl))
     layer = 'system';
   else
     return;
-  const [,, registry, name, version] = url.slice((layer === 'default' ? cdnUrl : systemCdnUrl).length).match(exactPkgRegEx) || [];
+  const [,, registry, name, version] = url.slice((layer === 'default' ? cdnUrl : layer === 'cachefly' ? cacheFlyCdnUrl : systemCdnUrl).length).match(exactPkgRegEx) || [];
   if (registry && name && version) {
     if (registry === 'npm' && name === '@jspm/core' && url.includes('/nodelibs/')) {
       subpath = `./nodelibs/${url.slice(url.indexOf('/nodelibs/') + 10).split('/')[1]}`;
