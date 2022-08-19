@@ -8,8 +8,6 @@ import { importedFrom } from "../common/url.js";
 import { parse } from 'es-module-lexer/js';
 import { getProvider, defaultProviders, Provider } from '../providers/index.js';
 import { Analysis, createSystemAnalysis, createCjsAnalysis, createEsmAnalysis, createTsAnalysis } from './analysis.js';
-// @ts-ignore
-import { getMapMatch } from '@jspm/import-map';
 import { Installer, PackageProvider } from '../install/installer.js';
 
 let realpath, pathToFileURL;
@@ -221,7 +219,7 @@ export class Resolver {
     return outUrl;
   }
 
-  async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], installer: Installer | null, pkgUrl: string): Promise<string> {
+  async finalizeResolve (url: string, parentIsCjs: boolean, env: string[], installer: Installer | null, pkgUrl: `${string}/`): Promise<string> {
     if (parentIsCjs && url.endsWith('/'))
       url = url.slice(0, -1);
     // Only CJS modules do extension searching for relative resolved paths
@@ -286,7 +284,7 @@ export class Resolver {
   // returns true or false whether this package subpath can resolve to the given target URL for some env value
   // also handles "imports"
   // When "subpath" is ".", a possible subpath install string is returned
-  async hasExportResolution (pkgUrl: string, subpath: string, target: string, originalSpecifier: string): Promise<`./${string}` | boolean> {
+  async hasExportResolution (pkgUrl: `${string}/`, subpath: string, targetUrl: string, originalSpecifier: string): Promise<`./${string}` | boolean> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
     if (originalSpecifier[0] === '#') {
       if (pcfg.imports === undefined || pcfg.imports === null)
@@ -294,10 +292,10 @@ export class Resolver {
       const match = getMapMatch(originalSpecifier, pcfg.imports as Record<string, ExportsTarget>);
       if (!match)
         return false;
-      const targets = enumeratePackageTargets(pcfg.imports[match], pkgUrl, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
+      const targets = enumeratePackageTargets(pcfg.imports[match]);
       for (const curTarget of targets) {
         try {
-          if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target) {
+          if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === targetUrl) {
             return true;
           }
         }
@@ -306,24 +304,17 @@ export class Resolver {
       return false;
     }
     if (pcfg.exports !== undefined && pcfg.exports !== null) {
-      function allDotKeys (exports: Record<string, any>) {
-        for (let p in exports) {
-          if (p[0] !== '.')
-            return false;
-        }
-        return true;
-      }
       if (typeof pcfg.exports === 'string') {
         if (subpath !== '.')
           return false;
         const url = new URL(pcfg.exports, pkgUrl).href;
         try {
-          if (await this.finalizeResolve(url, false, [], null, pkgUrl) === target)
+          if (await this.finalizeResolve(url, false, [], null, pkgUrl) === targetUrl)
             return true;
         }
         catch {}
         try {
-          if (await this.finalizeResolve(url, false, ['browser'], null, pkgUrl) === target)
+          if (await this.finalizeResolve(url, false, ['browser'], null, pkgUrl) === targetUrl)
             return true;
         }
         catch {}
@@ -332,10 +323,10 @@ export class Resolver {
       else if (!allDotKeys(pcfg.exports)) {
         if (subpath !== '.')
           return false;
-        const targets = enumeratePackageTargets(pcfg.exports, pkgUrl, '', false);
+        const targets = enumeratePackageTargets(pcfg.exports);
         for (const curTarget of targets) {
           try {
-            if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target)
+            if (await this.finalizeResolve(new URL(curTarget, pkgUrl).href, false, [], null, pkgUrl) === targetUrl)
               return true;
           }
           catch {}
@@ -343,53 +334,71 @@ export class Resolver {
         return false;
       }
       else {
-        let match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
-        if (match) {
-          const targets = enumeratePackageTargets(pcfg.exports[match], pkgUrl, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
+        let bestMatch;
+        const relTarget = './' + targetUrl.slice(pkgUrl.length);
+        for (const expt of Object.keys(pcfg.exports) as ('.'  | `./${string}`)[]) {
+          const targets = enumeratePackageTargets(pcfg.exports[expt]);
           for (const curTarget of targets) {
-            try {
-              if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === target) {
-                return true;
+            if (curTarget.indexOf('*') === -1) {
+              if (await this.finalizeResolve(new URL(curTarget, pkgUrl).href, false, [], null, pkgUrl) === targetUrl) {
+                if (subpath === '.')
+                  return expt === '.' ? true : expt;
+                return expt === subpath;
               }
             }
-            catch {}
+            else {
+              const parts = curTarget.split('*');
+              if (!relTarget.startsWith(parts[0]))
+                continue;
+              const matchEndIndex = relTarget.indexOf(parts[1], parts[0].length);
+              if (matchEndIndex === -1)
+                continue;
+              const match = relTarget.slice(parts[0].length, matchEndIndex);
+              const substitutedTarget = curTarget.replace(/\*/g, match);
+              if (relTarget === substitutedTarget) {
+                const prefix = expt.slice(0, expt.indexOf('*'));
+                const suffix = expt.slice(expt.indexOf('*') + 1);
+                if (!bestMatch || !bestMatch.startsWith(prefix) || !bestMatch.endsWith(suffix))
+                  bestMatch = expt.replace('*', match);
+              }
+            }
           }
-          return false;
         }
-        if (subpath !== '.')
-          return false;
-        const parsed = this.parseUrlPkg(target);
-        if (parsed && parsed.subpath)
-          return parsed.subpath;
+        // Only the "." subpath can be aliased to a subpath
+        if (subpath === '.')
+          return bestMatch || false;
+        // Otherwise its either the expected subpath or a failure
+        return bestMatch && bestMatch === subpath;
       }
     }
     else {
       if (subpath !== '.') {
         try {
-          return await this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, false, [], null, pkgUrl) === target;
+          return await this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, false, [], null, pkgUrl) === targetUrl;
         }
         catch {}
+        return false;
       }
-      const parsed = this.parseUrlPkg(target);
+      const parsed = this.parseUrlPkg(targetUrl);
       if (parsed && parsed.subpath)
         return parsed.subpath;
       try {
-        if (typeof pcfg.main === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === target)
+        if (typeof pcfg.main === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === targetUrl)
           return true;
       }
       catch {}
       try {
-        if (await this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === target)
+        if (await this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === targetUrl)
           return true;
       }
       catch {}
       try {
-        if (typeof pcfg.browser === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['browser'], null, pkgUrl) === target)
+        if (typeof pcfg.browser === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['browser'], null, pkgUrl) === targetUrl)
           return true;
       }
       catch {}
       try {
-        if (typeof pcfg.module === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['module'], null, pkgUrl) === target)
+        if (typeof pcfg.module === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['module'], null, pkgUrl) === targetUrl)
           return true;
         return false;
       }
@@ -399,7 +408,7 @@ export class Resolver {
   }
 
   // Note: updates here must be tracked in function above
-  async resolveExport (pkgUrl: string, subpath: string, env: string[], parentIsCjs: boolean, originalSpecifier: string, installer: Installer, parentUrl?: URL): Promise<string> {
+  async resolveExport (pkgUrl: `${string}/`, subpath: string, env: string[], parentIsCjs: boolean, originalSpecifier: string, installer: Installer, parentUrl?: URL): Promise<string> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
 
     function throwExportNotDefined () {
@@ -429,7 +438,15 @@ export class Resolver {
       else {
         const match = getMapMatch(subpath, pcfg.exports as Record<string, ExportsTarget>);
         if (match) {
-          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env, subpath.slice(match.length - (match.endsWith('*') ? 1 : 0)), false);
+          let replacement = '';
+          const wildcardIndex = match.indexOf('*');
+          if (wildcardIndex !== -1) {
+            replacement = subpath.slice(wildcardIndex, subpath.length - (match.length - wildcardIndex - 1));
+          }
+          else if (match.endsWith('/')) {
+            replacement = subpath.slice(match.length);
+          }
+          const resolved = resolvePackageTarget(pcfg.exports[match], pkgUrl, env, replacement, false);
           if (resolved === null)
             throwExportNotDefined();
           return this.finalizeResolve(resolved, parentIsCjs, env, installer, pkgUrl);
@@ -570,43 +587,20 @@ export class Resolver {
   }
 }
 
-export function enumeratePackageTargets (target: ExportsTarget, packageUrl: string, subpath: string, isImport: boolean, targets = new Set<string>()): Set<string> {
+export function enumeratePackageTargets (target: ExportsTarget, targets = new Set<`./${string}`>()): Set<`./${string}`> {
   if (typeof target === 'string') {
-    if (!target.startsWith('./')) {
-      if (isImport) {
-        targets.add(target);
-        return targets;
-      }
-      throw new Error(`Invalid exports target ${target} resolving ./${subpath} in ${packageUrl}`)
-    }
-    if (!target.startsWith('./'))
-      throw new Error('Invalid ')
-    if (subpath === '') {
-      targets.add(new URL(target, packageUrl).href);
-      return targets;
-    }
-    if (target.indexOf('*') !== -1) {
-      targets.add(new URL(target.replace(/\*/g, subpath), packageUrl).href);
-      return targets;
-    }
-    else if (target.endsWith('/')) {
-      targets.add(new URL(target + subpath, packageUrl).href);
-      return targets;
-    }
-    else {
-      throw new Error(`Expected pattern or path export resolving ./${subpath} in ${packageUrl}`);
-    }
+    targets.add(target);
   }
   else if (typeof target === 'object' && target !== null && !Array.isArray(target)) {
     for (const condition in target) {
-      enumeratePackageTargets(target[condition], packageUrl, subpath, isImport, targets);
+      enumeratePackageTargets(target[condition], targets);
     }
     return targets;
   }
   else if (Array.isArray(target)) {
     // TODO: Validation for arrays
     for (const targetFallback of target) {
-      enumeratePackageTargets(targetFallback, packageUrl, subpath, isImport, targets);
+      enumeratePackageTargets(targetFallback, targets);
       return targets;
     }
   }
@@ -683,4 +677,37 @@ async function legacyMainResolve (this: Resolver, main: string | null, pkgUrl: U
   }
   // Not found.
   throw new JspmError(`Unable to resolve ${main ? main + ' in ' : ''}${pkgUrl} resolving ${originalSpecifier}${importedFrom(parentUrl)}.`, 'MODULE_NOT_FOUND');
+}
+
+function getMapMatch<T = any> (specifier: string, map: Record<string, T>): string | undefined {
+  if (specifier in map) return specifier;
+  let bestMatch;
+  for (const match of Object.keys(map)) {
+    const wildcardIndex = match.indexOf('*');
+    if (!match.endsWith('/') && wildcardIndex === -1)
+      continue;
+    if (match.endsWith('/')) {
+      if (specifier.startsWith(match)) {
+        if (!bestMatch || match.length > bestMatch.length)
+          bestMatch = match;
+      }
+    }
+    else {
+      const prefix = match.slice(0, wildcardIndex);
+      const suffix = match.slice(wildcardIndex + 1);
+      if (specifier.startsWith(prefix) && specifier.endsWith(suffix) && specifier.length > prefix.length + suffix.length) {
+        if (!bestMatch || !bestMatch.startsWith(prefix) || !bestMatch.endsWith(suffix))
+          bestMatch = match;
+      }
+    }
+  }
+  return bestMatch;
+}
+
+function allDotKeys (exports: Record<string, any>) {
+  for (let p in exports) {
+    if (p[0] !== '.')
+      return false;
+  }
+  return true;
 }

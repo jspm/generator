@@ -23,7 +23,7 @@ else if (typeof document as any !== 'undefined') {
 if (!baseUrl && typeof location !== 'undefined') {
   baseUrl = new URL(location.href);
 }
-baseUrl.search = baseUrl.hash = undefined;
+baseUrl.search = baseUrl.hash = '';
 
 export function resolveUrl (url: string, mapUrl: URL, rootUrl: URL | null): string {
   if (url.startsWith('/'))

@@ -15,7 +15,8 @@ export interface ExactPackage {
   version: string;
 }
 
-export type ExportsTarget = string | null | { [condition: string]: ExportsTarget } | ExportsTarget[];
+export type ExportsTarget = `./${string}` | null | { [condition: string]: ExportsTarget } | ExportsTarget[];
+export type ImportsTarget = string | null | { [condition: string]: ExportsTarget } | ExportsTarget[];
 
 export interface PackageConfig {
   registry?: string;

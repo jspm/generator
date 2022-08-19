@@ -52,16 +52,19 @@ inlineSourcesContent = false
 'jsc.target' = 'es2019'
 
 [[task]]
+name = 'test:unit'
+dep = 'unit:'
+
+[[task]]
 name = 'test'
 serial = true
 deps = [
-    'unit:',
+    'test:unit',
     'test:browser',
 ]
 
 [[task]]
 name = 'unit:#'
-serial = true
 deps = ['test/##.test.js', 'lib']
 display = 'dot'
 run = 'node -C source --enable-source-maps $DEP'
