@@ -47,9 +47,9 @@ interface TraceEntry {
 
 interface VisitOpts {
   static?: boolean,
-  traceinstall?: boolean,
+  toplevel: boolean,
   mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary',
-  visitor?: (specifier: string, parentUrl: string | null, resolvedUrl: string, entry: TraceEntry) => Promise<boolean | void>
+  visitor?: (specifier: string, parentUrl: string, resolvedUrl: string, toplevel: boolean, entry: TraceEntry) => Promise<boolean | void>
 };
 
 // The tracemap fully drives the installer
@@ -104,7 +104,9 @@ export default class TraceMap {
     return this.installer!.replace(target, pkgUrl, provider);
   }
 
-  async visit (specifier: string, opts: VisitOpts, parentUrl = null, seen = new Set()) {
+  async visit (specifier: string, opts: VisitOpts, parentUrl: string, seen = new Set()) {
+    if (!parentUrl)
+      throw new Error('Internal error: expected parentUrl');
     // TODO: support ignoring prefixes?
     if (this.opts.ignore?.includes(specifier)) return;
 
@@ -113,9 +115,9 @@ export default class TraceMap {
     seen.add(`${specifier}##${parentUrl}`);
 
     // This should probably be baseUrl?
-    const resolved = await this.resolve(specifier, parentUrl || this.mapUrl.href, opts.mode);
+    const resolved = await this.resolve(specifier, parentUrl, opts.mode, opts.toplevel);
 
-    const entry = await this.getTraceEntry(resolved, parentUrl || this.mapUrl.href);
+    const entry = await this.getTraceEntry(resolved, parentUrl);
     if (!entry)
       return;
 
@@ -134,16 +136,16 @@ export default class TraceMap {
     }
 
     if (opts.visitor) {
-      const stop = await opts.visitor(specifier, parentUrl, resolved, entry);
+      const stop = await opts.visitor(specifier, parentUrl, resolved, opts.toplevel, entry);
       if (stop) return;
     }
 
     // Trace install first bare specifier -> pin and start scoping
-    const traceinstall = opts.traceinstall;
-    if (traceinstall && (isPlain(specifier) || isMappableScheme(specifier))) {
-      if (this.pins.indexOf(specifier) === -1)
-        this.pins.push(specifier);
-      opts = { ...opts, traceinstall: false };
+    const toplevel = opts.toplevel;
+    if (toplevel && (isPlain(specifier) || isMappableScheme(specifier))) {
+      // if (this.pins.indexOf(specifier) === -1)
+      //   this.pins.push(specifier);
+      opts = { ...opts, toplevel: false };
     }
 
     await Promise.all(allDeps.map(async dep => {
@@ -151,14 +153,13 @@ export default class TraceMap {
         this.log('todo', 'Handle wildcard trace ' + dep + ' in ' + resolved);
         return;
       }
-      if (opts.mode.endsWith('-primary') && !traceinstall)
+      if (opts.mode.endsWith('-primary'))
         opts = { ...opts, mode: opts.mode.startsWith('new-') ? 'new-secondary' : 'existing-secondary' };
       await this.visit(dep, opts, resolved, seen);
     }));
   }
 
   async extractMap (modules: string[]) {
-    console.log(this.installer.installs);
     const map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     // note this plucks custom top-level custom imports
     // we may want better control over this
@@ -167,7 +168,7 @@ export default class TraceMap {
     do {
       this.installer!.newInstalls = false;
       await Promise.all(modules.map(async module => {
-        await this.visit(module, { mode: 'existing-primary', static: this.opts.static });
+        await this.visit(module, { mode: 'existing-primary', static: this.opts.static, toplevel: true }, this.mapUrl.href);
       }));
     } while (this.installer!.newInstalls);
 
@@ -176,13 +177,13 @@ export default class TraceMap {
     const dynamicList = new Set();
     const dynamics: [string, string][] = [];
     let list = staticList;
-    const visitor = async (specifier: string, parentUrl: string | null, resolved: string, entry) => {
+    const visitor = async (specifier: string, parentUrl: string, resolved: string, toplevel: boolean, entry) => {
       if (!staticList.has(resolved))
         list.add(resolved);
       for (const dep of entry.dynamicDeps) {
         dynamics.push([dep, resolved]);
       }
-      if (parentUrl === null) {
+      if (toplevel) {
         if (isPlain(specifier) || isMappableScheme(specifier)) {
           const existing = map.imports[specifier];
           if (!existing || existing !== resolved && this.tracedUrls?.[parentUrl]?.wasCJS)
@@ -201,12 +202,12 @@ export default class TraceMap {
 
     const seen = new Set();
     await Promise.all(modules.map(async module => {
-      await this.visit(module, { static: true, visitor, mode: 'existing-primary' }, null, seen);
+      await this.visit(module, { static: true, visitor, mode: 'existing-primary', toplevel: true }, this.mapUrl.href, seen);
     }));
 
     list = dynamicList;
     await Promise.all(dynamics.map(async ([specifier, parent]) => {
-      await this.visit(specifier, { visitor, mode: 'existing-secondary' }, parent, seen);
+      await this.visit(specifier, { visitor, mode: 'existing-secondary', toplevel: false }, parent, seen);
     }));
 
     if (this.installer!.newInstalls)
@@ -250,7 +251,7 @@ export default class TraceMap {
   /**
    * @returns `resolved` - either a URL `string` pointing to the module or `null` if the specifier should be ignored.
    */
-  async resolve (specifier: string, parentUrl: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary'): Promise<string> {
+  async resolve (specifier: string, parentUrl: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary', toplevel: boolean): Promise<string> {
     const env = this.tracedUrls[parentUrl]?.wasCJS ? this.cjsEnv : this.env;
 
     const parentPkgUrl = await this.resolver.getPackageBase(parentUrl);
@@ -334,7 +335,7 @@ export default class TraceMap {
         throw new JspmError(`No '${specifier}' import defined in ${parentPkgUrl}${importedFrom(parentUrl)}.`);
       const target = resolvePackageTarget(pcfg.imports[match], parentPkgUrl, env, specifier.slice(match.length), true);
       if (!isURL(target)) {
-        return this.resolve(target, parentUrl, mode);
+        return this.resolve(target, parentUrl, mode, toplevel);
       }
       const resolved = await this.resolver.realPath(target);
       this.log('resolve', `${specifier} ${parentUrl} -> ${resolved}`);
@@ -342,7 +343,9 @@ export default class TraceMap {
     }
 
     // @ts-ignore
-    const installed = await this.installer!.install(pkgName, mode, mode.endsWith('primary') ? null : parentPkgUrl, subpath, subpath === './' ? false : true, parentUrl);
+    if (mode.endsWith('primary') && !toplevel)
+      throw new Error('hmm');
+    const installed = await this.installer.install(pkgName, mode, toplevel ? null : parentPkgUrl, subpath, subpath === './' ? false : true, parentUrl);
     if (installed) {
       const { installUrl, installSubpath } = installed;
       const key = installSubpath ? installSubpath + subpath.slice(1) : subpath;

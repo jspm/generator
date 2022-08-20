@@ -13,10 +13,8 @@ if (typeof document === 'undefined') {
   const json = generator.getMap();
 
   assert.deepStrictEqual(json, {
-    scopes: {
-      './cjspkg/': {
-        'process/': './cjspkg/node_modules/process/index.js',
-      }
+    imports: {
+      'process/': './cjspkg/node_modules/process/index.js'
     }
   });
 }

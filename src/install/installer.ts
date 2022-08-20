@@ -200,7 +200,7 @@ export class Installer {
       throw new Error('Should have null scope for secondary');
     }
     if (mode.endsWith('-secondary') && pkgScope === null) {
-      throw new Error('Should not have null scope for secondary');
+      // throw new Error('Should not have null scope for secondary');
     }
     if (this.opts.freeze && mode.startsWith('existing'))
       throw new JspmError(`"${pkgName}" is not installed in the current map to freeze install, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
@@ -257,12 +257,11 @@ export class Installer {
   }
 
   async install (pkgName: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary', pkgScope: `${string}/` | null = null, flattenedSubpath: `.${string}` | null = null, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<InstalledResolution> {
-    console.log(pkgName, mode, pkgScope);
     if (mode.endsWith('-primary') && pkgScope !== null) {
       throw new Error('Should have null scope for primary');
     }
     if (mode.endsWith('-secondary') && pkgScope === null) {
-      throw new Error('Should not have null scope for secondary');
+      // throw new Error('Should not have null scope for secondary');
     }
     if (!this.installing)
       throwInternalError('Not installing');

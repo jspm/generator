@@ -84,9 +84,6 @@ assert.strictEqual(primaryHtmlProcessed, `<!doctype html>
   assert.strictEqual(await generator.htmlInject(primaryHtmlProcessed), primaryHtmlProcessed);
 }
 
-console.log('HTML INJECT');
-console.log(generator.traceMap.pins);
-
 // Sub-page extraction where sub-page has a specific import path to preload
 const subpageHtml = await generator.htmlInject(`<!doctype html>
 <script type="module">
