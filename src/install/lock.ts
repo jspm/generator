@@ -262,8 +262,9 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
         if (exportSubpath) {
           if (key[0] !== '#') {
             // If there is no constraint, we just make one as the semver major on the current version
-            if (!constraints.primary[resolvedKey])
+            if (!constraints.primary[resolvedKey]) {
               constraints.primary[resolvedKey] = providerPkg ? packageTargetFromExact(providerPkg.pkg) : pkgUrl;
+            }
             // In the case of subpaths having diverging versions, we force convergence on one version
             // Only scopes permit unpacking
             setResolution(lock, resolvedKey, pkgUrl, null, exportSubpath === true ? null : exportSubpath);
