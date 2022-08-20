@@ -9,7 +9,8 @@ const generator = new Generator({
       '@babel/preset-typescript': 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.8/nodelibs/@empty.js'
     }
   },
-  ignore: ['@babel/core', '@babel/preset-typescript']
+  ignore: ['@babel/core', '@babel/preset-typescript'],
+  env: ['source']
 });
 
 await generator.install(new URL('../../', import.meta.url).href);
