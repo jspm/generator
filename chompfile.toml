@@ -88,7 +88,6 @@ run = '''
 '''
 
 [[task]]
-env = { NODE_OPTIONS = "-C source" }
 target = 'test/test.html'
 dep = 'src/**/*.ts'
 engine = 'node'
