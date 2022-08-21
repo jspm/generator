@@ -132,7 +132,7 @@ export class Installer {
       if (visited.has(name + '##' + pkgUrl))
         return;
       visited.add(name + '##' + pkgUrl);
-      const { installUrl } = await this.install(name, pkgUrl === this.installBaseUrl ? 'existing-primary' : 'existing-secondary', pkgUrl);
+      const { installUrl } = await this.install(name, 'existing', pkgUrl);
       const deps = await this.resolver.getDepList(installUrl);
       const existingDeps = Object.keys(this.installs.secondary[installUrl] || {});
       await Promise.all([...new Set([...deps, ...existingDeps])].map(dep => visitInstall(dep, installUrl)));
@@ -195,14 +195,8 @@ export class Installer {
     return provider;
   }
 
-  async installTarget (pkgName: string, target: InstallTarget, mode: 'new-primary' | 'existing-primary' | 'new-secondary' | 'existing-secondary', pkgScope: `${string}/` | null, parentUrl: string): Promise<InstalledResolution> {
-    if (mode.endsWith('-primary') && pkgScope !== null) {
-      throw new Error('Should have null scope for secondary');
-    }
-    if (mode.endsWith('-secondary') && pkgScope === null) {
-      // throw new Error('Should not have null scope for secondary');
-    }
-    if (this.opts.freeze && mode.startsWith('existing'))
+  async installTarget (pkgName: string, target: InstallTarget, mode: 'new' | 'existing', pkgScope: `${string}/` | null, parentUrl: string): Promise<InstalledResolution> {
+    if (this.opts.freeze && mode === 'existing')
       throw new JspmError(`"${pkgName}" is not installed in the current map to freeze install, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
 
     // resolutions are authoritative at the top-level
@@ -221,7 +215,7 @@ export class Installer {
 
     const provider = this.getProvider(target);
 
-    if ((this.opts.freeze || mode.startsWith('existing') || mode.endsWith('secondary')) && !this.opts.latest) {
+    if ((this.opts.freeze || mode === 'existing' || pkgScope !== null) && !this.opts.latest) {
       const pkg = this.getBestExistingMatch(target);
       if (pkg) {
         this.log('install', `${pkgName} ${pkgScope} -> ${pkg} (existing match)`);
@@ -236,7 +230,7 @@ export class Installer {
     const latestUrl = this.resolver.pkgToUrl(latest.pkg, provider);
     const installed = getInstallsFor(this.constraints, latest.pkg.registry, latest.pkg.name);
     if (!this.opts.freeze && !this.tryUpgradeAllTo(latest.pkg, latestUrl, installed)) {
-      if (!mode.endsWith('-primary') && !this.opts.latest) {
+      if (pkgScope && !this.opts.latest) {
         const pkg = this.getBestExistingMatch(target);
         // cannot upgrade to latest -> stick with existing resolution (if compatible)
         if (pkg) {
@@ -256,13 +250,7 @@ export class Installer {
     return { installUrl: latestUrl, installSubpath: latest.subpath };
   }
 
-  async install (pkgName: string, mode: 'new-primary' | 'new-secondary' | 'existing-primary' | 'existing-secondary', pkgScope: `${string}/` | null = null, flattenedSubpath: `.${string}` | null = null, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<InstalledResolution> {
-    if (mode.endsWith('-primary') && pkgScope !== null) {
-      throw new Error('Should have null scope for primary');
-    }
-    if (mode.endsWith('-secondary') && pkgScope === null) {
-      // throw new Error('Should not have null scope for secondary');
-    }
+  async install (pkgName: string, mode: 'new' | 'existing', pkgScope: `${string}/` | null = null, flattenedSubpath: `.${string}` | null = null, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<InstalledResolution> {
     if (!this.installing)
       throwInternalError('Not installing');
 
@@ -274,7 +262,7 @@ export class Installer {
       if (existingResolution)
         return existingResolution;
       // flattened resolution cascading for secondary
-      if (mode === 'existing-secondary' && !this.opts.latest || mode === 'new-secondary' && this.opts.freeze) {
+      if (pkgScope && mode === 'existing' && !this.opts.latest || pkgScope && mode === 'new' && this.opts.freeze) {
         const flattenedResolution = getFlattenedResolution(this.installs, pkgName, pkgScope, flattenedSubpath);
         // resolved flattened resolutions become real resolutions as they get picked up
         if (flattenedResolution) {

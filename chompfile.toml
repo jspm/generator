@@ -88,6 +88,7 @@ run = '''
 '''
 
 [[task]]
+env = { NODE_OPTIONS = "-C source" }
 target = 'test/test.html'
 dep = 'src/**/*.ts'
 engine = 'node'
@@ -96,15 +97,15 @@ run = '''
     import { readFile, writeFile } from 'fs/promises';
 
     const generator = new Generator({
-        mapUrl: import.meta.url,
-        env: ['browser', 'module', 'production']
+        mapUrl: new URL('./test/test.html', import.meta.url.replace('//[', '/[')),
+        env: ['browser', 'module', 'production', 'source']
     });
 
-    await generator.pin('@jspm/generator');
+    await generator.traceInstall('@jspm/generator');
     await generator.install('node:assert');
 
     const html = await generator.htmlInject(await readFile(process.env.TARGET, 'utf8'), {
-        htmlUrl: new URL(process.env.TARGET, import.meta.url)
+        htmlUrl: new URL(process.env.TARGET, import.meta.url.replace('//[', '/['))
     });
     await writeFile(process.env.TARGET, html);
 '''

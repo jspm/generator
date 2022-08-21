@@ -8,7 +8,7 @@ declare global {
 }
 
 export function isMappableScheme (specifier) {
-  return specifier.startsWith('node:');
+  return specifier.startsWith('node:') || specifier.startsWith('deno:');
 }
 
 export function isKnownProtocol (protocol) {
@@ -16,7 +16,8 @@ export function isKnownProtocol (protocol) {
       protocol === 'https:' ||
       protocol === 'http:' ||
       protocol === 'node:' ||
-      protocol === 'data:';
+      protocol === 'data:' ||
+      protocol === 'deno:';
 }
 
 export let baseUrl: URL;

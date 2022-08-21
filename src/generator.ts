@@ -489,7 +489,7 @@ export class Generator {
       this.traceMap.startInstall();
     await this.traceMap.processInputMap;
     try {
-      await this.traceMap.visit(specifier, { mode: 'new-primary', toplevel: true }, parentUrl || this.mapUrl.href);
+      await this.traceMap.visit(specifier, { mode: 'new', toplevel: true }, parentUrl || this.mapUrl.href);
       this.traceMap.pins.push(specifier);
     }
     catch (e) {
@@ -744,7 +744,7 @@ export class Generator {
         ({ alias, target, subpath } = install);
       }
       await this.traceMap.add(alias, target);
-      await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new-primary', toplevel: true }, this.mapUrl.href);
+      await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new', toplevel: true }, this.mapUrl.href);
       if (!this.traceMap.pins.includes(alias + subpath.slice(1)))
         this.traceMap.pins.push(alias + subpath.slice(1));
     }
