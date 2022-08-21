@@ -1,4 +1,4 @@
-import { baseUrl as _baseUrl, relativeUrl, resolveUrl } from "./common/url.js";
+import { baseUrl as _baseUrl, isMappableScheme, isPlain, relativeUrl, resolveUrl } from "./common/url.js";
 import { ExactPackage, PackageConfig, toPackageTarget } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 // @ts-ignore
@@ -467,20 +467,30 @@ export class Generator {
    * Trace and pin a module, installing all dependencies necessary into the map
    * to support its execution including static and dynamic module imports.
    * 
-   * @param specifier Import specifier to pin
-   * @param parentUrl Optional parent URL
+   * @deprecated Use "traceInstall" instead.
    */
   async pin (specifier: string, parentUrl?: string): Promise<{
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
+    return this.traceInstall(specifier, parentUrl);
+  }
+
+  /**
+   * Trace a module, installing all dependencies necessary into the map
+   * to support its execution including static and dynamic module imports.
+   * 
+   * @param specifier Module to trace
+   * @param parentUrl Optional parent URL
+   */
+  async traceInstall (specifier: string, parentUrl?: string): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
     let error = false;
     if (this.installCnt++ === 0)
       this.traceMap.startInstall();
     await this.traceMap.processInputMap;
     try {
-      await this.traceMap.visit(specifier, { mode: 'new-primary' }, parentUrl);
-      this.traceMap.pin(specifier);
+      await this.traceMap.visit(specifier, { mode: 'new', toplevel: true }, parentUrl || this.mapUrl.href);
+      this.traceMap.pins.push(specifier);
     }
     catch (e) {
       error = true;
@@ -494,14 +504,6 @@ export class Generator {
           return { staticDeps, dynamicDeps };
       }
     }
-  }
-
-  /**
-   * @deprecated Renamed to "pin" instead.
-   * @param specifier Import specifier to trace
-   */
-  async traceInstall (specifier: string): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
-    return this.pin(specifier);
   }
 
   /**
@@ -611,7 +613,7 @@ export class Generator {
     let modules = pins === true ? this.traceMap.pins : Array.isArray(pins) ? pins : [];
     if (trace) {
       const impts = [...new Set([...analysis.staticImports, ...analysis.dynamicImports])];
-      await Promise.all(impts.map(impt => this.pin(impt)));
+      await Promise.all(impts.map(impt => this.traceInstall(impt)));
       modules = [...new Set([...modules, ...impts])];
     }
 
@@ -742,8 +744,9 @@ export class Generator {
         ({ alias, target, subpath } = install);
       }
       await this.traceMap.add(alias, target);
-      await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new-primary' });
-      this.traceMap.pin(alias + subpath.slice(1));
+      await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new', toplevel: true }, this.mapUrl.href);
+      if (!this.traceMap.pins.includes(alias + subpath.slice(1)))
+        this.traceMap.pins.push(alias + subpath.slice(1));
     }
     catch (e) {
       error = true;

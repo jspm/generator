@@ -192,7 +192,7 @@ The second HTML Generation options include:
 
 * `htmlUrl`: The URL of the HTML file for relative path handling in the map
 * `rootUrl`: The root URL of the HTML file for root-relative path handling in the map
-* `trace`: Whether to trace the HTML imports before injection (via `generator.pin`)
+* `trace`: Whether to trace the HTML imports before injection (via `generator.traceInstall`)
 * `pins`: List of top-level pinned `"imports"` to inject, or `true` to inject all (the default if not tracing).
 * `comment`: Defaults to `Built with @jspm/generator` comment, set to false or an empty string to remove.
 * `preload`: Boolean, injects `<link rel="modulepreload">` preload tags. By default only injects static dependencies. Set to `'all'` to inject dyamic import preloads as well (this is the default when applying `integrity`).
@@ -242,8 +242,7 @@ To execute the application, the import map needs to be included in the HTML dire
 </script>
 ```
 
-With the import map embedded in the page, all `import` statements will have access to the defined mappings
-allowing direct `import 'lit/html.js'` style JS code in the browser.
+With the import map embedded in the page, all `import` statements will have access to the defined mappings allowing direct `import 'lit/html.js'` style JS code in the browser.
 
 For browsers without import maps, it is recommended to use the [ES Module Shims](https://github.com/guybedford/es-module-shims) import maps polyfill.
 This is a highly optimized polyfill supporting almost native speeds, see [the performance benchmarks](https://github.com/guybedford/es-module-shims/blob/main/bench/README.md) for more information.
@@ -253,19 +252,18 @@ modules have yet executed on the page. For dynamic import map injection workflow
 for each import map and injecting it into this frame can be used to get around this constraint for
 in-page refreshing application workflows.
 
-### Traced Pins
+### Trace Install
 
 Instead of installing specific packages into the map, you can also just trace any module
 module directly and JSPM will generate the scoped mappings to support that modules execution.
 
-We do this via `generator.pin` because we want to be explicit that this graph is being included
-in the import map (unused mappings are always pruned if not pinned as "imports" or custom pins).
+We do this via `generator.traceInstall` because we want to be explicit that this graph is being included in the import map (unused mappings are always pruned if not pinned as "imports" or custom pins).
 
 generate.mjs
 ```js
 // all static and dynamic dependencies necessary to execute app will be traced and
 // put into the map as necessary
-await generator.pin('./app.js');
+await generator.traceInstall('./app.js');
 ```
 
 The benefit of tracing is that it directly implements a Node.js-compatible resolver so that if you can trace something
