@@ -11,7 +11,7 @@ export function pkgToUrl (pkg: ExactPackage): `${string}/` {
   if (pkg.registry === 'deno')
     return `${stdlibUrl}@${pkg.version}/`;
   if (pkg.registry === 'denoland')
-    return `${cdnUrl}${pkg.name}@v${pkg.version}/`;
+    return `${cdnUrl}${pkg.name}@${vCache[pkg.name] ? 'v' : ''}${pkg.version}/`;
   throw new Error(`Deno provider does not support the ${pkg.registry} registry`);
 }
 
@@ -105,6 +105,8 @@ export async function getPackageConfig (this: Resolver, pkgUrl: string): Promise
   return null;
 }
 
+const vCache = {};
+
 export function parseUrlPkg (url: string): { pkg: ExactPackage, subpath: `./${string}` | null, layer: string } | undefined {
   let subpath = null;
   if (url.startsWith(stdlibUrl) && url[stdlibUrl.length] === '@') {
@@ -119,11 +121,17 @@ export function parseUrlPkg (url: string): { pkg: ExactPackage, subpath: `./${st
   }
   else if (url.startsWith(cdnUrl)) {
     const path = url.slice(cdnUrl.length);
-    const versionIndex = path.indexOf('@v');
+    const versionIndex = path.indexOf('@');
     if (versionIndex === -1)
       return;
     const sepIndex = path.indexOf('/', versionIndex);
-    return { pkg: { registry: 'denoland', name: path.slice(0, versionIndex), version: path.slice(versionIndex + 2, sepIndex === -1 ? path.length : sepIndex) }, subpath: null, layer: 'default' };
+    const name = path.slice(0, versionIndex);
+    const version = path.slice(versionIndex + ((vCache[name] = path[versionIndex + 1] === 'v') ? 2 : 1), sepIndex === -1 ? path.length : sepIndex);
+    return {
+      pkg: { registry: 'denoland', name, version },
+      subpath: null,
+      layer: 'default'
+    };
   }
 }
 

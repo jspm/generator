@@ -483,14 +483,20 @@ export class Generator {
    * @param specifier Module to trace
    * @param parentUrl Optional parent URL
    */
-  async traceInstall (specifier: string, parentUrl?: string): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
+  async traceInstall (specifier: string | string[], parentUrl?: string): Promise<{ staticDeps: string[], dynamicDeps: string[] }> {
+    if (typeof specifier === 'string')
+      specifier = [specifier];
     let error = false;
     if (this.installCnt++ === 0)
       this.traceMap.startInstall();
+    specifier = specifier.map(specifier => specifier.replace(/\\/g, '/'));
     await this.traceMap.processInputMap;
     try {
-      await this.traceMap.visit(specifier, { mode: 'new', toplevel: true }, parentUrl || this.mapUrl.href);
-      this.traceMap.pins.push(specifier);
+      await Promise.all(specifier.map(specifier => this.traceMap.visit(specifier, { mode: 'new', toplevel: true }, parentUrl || this.mapUrl.href)));
+      for (const s of specifier) {
+        if (!this.traceMap.pins.includes(s))
+          this.traceMap.pins.push(s);
+      }
     }
     catch (e) {
       error = true;
