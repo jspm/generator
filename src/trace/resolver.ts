@@ -281,130 +281,142 @@ export class Resolver {
     return url;
   }
 
-  // returns true or false whether this package subpath can resolve to the given target URL for some env value
+  // reverse exports resolution
+  // returns _a_ possible export which resolves to the given package URL and subpath
   // also handles "imports"
-  // When "subpath" is ".", a possible subpath install string is returned
-  async hasExportResolution (pkgUrl: `${string}/`, subpath: string, targetUrl: string, originalSpecifier: string): Promise<`./${string}` | boolean> {
+  async getExportResolution (pkgUrl: `${string}/`, subpath: '.' | `./${string}`, originalSpecifier: string): Promise<'.' | `./${string}` | null> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
     if (originalSpecifier[0] === '#') {
       if (pcfg.imports === undefined || pcfg.imports === null)
-        return false;
+        return null;
       const match = getMapMatch(originalSpecifier, pcfg.imports as Record<string, ExportsTarget>);
       if (!match)
-        return false;
+        return null;
       const targets = enumeratePackageTargets(pcfg.imports[match]);
       for (const curTarget of targets) {
         try {
-          if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === targetUrl) {
-            return true;
+          if (await this.finalizeResolve(curTarget, false, [], null, pkgUrl) === pkgUrl + subpath.slice(2)) {
+            return '.';
           }
         }
         catch {}
       }
-      return false;
+      return null;
     }
     if (pcfg.exports !== undefined && pcfg.exports !== null) {
       if (typeof pcfg.exports === 'string') {
         if (subpath !== '.')
-          return false;
+          return null;
         const url = new URL(pcfg.exports, pkgUrl).href;
         try {
-          if (await this.finalizeResolve(url, false, [], null, pkgUrl) === targetUrl)
-            return true;
+          if (await this.finalizeResolve(url, false, [], null, pkgUrl) === pkgUrl + subpath.slice(2))
+            return '.';
         }
         catch {}
         try {
-          if (await this.finalizeResolve(url, false, ['browser'], null, pkgUrl) === targetUrl)
-            return true;
+          if (await this.finalizeResolve(url, false, ['browser'], null, pkgUrl) === pkgUrl + subpath.slice(2))
+            return '.';
         }
         catch {}
-        return false;
+        return null;
       }
       else if (!allDotKeys(pcfg.exports)) {
         if (subpath !== '.')
-          return false;
+          return null;
         const targets = enumeratePackageTargets(pcfg.exports);
         for (const curTarget of targets) {
           try {
-            if (await this.finalizeResolve(new URL(curTarget, pkgUrl).href, false, [], null, pkgUrl) === targetUrl)
-              return true;
+            if (await this.finalizeResolve(new URL(curTarget, pkgUrl).href, false, [], null, pkgUrl) === pkgUrl + subpath.slice(2))
+              return '.';
           }
           catch {}
         }
-        return false;
+        return null;
       }
       else {
         let bestMatch;
-        const relTarget = './' + targetUrl.slice(pkgUrl.length);
         for (const expt of Object.keys(pcfg.exports) as ('.'  | `./${string}`)[]) {
           const targets = enumeratePackageTargets(pcfg.exports[expt]);
           for (const curTarget of targets) {
             if (curTarget.indexOf('*') === -1) {
-              if (await this.finalizeResolve(new URL(curTarget, pkgUrl).href, false, [], null, pkgUrl) === targetUrl) {
-                if (subpath === '.')
-                  return expt === '.' ? true : expt;
-                return expt === subpath;
+              if (await this.finalizeResolve(new URL(curTarget, pkgUrl).href, false, [], null, pkgUrl) === pkgUrl + subpath.slice(2)) {
+                if (bestMatch) {
+                  if (originalSpecifier.endsWith(bestMatch.slice(2))) {
+                    if (!originalSpecifier.endsWith(expt.slice(2)))
+                      continue;
+                  }
+                  else if (!originalSpecifier.endsWith(expt.slice(2))) {
+                    // Normal precedence = shortest export!
+                    if (expt.length < bestMatch.length)
+                      bestMatch = expt;
+                  }
+                }
+                bestMatch = expt;
               }
             }
             else {
               const parts = curTarget.split('*');
-              if (!relTarget.startsWith(parts[0]))
+              if (!subpath.startsWith(parts[0]))
                 continue;
-              const matchEndIndex = relTarget.indexOf(parts[1], parts[0].length);
+              const matchEndIndex = subpath.indexOf(parts[1], parts[0].length);
               if (matchEndIndex === -1)
                 continue;
-              const match = relTarget.slice(parts[0].length, matchEndIndex);
+              const match = subpath.slice(parts[0].length, matchEndIndex);
               const substitutedTarget = curTarget.replace(/\*/g, match);
-              if (relTarget === substitutedTarget) {
+              if (subpath === substitutedTarget) {
                 const prefix = expt.slice(0, expt.indexOf('*'));
                 const suffix = expt.slice(expt.indexOf('*') + 1);
-                if (!bestMatch || !bestMatch.startsWith(prefix) || !bestMatch.endsWith(suffix))
-                  bestMatch = expt.replace('*', match);
+                if (bestMatch) {
+                  if (originalSpecifier.endsWith(bestMatch.slice(2))) {
+                    if (!originalSpecifier.endsWith(expt.slice(2).replace('*', match)) ||
+                        bestMatch.startsWith(prefix) && bestMatch.endsWith(suffix))
+                      continue;
+                  }
+                  else if (!originalSpecifier.endsWith(expt.slice(2).replace('*', match))) {
+                    if (bestMatch.startsWith(prefix) && bestMatch.endsWith(suffix))
+                      continue;
+                  }
+                }
+                bestMatch = expt.replace('*', match);
               }
             }
           }
         }
-        // Only the "." subpath can be aliased to a subpath
-        if (subpath === '.')
-          return bestMatch || false;
-        // Otherwise its either the expected subpath or a failure
-        return bestMatch && bestMatch === subpath;
+        return bestMatch;
       }
     }
     else {
       if (subpath !== '.') {
         try {
-          return await this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, false, [], null, pkgUrl) === targetUrl;
+          if (await this.finalizeResolve(new URL(subpath, new URL(pkgUrl)).href, false, [], null, pkgUrl) === pkgUrl + subpath.slice(2))
+            return '.';
         }
         catch {}
-        return false;
+        return null;
       }
-      const parsed = this.parseUrlPkg(targetUrl);
-      if (parsed && parsed.subpath)
-        return parsed.subpath;
       try {
-        if (typeof pcfg.main === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === targetUrl)
-          return true;
+        if (typeof pcfg.main === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.main, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === pkgUrl + subpath.slice(2))
+          return '.';
       }
       catch {}
       try {
-        if (await this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === targetUrl)
-          return true;
+        if (await this.finalizeResolve(await legacyMainResolve.call(this, null, new URL(pkgUrl), originalSpecifier, pkgUrl), false, [], null, pkgUrl) === pkgUrl + subpath.slice(2))
+          return '.';
       }
       catch {}
       try {
-        if (typeof pcfg.browser === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['browser'], null, pkgUrl) === targetUrl)
-          return true;
+        if (typeof pcfg.browser === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.browser, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['browser'], null, pkgUrl) === pkgUrl + subpath.slice(2))
+          return '.';
       }
       catch {}
       try {
-        if (typeof pcfg.module === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['module'], null, pkgUrl) === targetUrl)
-          return true;
-        return false;
+        if (typeof pcfg.module === 'string' && await this.finalizeResolve(await legacyMainResolve.call(this, pcfg.module, new URL(pkgUrl), originalSpecifier, pkgUrl), false, ['module'], null, pkgUrl) === pkgUrl + subpath.slice(2))
+          return '.';
+        return null;
       }
       catch {}
     }
-    return false;
+    return null;
   }
 
   // Note: updates here must be tracked in function above

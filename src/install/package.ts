@@ -180,7 +180,7 @@ export function pkgToStr (pkg: ExactPackage) {
   return `${pkg.registry ? pkg.registry + ':' : ''}${pkg.name}${pkg.version ? '@' + pkg.version : ''}`;
 }
 
-export function parsePkg (specifier: string): { pkgName: string, subpath: `.${string}` } | undefined {
+export function parsePkg (specifier: string): { pkgName: string, subpath: '.' | `./${string}` } | undefined {
   let sepIndex = specifier.indexOf('/');
   if (specifier[0] === '@') {
     if (sepIndex === -1) return;
@@ -189,7 +189,7 @@ export function parsePkg (specifier: string): { pkgName: string, subpath: `.${st
   // TODO: Node.js validations like percent encodng checks
   if (sepIndex === -1)
     return { pkgName: specifier, subpath: '.' };
-  return { pkgName: specifier.slice(0, sepIndex), subpath: `.${specifier.slice(sepIndex)}` };
+  return { pkgName: specifier.slice(0, sepIndex), subpath: `.${specifier.slice(sepIndex)}` as '.' | `./${string}` };
 }
 
 // export function getPackageName (specifier: string, parentUrl: string) {
