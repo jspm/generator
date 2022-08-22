@@ -89,7 +89,7 @@ run = '''
 
 [[task]]
 target = 'test/test.html'
-dep = 'src/**/*.ts'
+deps = ['src/**/*.ts', 'dist/generator.js']
 engine = 'node'
 run = '''
     import { Generator } from '@jspm/generator';
