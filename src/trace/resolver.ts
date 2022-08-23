@@ -275,7 +275,7 @@ export class Resolver {
     }
     // Node.js core resolutions
     if (installer && url.startsWith('node:')) {
-      const { installUrl } = await installer.installTarget(url.slice(5), installer.stdlibTarget, 'new-secondary', pkgUrl, pkgUrl);
+      const { installUrl } = await installer.installTarget(url.slice(5), installer.stdlibTarget, 'new', pkgUrl, pkgUrl);
       return this.finalizeResolve(await this.resolveExport(installUrl, `./nodelibs/${url.slice(5)}`, env, parentIsCjs, url, installer, new URL(pkgUrl)), parentIsCjs, env, installer, installUrl);
     }
     return url;
@@ -422,6 +422,10 @@ export class Resolver {
   // Note: updates here must be tracked in function above
   async resolveExport (pkgUrl: `${string}/`, subpath: string, env: string[], parentIsCjs: boolean, originalSpecifier: string, installer: Installer, parentUrl?: URL): Promise<string> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
+
+    if (typeof pcfg.exports === 'object' && pcfg.exports !== null && Object.keys(pcfg.exports).length === 0) {
+      return 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.25/nodelibs/@empty.js';
+    }
 
     function throwExportNotDefined () {
       throw new JspmError(`No '${subpath}' exports subpath defined in ${pkgUrl} resolving ${originalSpecifier}${importedFrom(parentUrl)}.`, 'MODULE_NOT_FOUND');

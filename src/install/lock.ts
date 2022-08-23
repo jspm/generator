@@ -7,6 +7,7 @@ import { PackageTarget, newPackageTarget, PackageConfig, parsePkg, ExactPackage 
 // @ts-ignore
 import sver from 'sver';
 import { getPackageConfig } from "../generator.js";
+import { nodeBuiltinSet } from "../providers/node.js";
 const { Semver, SemverRange } = sver;
 
 export interface LockEntry {
@@ -118,6 +119,9 @@ export function setConstraint (constraints: VersionConstraints, name: string, ta
 }
 
 export function setResolution (resolutions: LockResolutions, name: string, installUrl: `${string}/`, pkgScope: `${string}/` | null = null, installSubpath: `./${string}` | null = null) {
+  if (nodeBuiltinSet.has(name) && installSubpath === null) {
+    installSubpath = `./nodelibs/${name}`;
+  }
   if (pkgScope && !pkgScope.endsWith('/'))
     throwInternalError(pkgScope);
   if (pkgScope === null) {
