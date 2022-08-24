@@ -225,7 +225,7 @@ export default class TraceMap {
   }
 
   async add (name: string, target: InstallTarget): Promise<string> {
-    const { installUrl } = await this.installer.installTarget(name, target, 'new', null, this.mapUrl.href);
+    const { installUrl } = await this.installer.installTarget(name, target, null, 'new', null, this.mapUrl.href);
     return installUrl.slice(0, -1);
   }
 
