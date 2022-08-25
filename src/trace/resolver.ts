@@ -275,8 +275,9 @@ export class Resolver {
     }
     // Node.js core resolutions
     if (installer && url.startsWith('node:')) {
-      const { installUrl } = await installer.installTarget(url.slice(5), installer.stdlibTarget, 'new-secondary', pkgUrl, pkgUrl);
-      return this.finalizeResolve(await this.resolveExport(installUrl, `./nodelibs/${url.slice(5)}`, env, parentIsCjs, url, installer, new URL(pkgUrl)), parentIsCjs, env, installer, installUrl);
+      const subpath: `./${string}` = `./nodelibs/${url.slice(5)}`;
+      const { installUrl } = await installer.installTarget(url.slice(5), installer.stdlibTarget, subpath, 'new', pkgUrl, pkgUrl);
+      return this.finalizeResolve(await this.resolveExport(installUrl, subpath, env, parentIsCjs, url, installer, new URL(pkgUrl)), parentIsCjs, env, installer, installUrl);
     }
     return url;
   }
@@ -420,8 +421,20 @@ export class Resolver {
   }
 
   // Note: updates here must be tracked in function above
-  async resolveExport (pkgUrl: `${string}/`, subpath: string, env: string[], parentIsCjs: boolean, originalSpecifier: string, installer: Installer, parentUrl?: URL): Promise<string> {
+  async resolveExport (pkgUrl: `${string}/`, subpath: `.${string}`, env: string[], parentIsCjs: boolean, originalSpecifier: string, installer: Installer, parentUrl?: URL): Promise<string> {
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
+
+    if (typeof pcfg.exports === 'object' && pcfg.exports !== null && Object.keys(pcfg.exports).length === 0) {
+      if (installer.stdlibTarget instanceof URL) {
+        return this.resolveExport(installer.stdlibTarget.href as `${string}/`, './nodelibs/@empty', env, parentIsCjs, originalSpecifier, installer, parentUrl);
+      }
+      else {
+        const provider = installer.getProvider(installer.stdlibTarget);
+        const resolved = await this.resolveLatestTarget(installer.stdlibTarget, provider);
+        const pkgUrl = this.pkgToUrl(resolved.pkg, provider);
+        return this.resolveExport(pkgUrl, './nodelibs/@empty', env, parentIsCjs, originalSpecifier, installer, parentUrl);
+      }
+    }
 
     function throwExportNotDefined () {
       throw new JspmError(`No '${subpath}' exports subpath defined in ${pkgUrl} resolving ${originalSpecifier}${importedFrom(parentUrl)}.`, 'MODULE_NOT_FOUND');

@@ -2,6 +2,7 @@ import { Generator, lookup } from '@jspm/generator';
 import assert from 'assert';
 
 const denoStdVersion = (await lookup('deno:path')).resolved.version;
+const oakVersion = (await lookup('denoland:oak')).resolved.version;
 
 {
   const generator = new Generator({
@@ -17,7 +18,7 @@ const denoStdVersion = (await lookup('deno:path')).resolved.version;
 
   const json = generator.getMap();
 
-  assert.strictEqual(json.imports['oak/body.ts'], 'https://deno.land/x/oak@v11.0.0/body.ts');
+  assert.strictEqual(json.imports['oak/body.ts'], `https://deno.land/x/oak@v${oakVersion}/body.ts`);
   assert.strictEqual(json.imports['testing/asserts'], 'https://deno.land/std@0.151.0/testing/asserts.ts');
 
   await generator.update();
@@ -25,8 +26,8 @@ const denoStdVersion = (await lookup('deno:path')).resolved.version;
   {
     const json = generator.getMap();
 
-    assert.strictEqual(json.imports['oak/body.ts'], 'https://deno.land/x/oak@v11.0.0/body.ts');
-    assert.strictEqual(json.imports['testing/asserts'], 'https://deno.land/std@0.152.0/testing/asserts.ts');
+    assert.strictEqual(json.imports['oak/body.ts'], `https://deno.land/x/oak@v${oakVersion}/body.ts`);
+    assert.strictEqual(json.imports['testing/asserts'], 'https://deno.land/std@0.153.0/testing/asserts.ts');
   }
 }
 
@@ -94,7 +95,7 @@ const denoStdVersion = (await lookup('deno:path')).resolved.version;
 
   const json = generator.getMap();
 
-  assert.strictEqual(json.imports['oak'], 'https://deno.land/x/oak@v11.0.0/mod.ts');
+  assert.strictEqual(json.imports['oak'], `https://deno.land/x/oak@v${oakVersion}/mod.ts`);
 }
 
 {
