@@ -3,9 +3,36 @@ import { Resolver } from "../trace/resolver.js";
 import { SemverRange } from 'sver';
 // @ts-ignore
 import { fetch } from '#fetch';
+import { Install } from "../generator.js";
 
 const cdnUrl = 'https://deno.land/x/';
 const stdlibUrl = 'https://deno.land/std';
+
+let denoStdVersion;
+
+export function resolveBuiltin (specifier: string, env: string[]): string | Install | undefined {
+  if (specifier.startsWith('deno:')) {
+    let name = specifier.slice(5);
+    if (name.endsWith('.ts'))
+      name = name.slice(0, -3);
+    let alias = name, subpath: '.' | `./${string}` = '.';
+    const slashIndex = name.indexOf('/');
+    if (slashIndex !== -1) {
+      alias = name.slice(0, slashIndex);
+      subpath = `./${name.slice(slashIndex + 1)}`;
+    }
+    return {
+      alias,
+      subpath,
+      target: {
+        pkgTarget: { registry: 'deno', name: 'std', ranges: [new SemverRange('*')], unstable: true },
+        installSubpath: `./${slashIndex === -1 ? name : name.slice(0, slashIndex)}`
+      }
+    };
+  }
+  if (specifier.startsWith('npm:'))
+    return specifier;
+}
 
 export function pkgToUrl (pkg: ExactPackage): `${string}/` {
   if (pkg.registry === 'deno')
@@ -117,7 +144,7 @@ export function parseUrlPkg (url: string): { pkg: ExactPackage, subpath: `./${st
     else if (subpath.endsWith('.ts'))
       subpath = subpath.slice(0, -3);
     const name = subpath.indexOf('/') === -1 ? subpath : subpath.slice(0, subpath.indexOf('/'));
-    return { pkg: { registry: 'deno', name, version }, layer: 'default', subpath: subpath ? `./${subpath}/mod.ts` as `./${string}` : null };
+    return { pkg: { registry: 'deno', name: 'std', version }, layer: 'default', subpath: `./${name}${subpath ? `./${subpath}/mod.ts` as `./${string}` : ''}` };
   }
   else if (url.startsWith(cdnUrl)) {
     const path = url.slice(cdnUrl.length);
@@ -135,11 +162,14 @@ export function parseUrlPkg (url: string): { pkg: ExactPackage, subpath: `./${st
   }
 }
 
-export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, _layer: string, parentUrl: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` | null } | null> {
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, _layer: string, parentUrl: string): Promise<ExactPackage | null> {
   let { registry, name, range } = target;
 
+  if (denoStdVersion && registry === 'deno')
+    return { registry, name, version: denoStdVersion };
+
   if (range.isExact)
-    return { pkg: { registry, name, version: range.version.toString() }, subpath: null };
+    return { registry, name, version: range.version.toString() };
 
   // convert all Denoland ranges into wildcards
   // since we don't have an actual semver lookup at the moment
@@ -160,5 +190,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   if (!res.ok)
     throw new Error(`Deno: Unable to lookup ${fetchUrl}`);
   const { version } = parseUrlPkg(res.url).pkg;
-  return { pkg: { registry, name, version }, subpath: registry === 'deno' ? `./${name}` : null  };
+  if (registry === 'deno')
+    denoStdVersion = version;
+  return { registry, name, version };
 }

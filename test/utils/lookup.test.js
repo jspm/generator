@@ -10,4 +10,4 @@ assert.strictEqual(install.subpath, '.');
 assert.strictEqual(install.alias, 'jquery');
 assert.strictEqual(resolved.registry, 'npm');
 assert.strictEqual(resolved.name, 'jquery');
-assert.strictEqual(resolved.version, '3.6.0');
+assert.strictEqual(resolved.version, '3.6.1');
