@@ -7,7 +7,7 @@ const { SemverRange } = sver;
 import convertRange from 'sver/convert-range.js';
 import { InstallTarget } from "./installer.js";
 import { Resolver } from "../trace/resolver.js";
-import { urlToNiceStr } from "../common/url.js";
+import { builtinSchemes } from "../providers/index.js";
 
 export interface ExactPackage {
   registry: string;
@@ -15,7 +15,7 @@ export interface ExactPackage {
   version: string;
 }
 
-export type ExportsTarget = `./${string}` | null | { [condition: string]: ExportsTarget } | ExportsTarget[];
+export type ExportsTarget = '.' | `./${string}` | null | { [condition: string]: ExportsTarget } | ExportsTarget[];
 export type ImportsTarget = string | null | { [condition: string]: ExportsTarget } | ExportsTarget[];
 
 export interface PackageConfig {
@@ -50,24 +50,34 @@ export interface LatestPackageTarget {
 }
 
 const supportedProtocols = ['https', 'http', 'data', 'file', 'ipfs'];
-export async function parseUrlTarget (resolver: Resolver, targetStr: string, parentUrl?: URL): Promise<{ alias: string, target: URL, subpath: '.' | `./${string}` } | undefined> {
+export async function parseUrlOrBuiltinTarget (resolver: Resolver, targetStr: string, parentUrl?: URL): Promise<{ alias: string, target: InstallTarget, subpath: '.' | `./${string}` } | undefined> {
   const registryIndex = targetStr.indexOf(':');
-  if (isRelative(targetStr) || registryIndex !== -1 && supportedProtocols.includes(targetStr.slice(0, registryIndex))) {
-    const subpathIndex = targetStr.indexOf('|');
-    let subpath: '.' | `./${string}`
-    if (subpathIndex === -1) {
-      subpath = '.';
+  if (isRelative(targetStr) || registryIndex !== -1 && supportedProtocols.includes(targetStr.slice(0, registryIndex)) || builtinSchemes.has(targetStr.slice(0, registryIndex))) {
+    let target: InstallTarget;
+    let alias: string;
+    let subpath: '.' | `./${string}` = '.';
+    const maybeBuiltin = builtinSchemes.has(targetStr.slice(0, registryIndex)) && resolver.resolveBuiltin(targetStr);
+    if (maybeBuiltin) {
+      if (typeof maybeBuiltin === 'string') {
+        throw new Error('How to install a string?');
+      }
+      else {
+        ({ alias, subpath = '.', target } = maybeBuiltin);
+      }
     }
     else {
-      subpath = `./${targetStr.slice(subpathIndex + 1)}` as `./${string}`;
-      targetStr = targetStr.slice(0, subpathIndex);
-    }
-    const target = new URL(targetStr + (targetStr.endsWith('/') ? '' : '/'), parentUrl || baseUrl);
-    const pkgUrl = await resolver.getPackageBase(target.href);
+      const subpathIndex = targetStr.indexOf('|');
+      if (subpathIndex !== -1) {
+        subpath = `./${targetStr.slice(subpathIndex + 1)}` as `./${string}`;
+        targetStr = targetStr.slice(0, subpathIndex);
+      }
+      target = { pkgTarget: new URL(targetStr + (targetStr.endsWith('/') ? '' : '/'), parentUrl || baseUrl), installSubpath: null };
+      const pkgUrl = await resolver.getPackageBase((target.pkgTarget as URL).href);
 
-    const alias = (pkgUrl ? await resolver.getPackageConfig(pkgUrl) : null)?.name || target.pathname.split('/').slice(0, -1).pop() as string;
+      alias = (pkgUrl ? await resolver.getPackageConfig(pkgUrl) : null)?.name || (target.pkgTarget as URL).pathname.split('/').slice(0, -1).pop() as string;
+    }
     if (!alias)
-      throw new JspmError(`Unable to determine an alias for target package ${target.href}`);
+      throw new JspmError(`Unable to determine an alias for target package ${targetStr}`);
     return { alias, target, subpath };
   }
 }
@@ -90,20 +100,8 @@ export function isPackageTarget (targetStr: string): boolean {
   return true;
 }
 
-export function pkgUrlToNiceString (resolver: Resolver, pkgUrl: string) {
-  const pkg = resolver.parseUrlPkg(pkgUrl);
-  if (pkg) {
-    const subpath = pkgUrl.slice(resolver.pkgToUrl(pkg.pkg, this.defaultProvider).length);
-    return pkgToStr(pkg.pkg) + subpath;
-  }
-  if (pkgUrl.startsWith('file:')) {
-    return urlToNiceStr(pkgUrl);
-  }
-  return pkgUrl;
-}
-
-export async function toPackageTarget (resolver: Resolver, targetStr: string, parentPkgUrl: URL, defaultRegistry: string): Promise<{ alias: string, target: InstallTarget, subpath: '.' | `./${string}` }> {
-  const urlTarget = await parseUrlTarget(resolver, targetStr, parentPkgUrl);
+export async function toPackageTarget (resolver: Resolver, targetStr: string, parentPkgUrl: URL, defaultRegistry: string): Promise<{ target: InstallTarget, alias: string, subpath: '.' | `./${string}` }> {
+  const urlTarget = await parseUrlOrBuiltinTarget(resolver, targetStr,  parentPkgUrl);
   if (urlTarget)
     return urlTarget;
 
@@ -114,51 +112,55 @@ export async function toPackageTarget (resolver: Resolver, targetStr: string, pa
   if (targetStr.indexOf(':') !== -1 && versionOrScopeIndex !== -1 && versionOrScopeIndex < registryIndex)
     throw new Error(`Package aliases not yet supported. PRs welcome.`);
 
-  const pkg = parsePkg(targetStr);
+  const pkg = parsePkg(registryIndex === -1 ? targetStr : targetStr.slice(registryIndex + 1));
   if (!pkg)
     throw new JspmError(`Invalid package name ${targetStr}`);
+
+  let registry = null;
+  if (registryIndex !== -1)
+    registry = targetStr.slice(0, registryIndex);
 
   let alias = pkg.pkgName;
   const versionIndex = pkg.pkgName.indexOf('@', 1);
   if (versionIndex !== -1)
-    alias = pkg.pkgName.slice(registryIndex + 1, versionIndex);
+    alias = pkg.pkgName.slice(0, versionIndex);
   else
-    alias = pkg.pkgName.slice(registryIndex + 1);
+    alias = pkg.pkgName;
 
   return {
+    target: newPackageTarget(pkg.pkgName, parentPkgUrl, registry || defaultRegistry),
     alias,
-    target: newPackageTarget(pkg.pkgName, parentPkgUrl, defaultRegistry),
     subpath: pkg.subpath as '.' | `./{string}`
   };
 }
 
-export function newPackageTarget (target: string, parentPkgUrl: URL, defaultRegistry: string, depName?: string): InstallTarget {
+export function newPackageTarget (target: string, parentPkgUrl: URL, defaultRegistry: string, pkgName?: string): InstallTarget {
   let registry: string, name: string, ranges: any[];
 
   const registryIndex = target.indexOf(':');
 
   if (target.startsWith('./') || target.startsWith('../') || target.startsWith('/') || registryIndex === 1)
-    return new URL(target, parentPkgUrl);
+    return { pkgTarget: new URL(target, parentPkgUrl), installSubpath: null };
 
   registry = registryIndex < 1 ? defaultRegistry : target.slice(0, registryIndex);
 
   if (registry === 'file')
-    return new URL(target.slice(registry.length + 1), parentPkgUrl);
+    return { pkgTarget: new URL(target.slice(registry.length + 1), parentPkgUrl), installSubpath: null };
 
   if (registry === 'https' || registry === 'http')
-    return new URL(target);
+    return { pkgTarget: new URL(target), installSubpath: null };
 
   const versionIndex = target.lastIndexOf('@');
   let unstable = false;
   if (versionIndex > registryIndex + 1) {
     name = target.slice(registryIndex + 1, versionIndex);
     const version = target.slice(versionIndex + 1);
-    ranges = (depName || SemverRange.isValid(version)) ? [new SemverRange(version)] : version.split('||').map(v => convertRange(v));
+    ranges = (pkgName || SemverRange.isValid(version)) ? [new SemverRange(version)] : version.split('||').map(v => convertRange(v));
     if (version === '')
       unstable = true;
   }
-  else if (registryIndex === -1 && depName) {
-    name = depName;
+  else if (registryIndex === -1 && pkgName) {
+    name = pkgName;
     ranges = SemverRange.isValid(target) ? [new SemverRange(target)] : target.split('||').map(v => convertRange(v));
   }
   else {
@@ -173,11 +175,17 @@ export function newPackageTarget (target: string, parentPkgUrl: URL, defaultRegi
   if (targetNameLen > 2 || targetNameLen === 1 && name[0] === '@')
     throw new JspmError(`Invalid package target ${target}`);
 
-  return { registry, name, ranges, unstable };
+  return { pkgTarget: { registry, name, ranges, unstable }, installSubpath: null };
 }
 
 export function pkgToStr (pkg: ExactPackage) {
   return `${pkg.registry ? pkg.registry + ':' : ''}${pkg.name}${pkg.version ? '@' + pkg.version : ''}`;
+}
+
+export function validatePkgName (specifier: string) {
+  const parsed = parsePkg(specifier);
+  if (!parsed || parsed.subpath !== '.')
+    throw new Error(`"${specifier}" is not a valid npm-style package name. Subpaths must be provided separately to the installation package name.`);
 }
 
 export function parsePkg (specifier: string): { pkgName: string, subpath: '.' | `./${string}` } | undefined {

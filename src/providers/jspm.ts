@@ -56,32 +56,32 @@ export function clearResolveCache () {
   resolveCache = {};
 }
 
-async function checkBuildOrError (pkg: ExactPackage, fetchOpts: any): Promise<boolean> {
-  const pkgStr = pkgToStr(pkg);
-  const pjsonRes = await fetch(`${cdnUrl}${pkgStr}/package.json`, fetchOpts);
+async function checkBuildOrError (pkgUrl: string, fetchOpts: any): Promise<boolean> {
+  const pjsonRes = await fetch(`${pkgUrl}package.json`, fetchOpts);
   if (pjsonRes.ok)
     return true;
   // no package.json! Check if there's a build error:
-  const errLogRes = await fetch(`${cdnUrl}${pkgStr}/_error.log`, fetchOpts);
+  const errLogRes = await fetch(`${pkgUrl}/_error.log`, fetchOpts);
   if (errLogRes.ok) {
     const errLog = await errLogRes.text();
-    throw new JspmError(`Resolved dependency ${pkgStr} with error:\n\n${errLog}\nPlease post an issue at jspm/project on GitHub, or by following the link below:\n\nhttps://github.com/jspm/project/issues/new?title=CDN%20build%20error%20for%20${encodeURIComponent(pkg.name + '@' + pkg.version)}&body=_Reporting%20CDN%20Build%20Error._%0A%0A%3C!--%20%20No%20further%20description%20necessary,%20just%20click%20%22Submit%20new%20issue%22%20--%3E`);
+    throw new JspmError(`Resolved dependency ${pkgUrl} with error:\n\n${errLog}\nPlease post an issue at jspm/project on GitHub, or by following the link below:\n\nhttps://github.com/jspm/project/issues/new?title=CDN%20build%20error%20for%20${encodeURIComponent(pkgUrl)}&body=_Reporting%20CDN%20Build%20Error._%0A%0A%3C!--%20%20No%20further%20description%20necessary,%20just%20click%20%22Submit%20new%20issue%22%20--%3E`);
   }
-  console.error(`Unable to request ${cdnUrl}${pkgStr}/package.json - ${pjsonRes.status} ${pjsonRes.statusText || 'returned'}`);
+  console.error(`Unable to request ${pkgUrl}package.json - ${pjsonRes.status} ${pjsonRes.statusText || 'returned'}`);
   return false;
 }
 
 async function ensureBuild (pkg: ExactPackage, fetchOpts: any) {
-  const pkgStr = pkgToStr(pkg);
-  if (await checkBuildOrError(pkg, fetchOpts))
+  if (await checkBuildOrError(pkgToUrl(pkg, 'default'), fetchOpts))
     return;
+
+  const fullName = `${pkg.name}@${pkg.version}`;
 
   // no package.json AND no build error -> post a build request
   // once the build request has been posted, try polling for up to 2 mins
-  const buildRes = await fetch(`${apiUrl}build/${pkg.name}@${pkg.version}`, fetchOpts);
+  const buildRes = await fetch(`${apiUrl}build/${fullName}`, fetchOpts);
   if (!buildRes.ok && buildRes.status !== 403) {
     const err = (await buildRes.json()).error;
-    throw new JspmError(`Unable to request the JSPM API for a build of ${pkgStr}, with error: ${err}.`);
+    throw new JspmError(`Unable to request the JSPM API for a build of ${fullName}, with error: ${err}.`);
   }
 
   // build requested -> poll on that
@@ -89,15 +89,15 @@ async function ensureBuild (pkg: ExactPackage, fetchOpts: any) {
   while (true) {
     await new Promise(resolve => setTimeout(resolve, BUILD_POLL_INTERVAL));
 
-    if (await checkBuildOrError(pkg, fetchOpts))
+    if (await checkBuildOrError(pkgToUrl(pkg, 'default'), fetchOpts))
       return;
 
     if (Date.now() - startTime >= BUILD_POLL_TIME)
-      throw new JspmError(`Timed out waiting for the build of ${pkgStr} to be ready on the JSPM CDN. Try again later, or post a JSPM project issue if the issue persists.`);
+      throw new JspmError(`Timed out waiting for the build of ${fullName} to be ready on the JSPM CDN. Try again later, or post a JSPM project issue if the issue persists.`);
   }
 }
 
-export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, _layer: string, parentUrl: string): Promise<ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null> {
+export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, layer: string, parentUrl: string): Promise<ExactPackage | null> {
   const { registry, name, range, unstable } = target;
 
   // exact version optimization
@@ -127,7 +127,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   }
   if (range.isExact && range.version.tag) {
     const tag = range.version.tag;
-    let lookup = await (cache.tags[tag] || (cache.tags[tag] = lookupRange.call(this, registry, name, tag, unstable, parentUrl)));
+    let lookup = await (cache.tags[tag] || (cache.tags[tag] = lookupRange.call(this, registry, name, tag, unstable, layer, parentUrl)));
     // Deno wat?
     if (lookup instanceof Promise)
       lookup = await lookup;
@@ -140,7 +140,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   let stableFallback = false;
   if (range.isMajor) {
     const major = range.version.major;
-    let lookup = await (cache.majors[major] || (cache.majors[major] = lookupRange.call(this, registry, name, major, unstable, parentUrl)));
+    let lookup = await (cache.majors[major] || (cache.majors[major] = lookupRange.call(this, registry, name, major, unstable, layer, parentUrl)));
     // Deno wat?
     if (lookup instanceof Promise)
       lookup = await lookup;
@@ -159,7 +159,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   }
   if (stableFallback || range.isStable) {
     const minor = `${range.version.major}.${range.version.minor}`;
-    let lookup = await (cache.minors[minor] || (cache.minors[minor] = lookupRange.call(this, registry, name, minor, unstable, parentUrl)));
+    let lookup = await (cache.minors[minor] || (cache.minors[minor] = lookupRange.call(this, registry, name, minor, unstable, layer, parentUrl)));
     // in theory a similar downgrade to the above can happen for stable prerelease ranges ~1.2.3-pre being downgraded to 1.2.2
     // this will be solved by the pkg@X.Y@ unstable minor lookup
     // Deno wat?

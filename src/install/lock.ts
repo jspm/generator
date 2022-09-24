@@ -118,6 +118,8 @@ export function setConstraint (constraints: VersionConstraints, name: string, ta
 }
 
 export function setResolution (resolutions: LockResolutions, name: string, installUrl: `${string}/`, pkgScope: `${string}/` | null = null, installSubpath: `./${string}` | null = null) {
+  if (installSubpath === './std')
+    throw new Error('NEIN');
   if (pkgScope && !pkgScope.endsWith('/'))
     throwInternalError(pkgScope);
   if (pkgScope === null) {
@@ -267,10 +269,10 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
 
         // In the case of subpaths having diverging versions, we force convergence on one version
         // Only scopes permit unpacking
-        let installSubpath: null | `./${string}` | false = null;
+        let installSubpath: null | `./${string}/` | false = null;
         if (parsedKey.subpath !== exportSubpath) {
           if (parsedKey.subpath === '.') {
-            installSubpath = exportSubpath as `./${string}`;
+            installSubpath = exportSubpath as `./${string}/`;
           }
           else if (exportSubpath === '.') {
             installSubpath = false;
@@ -278,7 +280,7 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
           }
           else {
             if (exportSubpath.endsWith(parsedKey.subpath.slice(1)))
-              installSubpath = exportSubpath.slice(0, parsedKey.subpath.length) as `./${string}`;
+              installSubpath = exportSubpath.slice(0, parsedKey.subpath.length) as `./${string}/`;
           }
         }
         if (installSubpath !== false) {
@@ -318,10 +320,10 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
 
           // In the case of subpaths having diverging versions, we force convergence on one version
           // Only scopes permit unpacking
-          let installSubpath: null | `./${string}` | false = null;
+          let installSubpath: null | `./${string}/` | false = null;
           if (parsedKey.subpath !== exportSubpath) {
             if (parsedKey.subpath === '.') {
-              installSubpath = exportSubpath as `./${string}`;
+              installSubpath = exportSubpath as `./${string}/`;
             }
             else if (exportSubpath === '.') {
               installSubpath = false;
@@ -329,7 +331,7 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
             }
             else {
               if (exportSubpath.endsWith(parsedKey.subpath.slice(1)))
-                installSubpath = exportSubpath.slice(0, parsedKey.subpath.length) as `./${string}`;
+                installSubpath = exportSubpath.slice(0, parsedKey.subpath.length) as `./${string}/`;
             }
           }
           if (installSubpath !== false) {

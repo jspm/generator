@@ -27,8 +27,7 @@ import assert from 'assert';
 
   const json = generator.getMap();
 
-  // TODO:
-  // assert.strictEqual(json.imports['fs'], `https://ga.jspm.io/npm:@jspm/core@${(await lookup('@jspm/core')).resolved.version}/nodelibs/browser/process-production.js`);
+  assert.strictEqual(json.imports['fs'], `https://ga.jspm.io/npm:@jspm/core@${(await lookup('@jspm/core')).resolved.version}/nodelibs/browser/fs.js`);
   assert.strictEqual(json.imports['process'], `https://ga.jspm.io/npm:@jspm/core@${(await lookup('@jspm/core')).resolved.version}/nodelibs/browser/process-production.js`);
 }
 
@@ -57,8 +56,7 @@ import assert from 'assert';
       imports: {
         fs: 'https://ga.jspm.io/npm:@jspm/core@2.0.0-beta.20/nodelibs/node/fs.js'
       }
-    },
-    freeze: true
+    }
   });
 
   await generator.install('node:process');

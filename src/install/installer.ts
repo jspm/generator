@@ -1,12 +1,9 @@
 import sver from 'sver';
-const { Semver, SemverRange } = sver;
+const { Semver } = sver;
 import { Log } from '../common/log.js';
 import { Resolver } from "../trace/resolver.js";
-import { ExactPackage, newPackageTarget, PackageTarget, pkgToStr } from "./package.js";
-import { isURL } from "../common/url.js";
+import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
 import { JspmError, throwInternalError } from "../common/err.js";
-import { nodeBuiltinSet } from '../providers/node.js';
-import { parseUrlPkg } from '../providers/jspm.js';
 import { getFlattenedResolution, getInstallsFor, getResolution, InstalledResolution, LockResolutions, PackageInstall, pruneResolutions, setConstraint, setResolution, VersionConstraints } from './lock.js';
 import { registryProviders } from '../providers/index.js';
 
@@ -15,7 +12,9 @@ export interface PackageProvider {
   layer: string;
 }
 
-export type InstallTarget = PackageTarget | URL;
+export type ResolutionMode = 'new' | 'new-prefer-existing' | 'existing';
+
+export type InstallTarget = { pkgTarget: PackageTarget | URL, installSubpath: null | `./${string}` };
 
 export interface InstallOptions {
   // import map URL
@@ -35,8 +34,6 @@ export interface InstallOptions {
   // / expected URL (usually due to manual user edits),
   // force override a new install
   reset?: boolean;
-  // stdlib target
-  stdlib?: string;
   
   // whether to prune the dependency installs
   prune?: boolean;
@@ -62,7 +59,6 @@ export class Installer {
   installing = false;
   newInstalls = false;
   // @ts-ignore
-  stdlibTarget: InstallTarget;
   installBaseUrl: `${string}/`;
   added = new Map<string, InstallTarget>();
   hasLock = false;
@@ -92,17 +88,6 @@ export class Installer {
     this.providers = Object.assign({}, registryProviders);
     if (opts.providers)
       Object.assign(this.providers, opts.providers);
-
-    if (opts.stdlib) {
-      if (isURL(opts.stdlib) || opts.stdlib[0] === '.') {
-        this.stdlibTarget = new URL(opts.stdlib, baseUrl);
-        if (this.stdlibTarget.href.endsWith('/'))
-          this.stdlibTarget.pathname = this.stdlibTarget.pathname.slice(0, -1);
-      }
-      else {
-        this.stdlibTarget = newPackageTarget(opts.stdlib, new URL(this.installBaseUrl), this.defaultRegistry);
-      }
-    }
   }
 
   visitInstalls (visitor: (scope: Record<string, InstalledResolution>, scopeUrl: string | null) => boolean | void) {
@@ -132,10 +117,13 @@ export class Installer {
       if (visited.has(name + '##' + pkgUrl))
         return;
       visited.add(name + '##' + pkgUrl);
-      const { installUrl } = await this.install(name, 'existing', pkgUrl);
-      const deps = await this.resolver.getDepList(installUrl);
-      const existingDeps = Object.keys(this.installs.secondary[installUrl] || {});
-      await Promise.all([...new Set([...deps, ...existingDeps])].map(dep => visitInstall(dep, installUrl)));
+      const install = await this.install(name, 'existing', pkgUrl, '.');
+      if (install && typeof install !== 'string') {
+        const { installUrl } = install;
+        const deps = await this.resolver.getDepList(installUrl);
+        const existingDeps = Object.keys(this.installs.secondary[installUrl] || {});
+        await Promise.all([...new Set([...deps, ...existingDeps])].map(dep => visitInstall(dep, installUrl)));
+      }
     };
     await Promise.all(installs.map(install => visitInstall(install, pkgUrl)));
     if (prune) {
@@ -145,38 +133,6 @@ export class Installer {
       });
       this.installs = pruneResolutions(this.installs, pruneList);
     }
-  }
-
-  replace (target: InstallTarget, replacePkgUrl: `${string}/`, provider: PackageProvider): boolean {
-    let targetUrl: string;
-    if (target instanceof URL) {
-      targetUrl = target.href;
-    }
-    else {
-      const pkg = this.getBestExistingMatch(target);
-      if (!pkg) {
-        if (this.installs.secondary[replacePkgUrl])
-          return false;
-        throw new Error('No installation found to replace.');
-      }
-      targetUrl = this.resolver.pkgToUrl(pkg, provider);
-    }
-
-    let replaced = false;
-    this.visitInstalls((scope, pkgUrl) => {
-      for (const name of Object.keys(scope)) {
-        if (scope[name].installUrl === targetUrl) {
-          scope[name].installUrl = replacePkgUrl;
-          replaced = true;
-        }
-      }
-      if (pkgUrl === targetUrl) {
-        this.installs.secondary[replacePkgUrl] = this.installs.secondary[pkgUrl];
-        delete this.installs.secondary[pkgUrl];
-        replaced = true;
-      }
-    });
-    return replaced;
   }
 
   getProvider (target: PackageTarget) {
@@ -195,76 +151,77 @@ export class Installer {
     return provider;
   }
 
-  async installTarget (pkgName: string, target: InstallTarget, subpath: `./${string}` | null, mode: 'new' | 'existing', pkgScope: `${string}/` | null, parentUrl: string): Promise<InstalledResolution> {
+  async installTarget (pkgName: string, { pkgTarget, installSubpath }: InstallTarget, traceSubpath: `./${string}` | '.', mode: ResolutionMode, pkgScope: `${string}/` | null, parentUrl: string): Promise<InstalledResolution> {
     if (this.opts.freeze && mode === 'existing')
       throw new JspmError(`"${pkgName}" is not installed in the current map to freeze install, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
 
     // resolutions are authoritative at the top-level
     if (this.resolutions[pkgName]) {
       const resolutionTarget = newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl, this.defaultRegistry, pkgName);
-      if (JSON.stringify(target) !== JSON.stringify(resolutionTarget))
-        return this.installTarget(pkgName, resolutionTarget, subpath, mode, pkgScope, parentUrl);
+      resolutionTarget.installSubpath = installSubpath;
+      if (JSON.stringify(pkgTarget) !== JSON.stringify(resolutionTarget.pkgTarget))
+        return this.installTarget(pkgName, resolutionTarget, traceSubpath, mode, pkgScope, parentUrl);
     }
 
-    if (target instanceof URL) {
-      this.log('install', `${pkgName} ${pkgScope} -> ${target.href}`);
-      const installUrl = target.href + (target.href.endsWith('/') ? '' : '/') as `${string}/`;
-      this.newInstalls = setResolution(this.installs, pkgName, installUrl, pkgScope, subpath);
-      return { installUrl, installSubpath: subpath };
+    if (pkgTarget instanceof URL) {
+      this.log('install', `${pkgName} ${pkgScope} -> ${pkgTarget.href}`);
+      const installUrl = pkgTarget.href + (pkgTarget.href.endsWith('/') ? '' : '/') as `${string}/`;
+      this.newInstalls = setResolution(this.installs, pkgName, installUrl, pkgScope, installSubpath);
+      return { installUrl, installSubpath };
     }
 
-    const provider = this.getProvider(target);
+    const provider = this.getProvider(pkgTarget);
 
-    if ((this.opts.freeze || mode === 'existing' || pkgScope !== null) && !this.opts.latest) {
-      const pkg = this.getBestExistingMatch(target);
+    if ((this.opts.freeze || mode.includes('existing') || pkgScope !== null) && !this.opts.latest) {
+      const pkg = this.getBestExistingMatch(pkgTarget);
       if (pkg) {
         this.log('install', `${pkgName} ${pkgScope} -> ${pkg} (existing match)`);
         const installUrl = this.resolver.pkgToUrl(pkg, provider);
-        this.newInstalls = setResolution(this.installs, pkgName, installUrl, pkgScope, subpath);
-        setConstraint(this.constraints, pkgName, target, pkgScope);
-        return { installUrl, installSubpath: subpath };
+        this.newInstalls = setResolution(this.installs, pkgName, installUrl, pkgScope, installSubpath);
+        setConstraint(this.constraints, pkgName, pkgTarget, pkgScope);
+        return { installUrl, installSubpath };
       }
     }
 
-    const latest = await this.resolver.resolveLatestTarget(target, provider, parentUrl);
-    const latestUrl = this.resolver.pkgToUrl(latest.pkg, provider);
-    const installed = getInstallsFor(this.constraints, latest.pkg.registry, latest.pkg.name);
-    if (!this.opts.freeze && !this.tryUpgradeAllTo(latest.pkg, latestUrl, installed)) {
+    const latestPkg = await this.resolver.resolveLatestTarget(pkgTarget, provider, parentUrl);
+
+    const pkgUrl = this.resolver.pkgToUrl(latestPkg, provider);
+    const installed = getInstallsFor(this.constraints, latestPkg.registry, latestPkg.name);
+    if (!this.opts.freeze && latestPkg && !this.tryUpgradeAllTo(latestPkg, pkgUrl, installed)) {
       if (pkgScope && !this.opts.latest) {
-        const pkg = this.getBestExistingMatch(target);
+        const pkg = this.getBestExistingMatch(pkgTarget);
         // cannot upgrade to latest -> stick with existing resolution (if compatible)
         if (pkg) {
-          this.log('install', `${pkgName} ${pkgScope} -> ${pkg.registry}:${pkg.name}@${pkg.version} (existing match not latest)`);
+          this.log('install', `${pkgName} ${pkgScope} -> ${latestPkg} (existing match not latest)`);
           const installUrl = this.resolver.pkgToUrl(pkg, provider);
-          const s: null | `./${string}` = subpath && latest.subpath ? `./${latest.subpath.slice(2) + subpath.slice(1)}` : subpath || latest.subpath;
-          this.newInstalls = setResolution(this.installs, pkgName, installUrl, pkgScope, s);
-          setConstraint(this.constraints, pkgName, target, pkgScope);
-          return { installUrl, installSubpath: s };
+          this.newInstalls = setResolution(this.installs, pkgName, installUrl, pkgScope, installSubpath);
+          setConstraint(this.constraints, pkgName, pkgTarget, pkgScope);
+          return { installUrl, installSubpath };
         }
       }
     }
 
-    this.log('install', `${pkgName} ${pkgScope} -> ${latest.pkg.registry}:${latest.pkg.name}@${latest.pkg.version} ${latest.subpath ? latest.subpath : '<no-subpath>'} (latest)`);
-    this.newInstalls = setResolution(this.installs, pkgName, latestUrl, pkgScope, latest.subpath);
-    setConstraint(this.constraints, pkgName, target, pkgScope);
-    this.upgradeSupportedTo(latest.pkg, latestUrl, installed);
-    return { installUrl: latestUrl, installSubpath: latest.subpath };
+    this.log('install', `${pkgName} ${pkgScope} -> ${pkgUrl} ${installSubpath ? installSubpath : '<no-subpath>'} (latest)`);
+    this.newInstalls = setResolution(this.installs, pkgName, pkgUrl, pkgScope, installSubpath);
+    setConstraint(this.constraints, pkgName, pkgTarget, pkgScope);
+    this.upgradeSupportedTo(latestPkg, pkgUrl, installed);
+    return { installUrl: pkgUrl, installSubpath };
   }
 
-  async install (pkgName: string, mode: 'new' | 'existing', pkgScope: `${string}/` | null = null, flattenedSubpath: `.${string}` | null = null, nodeBuiltins = true, parentUrl: string = this.installBaseUrl): Promise<InstalledResolution> {
+  async install (pkgName: string, mode: ResolutionMode, pkgScope: `${string}/` | null = null, traceSubpath: `./${string}` | '.', parentUrl: string = this.installBaseUrl): Promise<string | InstalledResolution> {
     if (!this.installing)
       throwInternalError('Not installing');
 
     if (this.resolutions[pkgName])
-      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl, this.defaultRegistry, pkgName), null, mode, pkgScope, parentUrl);
+      return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl, this.defaultRegistry, pkgName), traceSubpath, mode, pkgScope, parentUrl);
 
     if (!this.opts.reset) {
       const existingResolution = getResolution(this.installs, pkgName, pkgScope);
       if (existingResolution)
         return existingResolution;
       // flattened resolution cascading for secondary
-      if (pkgScope && mode === 'existing' && !this.opts.latest || pkgScope && mode === 'new' && this.opts.freeze) {
-        const flattenedResolution = getFlattenedResolution(this.installs, pkgName, pkgScope, flattenedSubpath);
+      if (pkgScope && mode.includes('existing') && !this.opts.latest || pkgScope && mode.includes('new') && this.opts.freeze) {
+        const flattenedResolution = getFlattenedResolution(this.installs, pkgName, pkgScope, traceSubpath);
         // resolved flattened resolutions become real resolutions as they get picked up
         if (flattenedResolution) {
           this.newInstalls = setResolution(this.installs, pkgName, flattenedResolution.installUrl, pkgScope, flattenedResolution.installSubpath);
@@ -276,26 +233,31 @@ export class Installer {
     const definitelyPkgScope = pkgScope || await this.resolver.getPackageBase(parentUrl);
     const pcfg = await this.resolver.getPackageConfig(definitelyPkgScope) || {};
 
-    // node.js core
-    if (nodeBuiltins && nodeBuiltinSet.has(pkgName)) {
-      return this.installTarget(pkgName, { registry: 'node', name: pkgName, ranges: [new SemverRange('*')], unstable: true }, null, mode, pkgScope, parentUrl);
-    }
-
     // package dependencies
     const installTarget = pcfg.dependencies?.[pkgName] || pcfg.peerDependencies?.[pkgName] || pcfg.optionalDependencies?.[pkgName] || pkgScope === this.installBaseUrl && pcfg.devDependencies?.[pkgName];
     if (installTarget) {
       const target = newPackageTarget(installTarget, new URL(definitelyPkgScope), this.defaultRegistry, pkgName);
-      return this.installTarget(pkgName, target, null, mode, pkgScope, parentUrl);
+      return this.installTarget(pkgName, target, traceSubpath, mode, pkgScope, parentUrl);
     }
 
-    // import map "imports"
-    if (this.installs.primary[pkgName])
-      return getResolution(this.installs, pkgName, null);
+    const specifier = pkgName + (traceSubpath ? traceSubpath.slice(1) : '');
+    const builtin = this.resolver.resolveBuiltin(specifier);
+    if (builtin) {
+      if (typeof builtin === 'string')
+        return builtin;
+      return this.installTarget(specifier, builtin.target, traceSubpath, mode, pkgScope, parentUrl);
+    }
+
+    // existing primary version fallback
+    if (this.installs.primary[pkgName]) {
+      const { installUrl } = getResolution(this.installs, pkgName, null);
+      return { installUrl, installSubpath: null };
+    }
 
     // global install fallback
     const target = newPackageTarget('*', new URL(definitelyPkgScope), this.defaultRegistry, pkgName);
-    const exactInstall = await this.installTarget(pkgName, target, null, mode, pkgScope, parentUrl);
-    return exactInstall;
+    const { installUrl } = await this.installTarget(pkgName, target, null, mode, pkgScope, parentUrl);
+    return { installUrl, installSubpath: null };
   }
 
   // Note: maintain this live instead of recomputing

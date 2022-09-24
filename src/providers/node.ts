@@ -1,7 +1,7 @@
-import { ExactPackage, LatestPackageTarget } from "../install/package.js";
-import { Resolver } from "../trace/resolver.js";
-import { resolveLatestTarget as jspmResolveLatestTarget, pkgToUrl as jspmPkgToUrl } from './jspm.js';
+import { ExactPackage, LatestPackageTarget, PackageConfig } from "../install/package.js";
 import { SemverRange } from 'sver';
+import { resolveLatestTarget as resolveLatestTargetJspm, pkgToUrl as pkgToUrlJspm } from './jspm.js';
+import { Install } from "../generator.js";
 
 export const nodeBuiltinSet = new Set<string>([
   '_http_agent',         '_http_client',        '_http_common',
@@ -28,11 +28,61 @@ export const nodeBuiltinSet = new Set<string>([
   'zlib'
 ]);
 
-export function pkgToUrl (pkg: ExactPackage): `${string}/` {
+export function pkgToUrl (pkg: ExactPackage, layer: string): `${string}/` {
   if (pkg.registry !== 'node')
-    return jspmPkgToUrl(pkg, 'default');
+    return pkgToUrlJspm(pkg, layer);
   return `node:${pkg.name}/`;
 }
+
+export function resolveBuiltin (specifier: string, env: string[]): string | Install | undefined {
+  const builtin = specifier.startsWith('node:') ? specifier.slice(5) : nodeBuiltinSet.has(specifier) ? specifier : null;
+  if (!builtin)
+    return;
+
+  if (env.includes('deno'))
+    return {
+      target: {
+        pkgTarget: { registry: 'deno', name: 'std', ranges: [new SemverRange('*')], unstable: true },
+        installSubpath: `./node/${builtin}`
+      },
+      alias: builtin
+    };
+  
+  if (env.includes('node'))
+    return `node:${builtin}`;
+
+  return {
+    target: {
+      pkgTarget: { registry: 'npm', name: '@jspm/core', ranges: [new SemverRange('*')], unstable: true },
+      installSubpath: `./nodelibs/${builtin}`
+    },
+    alias: builtin
+  };
+}
+
+// Special "." export means a file package (not a folder package)
+export async function getPackageConfig (): Promise<PackageConfig> {
+  return {
+    exports: {
+      ".": "."
+    }
+  };
+}
+
+export async function resolveLatestTarget (target: LatestPackageTarget, layer: string, parentUrl: string): Promise<ExactPackage | null> {
+  if (target.registry !== 'npm' || target.name !== '@jspm/core')
+    return null;
+  return resolveLatestTargetJspm.call(this, {
+    registry: 'npm',
+    name: '@jspm/core',
+    range: new SemverRange('*'),
+    unstable: true
+  }, layer, parentUrl);
+}
+
+// export function parsePkg (pkg: string): { pkg: ExactPackage, subpath: null | `.${string}` } {
+
+// }
 
 export function parseUrlPkg (url: string): ExactPackage | undefined {
   if (!url.startsWith('node:'))
@@ -41,16 +91,4 @@ export function parseUrlPkg (url: string): ExactPackage | undefined {
   if (name.endsWith('/'))
     name = name.slice(0, -1);
   return { registry: 'node', name, version: '' };
-}
-
-export async function getPackageConfig () {
-  return null;
-}
-
-export async function resolveLatestTarget (this: Resolver, target: LatestPackageTarget, _layer: string, parentUrl: string): Promise<{ pkg: ExactPackage, subpath: `./${string}` } | null> {
-  let resolved = (await jspmResolveLatestTarget.call(this, { registry: 'npm', name: '@jspm/core', range: new SemverRange('*') }, _layer, parentUrl)) as ExactPackage | { pkg: ExactPackage, subpath: `./${string}` | null } | null;
-  if (!resolved)
-    return null;
-  const pkg = 'pkg' in resolved ? resolved.pkg : resolved;
-  return { pkg, subpath: `./nodelibs/${target.name}` };
 }

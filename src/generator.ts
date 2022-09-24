@@ -1,5 +1,5 @@
-import { baseUrl as _baseUrl, isMappableScheme, isPlain, relativeUrl, resolveUrl } from "./common/url.js";
-import { ExactPackage, PackageConfig, toPackageTarget } from "./install/package.js";
+import { baseUrl as _baseUrl, relativeUrl, resolveUrl } from "./common/url.js";
+import { ExactPackage, PackageConfig, toPackageTarget, validatePkgName } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 // @ts-ignore
 import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
@@ -115,14 +115,6 @@ export interface GeneratorOptions {
    * making fully offline workflows possible provided the modules have been seen before.
    */
   cache?: 'offline' | boolean;
-  /**
-   * Package to use for JSPM Core std library.
-   * 
-   * Defaults to '@jspm/core'
-   * 
-   * Any package dependency target is supported, including local folders.
-   */
-  stdlib?: string;
   /**
    * Custom provider definitions.
    * 
@@ -279,9 +271,10 @@ export interface ModuleAnalysis {
 
 export interface Install {
   target: string | InstallTarget;
+  alias?: string;
+  installSubpath?: null | `./${string}`;
   subpath?: '.' | `./${string}`;
   subpaths?: ('.' | `./${string}`)[];
-  alias?: string;
 }
 
 /**
@@ -337,14 +330,13 @@ export class Generator {
     mapUrl,
     rootUrl = undefined,
     inputMap = undefined,
-    env = ['browser', 'development', 'module'],
+    env = ['browser', 'development', 'module', 'import'],
     defaultProvider = 'jspm',
     defaultRegistry = 'npm',
     customProviders = undefined,
     providers,
     resolutions = {},
     cache = true,
-    stdlib = '@jspm/core',
     ignore = [],
     freeze,
     latest,
@@ -360,7 +352,7 @@ export class Generator {
     if (ipfsAPI)
       fetchOpts.ipfsAPI = ipfsAPI;
     const { log, logStream } = createLogger();
-    const resolver = new Resolver(log, fetchOpts, true);
+    const resolver = new Resolver(env, log, fetchOpts, true);
     if (customProviders) {
       for (const provider of Object.keys(customProviders)) {
         resolver.addCustomProvider(provider, customProviders[provider]);
@@ -409,8 +401,6 @@ export class Generator {
       mapUrl: this.mapUrl,
       rootUrl: this.rootUrl,
       baseUrl: this.baseUrl,
-      stdlib,
-      env,
       defaultProvider,
       defaultRegistry,
       providers,
@@ -633,7 +623,7 @@ export class Generator {
 
     let esms = '';
     if (esModuleShims) {
-      const { pkg: esmsPkg } = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')], unstable: false }, this.traceMap.installer.defaultProvider);
+      const esmsPkg = await this.traceMap.resolver.resolveLatestTarget({ name: 'es-module-shims', registry: 'npm', ranges: [new SemverRange('*')], unstable: false }, this.traceMap.installer.defaultProvider);
       const esmsUrl = this.traceMap.resolver.pkgToUrl(esmsPkg, this.traceMap.installer.defaultProvider) + 'dist/es-module-shims.js';
       esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${integrity ? ` integrity="${await getIntegrity(esmsUrl, this.traceMap.resolver.fetchOpts)}"` : ''}></script>${newlineTab}`;
       
@@ -748,6 +738,7 @@ export class Generator {
       }
       else {
         ({ alias, target, subpath } = install);
+        validatePkgName(alias);
       }
       await this.traceMap.add(alias, target);
       await this.traceMap.visit(alias + subpath.slice(1), { mode: 'new', toplevel: true }, this.mapUrl.href);
@@ -797,17 +788,18 @@ export class Generator {
         this.installCnt--;
         throw new JspmError(`No "imports" package entry for "${name}" to update. Note update takes package names not package specifiers.`);
       }
+      const { installUrl, installSubpath } = resolution;
       const subpaths = this.traceMap.pins.filter(pin => pin === name || pin.startsWith(name) && pin[name.length] === '/').map(pin => `.${pin.slice(name.length)}` as '.' | `./${string}`);
       // use package.json range if present
       if (primaryConstraints[name]) {
-        installs.push({ alias: name, subpaths, target: primaryConstraints[name] });
+        installs.push({ alias: name, subpaths, target: { pkgTarget: primaryConstraints[name], installSubpath } });
       }
       // otherwise synthetize a range from the current package version
       else {
-        const pkg = this.traceMap.resolver.parseUrlPkg(resolution.installUrl);
+        const pkg = this.traceMap.resolver.parseUrlPkg(installUrl);
         if (!pkg)
           throw new Error(`Unable to determine a package version lookup for ${name}. Make sure it is supported as a provider package.`);
-        const target = { registry: pkg.pkg.registry, name: pkg.pkg.name, ranges: [new SemverRange('^' + pkg.pkg.version)], unstable: false };
+        const target = { pkgTarget: { registry: pkg.pkg.registry, name: pkg.pkg.name, ranges: [new SemverRange('^' + pkg.pkg.version)], unstable: false }, installSubpath };
         installs.push({ alias: name, subpaths, target });
       }
     }
@@ -951,22 +943,22 @@ export async function fetch (url: string, opts: any = {}) {
  */
 export async function lookup (install: string | Install, { provider, cache }: LookupOptions = {}) {
   const generator = new Generator({ cache: !cache, defaultProvider: provider });
-  const { target, subpath, alias } = await installToTarget.call(generator, install, generator.traceMap.installer.defaultRegistry);
-  if (target instanceof URL)
+  const { target: { pkgTarget, installSubpath }, subpath, alias } = await installToTarget.call(generator, install, generator.traceMap.installer.defaultRegistry);
+  if (pkgTarget instanceof URL)
     throw new Error('URL lookups not supported');
-  const resolved = await generator.traceMap.resolver.resolveLatestTarget(target, generator.traceMap.installer.getProvider(target));
+  const resolved = await generator.traceMap.resolver.resolveLatestTarget(pkgTarget, generator.traceMap.installer.getProvider(pkgTarget));
   return {
     install: {
       target: {
-        registry: target.registry,
-        name: target.name,
-        range: target.ranges.map(range => range.toString()).join(' || ')
+        registry: pkgTarget.registry,
+        name: pkgTarget.name,
+        range: pkgTarget.ranges.map(range => range.toString()).join(' || ')
       },
+      installSubpath,
       subpath,
       alias
     },
-    resolved: resolved.pkg,
-    subpath: resolved.subpath
+    resolved: resolved
   };
 }
 
@@ -1053,8 +1045,8 @@ async function installToTarget (this: Generator, install: Install | string, defa
     throw new Error(`Install subpath "${install.subpath}" must be a string equal to "." or starting with "./".${typeof install.subpath === 'string' ? `\nTry setting the subpath to "./${install.subpath}"` : ''}`);
   const { alias, target, subpath } = await toPackageTarget(this.traceMap.resolver, install.target as string, this.baseUrl, defaultRegistry);
   return {
-    alias: install.alias || alias,
     target,
+    alias: install.alias || alias,
     subpath: install.subpath || subpath
   };
 }
