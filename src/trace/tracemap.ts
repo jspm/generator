@@ -205,8 +205,10 @@ export default class TraceMap {
       await this.visit(specifier, { visitor, mode: 'existing', toplevel: false }, parent, seen);
     }));
 
-    if (this.installer!.newInstalls)
-      throw new Error('Internal error: unexpected resolution divergence');
+    if (this.installer!.newInstalls) {
+      // Disabled as it obscures valid errors
+      // console.warn('Unexpected resolution divergence.');
+    }
 
     return { map, staticDeps: [...staticList] as string[], dynamicDeps: [...dynamicList] as string[] };
   }
