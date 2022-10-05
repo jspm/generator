@@ -256,7 +256,7 @@ export default class TraceMap {
 
     const parentIsCjs = this.tracedUrls[parentUrl]?.format === 'commonjs';
 
-    if (!isPlain(specifier) && !isMappableScheme(specifier)) {
+    if ((!isPlain(specifier) || specifier === '..') && !isMappableScheme(specifier)) {
       let resolvedUrl = new URL(specifier, parentUrl);
       if (!isFetchProtocol(resolvedUrl.protocol))
         throw new JspmError(`Found unexpected protocol ${resolvedUrl.protocol}${importedFrom(parentUrl)}`);
