@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        firefox: ['89.0']
+        firefox: ['107.0.1']
     steps:
       - uses: actions/checkout@v2
         with:

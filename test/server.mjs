@@ -9,7 +9,7 @@ import { spawn } from 'child_process';
 import glob from 'glob';
 import path from 'path';
 
-const port = 8080;
+const port = 5776;
 
 const rootURL = new URL("..", import.meta.url);
 
