@@ -63,3 +63,6 @@ jobs:
         ipfs daemon &
     - run: npm install
     - run: chomp test
+      env:
+        IPFS_API: /ip4/127.0.0.1/tcp/5001
+
