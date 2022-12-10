@@ -1,4 +1,3 @@
-import 'abort-controller/polyfill.js'
 import { Generator } from '@jspm/generator';
 import { addAll } from '../../lib/common/ipfs.js';
 import assert from 'assert';

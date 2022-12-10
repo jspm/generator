@@ -11,6 +11,9 @@ const tryAPIs = [
 let client, clientAPI;
 
 async function initClient (api = tryAPIs) {
+
+  // @ts-ignore
+  await import('abort-controller/polyfill.js');
   if (typeof api === 'string')
     api = [api];
   if (client && api.some(api => api === clientAPI))
