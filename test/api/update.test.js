@@ -52,5 +52,5 @@ import assert from 'assert';
   const json = generator.getMap();
 
   assert.strictEqual(json.imports.lit, 'https://ga.jspm.io/npm:lit@2.5.0/index.js');
-  assert.strictEqual(json.imports['lit/directive.js'], 'https://ga.jspm.io/npm:lit@2.4.1/directive.js');
+  assert.strictEqual(json.imports['lit/directive.js'], 'https://ga.jspm.io/npm:lit@2.5.0/directive.js');
 }
