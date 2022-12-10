@@ -1,6 +1,4 @@
 // @ts-ignore
-import { create } from 'ipfs-client';
-// @ts-ignore
 import { Buffer } from 'buffer';
 
 const tryAPIs = [
@@ -11,9 +9,13 @@ const tryAPIs = [
 let client, clientAPI;
 
 async function initClient (api = tryAPIs) {
+  if (!('AbortController' in globalThis)) {
+    const { AbortController, AbortSignal } = await import('abort-controller')
+    globalThis.AbortController = AbortController
+    globalThis.AbortSignal = AbortSignal
+  }
+  const { create } = await import('ipfs-client')
 
-  // @ts-ignore
-  await import('abort-controller/polyfill.js');
   if (typeof api === 'string')
     api = [api];
   if (client && api.some(api => api === clientAPI))
