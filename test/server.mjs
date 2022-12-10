@@ -9,7 +9,7 @@ import { spawn } from 'child_process';
 import glob from 'glob';
 import path from 'path';
 
-const port = 8080;
+const port = 5776;
 
 const rootURL = new URL("..", import.meta.url);
 
@@ -36,9 +36,9 @@ function setBrowserTimeout () {
   if (browserTimeout)
     clearTimeout(browserTimeout);
   browserTimeout = setTimeout(() => {
-    console.log('No browser requests made to server for 10s, closing.');
+    console.log('No browser requests made to server for 30s, closing.');
     process.exit(failTimeout || process.env.CI_BROWSER ? 1 : 0);
-  }, 10000);
+  }, 30000);
 }
 
 setBrowserTimeout();
@@ -99,6 +99,7 @@ http.createServer(async function (req, res) {
     fileStream = fs.createReadStream(filePath);
     await once(fileStream, 'readable');
     if (filePath.endsWith(path.sep)) {
+      console.log('404: ' + filePath);
       fileStream.close();
       res.writeHead(404, {
         'content-type': 'text/html'
@@ -109,10 +110,12 @@ http.createServer(async function (req, res) {
   }
   catch (e) {
     if (e.code === 'EISDIR') {
+      console.log('200: ' + filePath);
       res.writeHead(200, { 'content-type': 'text/plain' });
       res.end('Directory');
     }
     else if (e.code === 'ENOENT' || e.code === 'ENOTDIR') {
+      console.log('404: ' + filePath);
       res.writeHead(404, {
         'content-type': 'text/html'
       });
@@ -132,6 +135,7 @@ http.createServer(async function (req, res) {
   const headers = filePath.endsWith('content-type-none.json') ?
     {} : { 'content-type': mime, 'Cache-Control': 'no-cache' }
 
+  console.log('200: ' + filePath);
   res.writeHead(200, headers);
   fileStream.pipe(res);
   await once(fileStream, 'end');
