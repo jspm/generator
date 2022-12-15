@@ -6,6 +6,8 @@ import { pkgToStr } from "../install/package.js";
 import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 // @ts-ignore
+import type { SemverRange } from 'sver'
+// @ts-ignore
 import { fetch } from '#fetch';
 
 const cdnUrl = 'https://ga.jspm.io/';
@@ -112,7 +114,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   };
 
   if (range.isWildcard || range.isExact && range.version.tag === 'latest') {
-    let lookup = await (cache.latest || (cache.latest = lookupRange.call(this, registry, name, '', unstable, parentUrl)));
+    let lookup = await (cache.latest || (cache.latest = lookupRange.call(this, registry, name, '', range, unstable, parentUrl)));
     // Deno wat?
     if (lookup instanceof Promise)
       lookup = await lookup;
@@ -124,7 +126,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   }
   if (range.isExact && range.version.tag) {
     const tag = range.version.tag;
-    let lookup = await (cache.tags[tag] || (cache.tags[tag] = lookupRange.call(this, registry, name, tag, unstable, layer, parentUrl)));
+    let lookup = await (cache.tags[tag] || (cache.tags[tag] = lookupRange.call(this, registry, name, tag, range, unstable, layer, parentUrl)));
     // Deno wat?
     if (lookup instanceof Promise)
       lookup = await lookup;
@@ -137,7 +139,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   let stableFallback = false;
   if (range.isMajor) {
     const major = range.version.major;
-    let lookup = await (cache.majors[major] || (cache.majors[major] = lookupRange.call(this, registry, name, major, unstable, layer, parentUrl)));
+    let lookup = await (cache.majors[major] || (cache.majors[major] = lookupRange.call(this, registry, name, major, range, unstable, layer, parentUrl)));
     // Deno wat?
     if (lookup instanceof Promise)
       lookup = await lookup;
@@ -156,7 +158,7 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
   }
   if (stableFallback || range.isStable) {
     const minor = `${range.version.major}.${range.version.minor}`;
-    let lookup = await (cache.minors[minor] || (cache.minors[minor] = lookupRange.call(this, registry, name, minor, unstable, layer, parentUrl)));
+    let lookup = await (cache.minors[minor] || (cache.minors[minor] = lookupRange.call(this, registry, name, minor, range, unstable, layer, parentUrl)));
     // in theory a similar downgrade to the above can happen for stable prerelease ranges ~1.2.3-pre being downgraded to 1.2.2
     // this will be solved by the pkg@X.Y@ unstable minor lookup
     // Deno wat?
@@ -174,15 +176,23 @@ export async function resolveLatestTarget (this: Resolver, target: LatestPackage
 function pkgToLookupUrl (pkg: ExactPackage, edge = false) {
   return `${cdnUrl}${pkg.registry}:${pkg.name}${pkg.version ? '@' + pkg.version : edge ? '@' : ''}`;
 }
-async function lookupRange (this: Resolver, registry: string, name: string, range: string, unstable: boolean, parentUrl?: string): Promise<ExactPackage | null> {
+async function lookupRange (this: Resolver, registry: string, name: string, range: string, semverRange: SemverRange, unstable: boolean, parentUrl?: string): Promise<ExactPackage | null> {
   const res = await fetch(pkgToLookupUrl({ registry, name, version: range }, unstable), this.fetchOpts);
   switch (res.status) {
     case 304:
     case 200:
       return { registry, name, version: (await res.text()).trim() };
     case 404:
+      const registryLookup = await (await fetch(`https://registry.npmjs.org/${name}`, {})).json()
+      const versions = Object.keys(registryLookup.versions || {})
+      const selectedVersion = versions.find(v => semverRange.has(v))
+
+      if (selectedVersion) {
+        return { registry, name, version: range };
+      }
       return null;
     default:
       throw new JspmError(`Invalid status code ${res.status} looking up "${registry}:${name}" - ${res.statusText}${importedFrom(parentUrl)}`);
   }
 }
+
