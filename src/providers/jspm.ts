@@ -202,7 +202,7 @@ async function fetchVersions(name: string): Promise<string[]> {
   if (versionsCacheMap.has(name)) {
     return versionsCacheMap.get(name);
   }
-  const registryLookup = await (await fetch(`https://registry.npmjs.org/${name}`, {})).json();
+  const registryLookup = await (await fetch(`https://npmlookup.jspm.io/${encodeURI(name)}`)).json();
   const versions = Object.keys(registryLookup.versions || {});
   versionsCacheMap.set(name, versions);
 
