@@ -185,7 +185,7 @@ async function lookupRange (this: Resolver, registry: string, name: string, rang
     case 404:
       const versions = await fetchVersions(name)
       const semverRange = new SemverRange(range || '*', unstable)
-      const version = versions.find(v => semverRange.has(v))
+      const version = semverRange.bestMatch(versions, unstable);
 
       if (version) {
         return { registry, name, version };
