@@ -187,10 +187,7 @@ async function lookupRange (this: Resolver, registry: string, name: string, rang
       const semverRange = new SemverRange(range || '*', unstable)
       const version = semverRange.bestMatch(versions, unstable);
 
-      if (version) {
-        return { registry, name, version };
-      }
-      return null;
+      return { registry, name, version };
     default:
       throw new JspmError(`Invalid status code ${res.status} looking up "${registry}:${name}" - ${res.statusText}${importedFrom(parentUrl)}`);
   }
