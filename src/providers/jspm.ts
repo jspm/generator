@@ -184,10 +184,13 @@ async function lookupRange (this: Resolver, registry: string, name: string, rang
       return { registry, name, version: (await res.text()).trim() };
     case 404:
       const versions = await fetchVersions(name)
-      const semverRange = new SemverRange(range || '*', unstable)
+      const semverRange = new SemverRange(String(range) || '*', unstable)
       const version = semverRange.bestMatch(versions, unstable);
 
-      return { registry, name, version };
+      if (version) {
+        return { registry, name, version };
+      }
+      throw new JspmError(`Unable to resolve ${registry}:${name}@${range} to a valid version${importedFrom(parentUrl)}`);
     default:
       throw new JspmError(`Invalid status code ${res.status} looking up "${registry}:${name}" - ${res.statusText}${importedFrom(parentUrl)}`);
   }
