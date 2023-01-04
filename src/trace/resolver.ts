@@ -711,7 +711,7 @@ async function legacyMainResolve (this: Resolver, main: string | null, pkgUrl: U
     if (await this.exists(guess = new URL(`./${main}`, pkgUrl).href))
       return guess;
   }
-  if (main) {
+  else if (main) {
     if (await this.exists(guess = new URL(`./${main}/index.js`, pkgUrl).href))
       return guess;
     if (await this.exists(guess = new URL(`./${main}/index.json`, pkgUrl).href))
