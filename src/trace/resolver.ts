@@ -180,6 +180,7 @@ export class Resolver {
 
   async exists (resolvedUrl: string) {
     const res = await fetch(resolvedUrl, this.fetchOpts);
+    console.log(resolvedUrl, res)
     switch (res.status) {
       case 200:
       case 304:
@@ -705,7 +706,12 @@ export function enumeratePackageTargets (target: ExportsTarget, targets = new Se
 }
 
 async function legacyMainResolve (this: Resolver, main: string | null, pkgUrl: URL, originalSpecifier: string, parentUrl?: URL) {
+  console.trace(arguments)
   let guess: string;
+  if (main.endsWith('index.js')) {
+    if (await this.exists(guess = new URL(`./${main}`, pkgUrl).href))
+      return guess;
+  }
   if (main) {
     if (await this.exists(guess = new URL(`./${main}/index.js`, pkgUrl).href))
       return guess;
