@@ -1,6 +1,7 @@
 import * as deno from './deno.js';
 import * as jspm from './jspm.js';
 import * as skypack from './skypack.js';
+import * as esm from './esm.sh.js';
 import * as jsdelivr from './jsdelivr.js';
 import * as unpkg from './unpkg.js';
 import * as nodemodules from './nodemodules.js';
@@ -25,7 +26,8 @@ export const defaultProviders: Record<string, Provider> = {
   node,
   nodemodules,
   skypack,
-  unpkg
+  unpkg,
+  'esm.sh': esm,
 };
 
 export function getProvider (name: string, providers: Record<string, Provider> = defaultProviders) {

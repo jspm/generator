@@ -63,7 +63,7 @@ export interface GeneratorOptions {
   /**
    * The default provider to use for a new install, defaults to 'jspm'.
    * 
-   * Supports: 'jspm' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg';
+   * Supports: 'jspm' | 'jspm.system' | 'nodemodules' | 'skypack' | 'esm.sh' | 'jsdelivr' | 'unpkg';
    * 
    * Providers are responsible for resolution from abstract package names and version ranges to exact URL locations.
    * 
