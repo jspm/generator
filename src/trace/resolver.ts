@@ -706,9 +706,8 @@ export function enumeratePackageTargets (target: ExportsTarget, targets = new Se
 }
 
 async function legacyMainResolve (this: Resolver, main: string | null, pkgUrl: URL, originalSpecifier: string, parentUrl?: URL) {
-  console.trace(arguments)
   let guess: string;
-  if (main.endsWith('index.js')) {
+  if (main?.endsWith('index.js')) {
     if (await this.exists(guess = new URL(`./${main}`, pkgUrl).href))
       return guess;
   }
