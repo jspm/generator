@@ -180,7 +180,6 @@ export class Resolver {
 
   async exists (resolvedUrl: string) {
     const res = await fetch(resolvedUrl, this.fetchOpts);
-    console.log(resolvedUrl, res)
     switch (res.status) {
       case 200:
       case 304:
