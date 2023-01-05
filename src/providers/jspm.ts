@@ -6,6 +6,8 @@ import { pkgToStr } from "../install/package.js";
 import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 // @ts-ignore
+import { SemverRange } from 'sver'
+// @ts-ignore
 import { fetch } from '#fetch';
 
 const cdnUrl = 'https://ga.jspm.io/';
@@ -181,8 +183,28 @@ async function lookupRange (this: Resolver, registry: string, name: string, rang
     case 200:
       return { registry, name, version: (await res.text()).trim() };
     case 404:
-      return null;
+      const versions = await fetchVersions(name)
+      const semverRange = new SemverRange(String(range) || '*', unstable)
+      const version = semverRange.bestMatch(versions, unstable);
+
+      if (version) {
+        return { registry, name, version };
+      }
+      throw new JspmError(`Unable to resolve ${registry}:${name}@${range} to a valid version${importedFrom(parentUrl)}`);
     default:
       throw new JspmError(`Invalid status code ${res.status} looking up "${registry}:${name}" - ${res.statusText}${importedFrom(parentUrl)}`);
   }
+}
+
+const versionsCacheMap = new Map<string, string[]>()
+
+async function fetchVersions(name: string): Promise<string[]> {
+  if (versionsCacheMap.has(name)) {
+    return versionsCacheMap.get(name);
+  }
+  const registryLookup = await (await fetch(`https://npmlookup.jspm.io/${encodeURI(name)}`, {})).json();
+  const versions = Object.keys(registryLookup.versions || {});
+  versionsCacheMap.set(name, versions);
+
+  return versions;
 }
