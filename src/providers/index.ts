@@ -27,7 +27,7 @@ export const defaultProviders: Record<string, Provider> = {
   nodemodules,
   skypack,
   unpkg,
-  'esm.sh': esm,
+  'esm': esm,
 };
 
 export function getProvider (name: string, providers: Record<string, Provider> = defaultProviders) {

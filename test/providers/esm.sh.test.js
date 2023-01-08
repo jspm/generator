@@ -3,7 +3,7 @@ import assert from 'assert';
 
 const generator = new Generator({
   mapUrl: import.meta.url,
-  defaultProvider: 'esm.sh',
+  defaultProvider: 'esm',
   env: ['production', 'browser']
 });
 

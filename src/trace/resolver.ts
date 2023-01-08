@@ -88,6 +88,7 @@ export class Resolver {
   }
 
   async getPackageBase (url: string): Promise<`${string}/`> {
+    console.log('getPackageBase', url)
     const pkg = this.parseUrlPkg(url);
     if (pkg)
       return this.pkgToUrl(pkg.pkg, pkg.source);
@@ -130,6 +131,10 @@ export class Resolver {
             return;
           }
         }
+        if (pkgUrl.includes('https://esm.sh/')) {
+          this.fetchOpts.headers = Object.assign(this.fetchOpts.headers, { 'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'});
+        }
+        console.trace(`${pkgUrl}package.json`,parsed, this.fetchOpts)
         const res = await fetch(`${pkgUrl}package.json`, this.fetchOpts);
         switch (res.status) {
           case 200:
@@ -179,6 +184,7 @@ export class Resolver {
   }
 
   async exists (resolvedUrl: string) {
+    console.log(resolvedUrl)
     const res = await fetch(resolvedUrl, this.fetchOpts);
     switch (res.status) {
       case 200:
@@ -248,6 +254,7 @@ export class Resolver {
   }
 
   async finalizeResolve (url: string, parentIsCjs: boolean, installer: Installer | null, pkgUrl: `${string}/`): Promise<string> {
+    console.log(url, pkgUrl)
     if (parentIsCjs && url.endsWith('/'))
       url = url.slice(0, -1);
     // Only CJS modules do extension searching for relative resolved paths
