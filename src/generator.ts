@@ -482,7 +482,7 @@ export class Generator {
     specifier = specifier.map(specifier => specifier.replace(/\\/g, '/'));
     await this.traceMap.processInputMap;
     try {
-      await Promise.all(specifier.map(specifier => this.traceMap.visit(specifier, { mode: 'new', toplevel: true }, parentUrl || this.mapUrl.href)));
+      await Promise.all(specifier.map(specifier => this.traceMap.visit(specifier, { mode: 'new', toplevel: true }, this.baseUrl.href)));
       for (const s of specifier) {
         if (!this.traceMap.pins.includes(s))
           this.traceMap.pins.push(s);
