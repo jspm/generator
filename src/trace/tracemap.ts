@@ -63,6 +63,7 @@ export default class TraceMap {
   tracedUrls: TraceGraph = {};
   inputMap: ImportMap;
   mapUrl: URL;
+  baseUrl: URL;
   rootUrl: URL | null;
   pins: Array<string> = [];
   log: Log;
@@ -73,6 +74,7 @@ export default class TraceMap {
     this.log = log;
     this.resolver = resolver;
     this.mapUrl = opts.mapUrl;
+    this.baseUrl = opts.baseUrl;
     this.rootUrl = opts.rootUrl || null;
     this.opts = opts;
     this.inputMap = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
@@ -94,7 +96,7 @@ export default class TraceMap {
     });
   }
 
-  async visit (specifier: string, opts: VisitOpts, parentUrl: string, seen = new Set()) {
+  async visit (specifier: string, opts: VisitOpts, parentUrl = this.baseUrl.href, seen = new Set()) {
     if (!parentUrl)
       throw new Error('Internal error: expected parentUrl');
     // TODO: support ignoring prefixes?
@@ -157,7 +159,7 @@ export default class TraceMap {
     do {
       this.installer!.newInstalls = false;
       await Promise.all(modules.map(async module => {
-        await this.visit(module, { mode: 'existing', static: this.opts.static, toplevel: true }, this.mapUrl.href);
+        await this.visit(module, { mode: 'existing', static: this.opts.static, toplevel: true });
       }));
     } while (this.installer!.newInstalls);
 
@@ -197,7 +199,7 @@ export default class TraceMap {
 
     const seen = new Set();
     await Promise.all(modules.map(async module => {
-      await this.visit(module, { static: true, visitor, mode: 'existing', toplevel: true }, this.mapUrl.href, seen);
+      await this.visit(module, { static: true, visitor, mode: 'existing', toplevel: true }, this.baseUrl.href, seen);
     }));
 
     list = dynamicList;
