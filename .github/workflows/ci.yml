@@ -30,6 +30,13 @@ jobs:
         with:
           firefox-version: ${{ matrix.firefox }}
       - run: npm install
+      - name: Setup JSPM CLI
+        run: |
+          git clone https://github.com/jspm/jspm
+          cd jspm
+          chomp
+          cd ..
+          npm install file:./jspm
       - run: chomp test:browser
         env:
           CI_BROWSER: /opt/hostedtoolcache/firefox/${{ matrix.firefox }}/x64/firefox
