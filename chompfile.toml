@@ -94,21 +94,3 @@ run = '''
 target = 'test/test.html'
 deps = ['src/**/*.ts', 'dist/generator.js', 'importmap.json']
 run = 'jspm inject --html $TARGET'
-# engine = 'node'
-# run = '''
-#     import { Generator } from '@jspm/generator';
-#     import { readFile, writeFile } from 'fs/promises';
-
-#     const generator = new Generator({
-#         mapUrl: new URL('./test/test.html', import.meta.url.replace('//[', '/[')),
-#         env: ['browser', 'module', 'production']
-#     });
-
-#     await generator.traceInstall('@jspm/generator');
-#     await generator.install('node:assert');
-
-#     const html = await generator.htmlInject(await readFile(process.env.TARGET, 'utf8'), {
-#         htmlUrl: new URL(process.env.TARGET, import.meta.url.replace('//[', '/['))
-#     });
-#     await writeFile(process.env.TARGET, html);
-# '''
