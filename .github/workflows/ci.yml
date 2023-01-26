@@ -64,6 +64,13 @@ jobs:
       uses: guybedford/chomp-action@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup JSPM CLI
+      run: |
+        git clone https://github.com/jspm/jspm
+        cd jspm
+        chomp
+        cd ..
+        npm install file:./jspm
     - name: Install IPFS
       run: |
         wget https://dist.ipfs.io/go-ipfs/v0.10.0/go-ipfs_v0.10.0_linux-amd64.tar.gz
