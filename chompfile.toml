@@ -93,4 +93,4 @@ run = '''
 [[task]]
 target = 'test/test.html'
 deps = ['src/**/*.ts', 'dist/generator.js', 'importmap.json']
-run = 'jspm inject --html $TARGET'
+run = 'jspm inject $TARGET'
