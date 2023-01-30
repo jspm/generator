@@ -609,7 +609,7 @@ export class Generator {
     let modules = pins === true ? this.traceMap.pins : Array.isArray(pins) ? pins : [];
     if (trace) {
       const impts = [...new Set([...analysis.staticImports, ...analysis.dynamicImports])];
-      await Promise.all(impts.map(impt => this.traceInstall(impt)));
+      await Promise.all(impts.map(impt => this.traceInstall(impt, (htmlUrl as URL | undefined)?.href)));
       modules = [...new Set([...modules, ...impts])];
     }
 
