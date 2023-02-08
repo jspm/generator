@@ -151,7 +151,14 @@ export class Installer {
     return provider;
   }
 
-  async installTarget (pkgName: string, { pkgTarget, installSubpath }: InstallTarget, traceSubpath: `./${string}` | '.', mode: ResolutionMode, pkgScope: `${string}/` | null, parentUrl: string): Promise<InstalledResolution> {
+  async installTarget (
+    pkgName: string,
+    { pkgTarget, installSubpath }: InstallTarget,
+    traceSubpath: `./${string}` | '.',
+    mode: ResolutionMode,
+    pkgScope: `${string}/` | null,
+    parentUrl: string
+  ): Promise<InstalledResolution> {
     if (this.opts.freeze && mode === 'existing')
       throw new JspmError(`"${pkgName}" is not installed in the current map to freeze install, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
 
@@ -211,7 +218,7 @@ export class Installer {
   async install (pkgName: string, mode: ResolutionMode, pkgScope: `${string}/` | null = null, traceSubpath: `./${string}` | '.', parentUrl: string = this.installBaseUrl): Promise<string | InstalledResolution> {
     if (!this.installing)
       throwInternalError('Not installing');
-
+    
     if (this.resolutions[pkgName])
       return this.installTarget(pkgName, newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl, this.defaultRegistry, pkgName), traceSubpath, mode, pkgScope, parentUrl);
 

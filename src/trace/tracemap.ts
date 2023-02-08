@@ -13,15 +13,20 @@ import { extendConstraints, extendLock, extractLockConstraintsAndMap } from "../
 export interface TraceMapOptions extends InstallOptions {
   system?: boolean;
 
-  // do not trace dynamic imports
+  /**
+   * Whether or not to try and trace dynamic imports.
+   */
   static?: boolean;
 
-  // whether the import map is a full generic import map for the app
-  // or an exact trace for the provided entry points
-  // (currently unused)
+  /**
+   * Whether the import map is a full generic import map for the app, or an
+   * exact trace for the provided entry points. (currently unused)
+   */
   fullMap?: boolean;
 
-  // List of module specifiers to ignore during tracing
+  /**
+   * List of module specifiers to ignore during tracing.
+   */
   ignore?: string[]
 }
 
@@ -68,6 +73,11 @@ export default class TraceMap {
   pins: Array<string> = [];
   log: Log;
   resolver: Resolver;
+
+  /**
+   * Lock to ensure no races against input map processing.
+   * @type {Promise<void>}
+   */
   processInputMap: Promise<void> = Promise.resolve();
 
   constructor (opts: TraceMapOptions, log: Log, resolver: Resolver) {

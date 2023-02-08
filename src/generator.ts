@@ -1,5 +1,5 @@
 import { baseUrl as _baseUrl, relativeUrl, resolveUrl } from "./common/url.js";
-import { ExactPackage, PackageConfig, toPackageTarget, validatePkgName } from "./install/package.js";
+import { ExactPackage, PackageConfig, parseTarget, validatePkgName } from "./install/package.js";
 import TraceMap from './trace/tracemap.js';
 // @ts-ignore
 import { clearCache as clearFetchCache, fetch as _fetch } from '#fetch';
@@ -291,19 +291,26 @@ export function clearCache () {
   clearFetchCache();
 }
 
+/**
+ * Generator.
+ */
 export class Generator {
   traceMap: TraceMap;
   baseUrl: URL;
   mapUrl: URL;
   rootUrl: URL | null;
-  installCnt = 0;
   map: ImportMap;
-
   logStream: LogStream;
 
   /**
-   * @param options GeneratorOptions
-   * 
+   * The number of concurrent installs the generator is busy processing.
+   */
+  installCnt = 0;
+
+
+  /**
+   * Constructs a new Generator instance.
+   *
    * For example:
    * 
    * ```js
@@ -418,14 +425,18 @@ export class Generator {
    * Add new custom mappings and lock resolutions to the input map
    * of the generator, which are then applied in subsequent installs.
    * 
-   * @param jsonOrHtml The mappings are parsed as JSON data object or string, falling
-   * back to reading an inline import map from an HTML file.
-   * @param mapUrl An optional URL for the map to handle relative resolutions, defaults to generator mapUrl
-   * @param rootUrl An optional root URL for the map to handle root resolutions, defaults to generator rootUrl
-   * @returns The list of modules pinned by this import map or HTML
+   * @param jsonOrHtml The mappings are parsed as a JSON data object or string, falling back to reading an inline import map from an HTML file.
+   * @param mapUrl An optional URL for the map to handle relative resolutions, defaults to generator mapUrl.
+   * @param rootUrl An optional root URL for the map to handle root resolutions, defaults to generator rootUrl.
+   * @returns The list of modules pinned by this import map or HTML.
    * 
    */
-  async addMappings (jsonOrHtml: string | IImportMap, mapUrl: string | URL = this.mapUrl, rootUrl: string | URL = this.rootUrl, preloads?: string[]): Promise<string[]> {
+  async addMappings (
+    jsonOrHtml: string | IImportMap,
+    mapUrl: string | URL = this.mapUrl,
+    rootUrl: string | URL = this.rootUrl,
+    preloads?: string[]
+  ): Promise<string[]> {
     if (typeof mapUrl === 'string')
       mapUrl = new URL(mapUrl, this.baseUrl);
     if (typeof rootUrl === 'string')
@@ -434,11 +445,14 @@ export class Generator {
     if (typeof jsonOrHtml === 'string') {
       try {
         jsonOrHtml = JSON.parse(jsonOrHtml) as IImportMap;
-      }
-      catch {
+      } catch {
         const analysis = analyzeHtml(jsonOrHtml as string, mapUrl);
         jsonOrHtml = (analysis.map.json || {}) as IImportMap;
-        preloads = (preloads || []).concat(analysis.preloads.map(preload => preload.attrs.href?.value).filter(x => x));
+        preloads = (preloads || []).concat(
+          analysis.preloads.map(
+            preload => preload.attrs.href?.value
+          ).filter(x => x)
+        );
         htmlModules = [...new Set([...analysis.staticImports, ...analysis.dynamicImports])];
       }
     }
@@ -688,7 +702,8 @@ export class Generator {
 
   /**
    * Install a package target into the import map, including all its dependency resolutions via tracing.
-   * @param install Package to install
+   *
+   * @param install Package or list of packages to install into the import map.
    * 
    * For example:
    * 
@@ -709,13 +724,16 @@ export class Generator {
    * // The package.json is used to determine the exports and dependencies.
    * await generator.install({ alias: 'mypkg', target: './packages/local-pkg', subpath: './feature' });
    * ```
-   * 
    */
   async install (install: string | Install | (string | Install)[]): Promise<void | { staticDeps: string[], dynamicDeps: string[] }> {
-    if (Array.isArray(install))
-      return await Promise.all(install.map(install => this.install(install))).then(installs => installs.find(i => i));
     if (arguments.length !== 1)
       throw new Error('Install takes a single target string or object.');
+
+    // Split the case of multiple install targets:
+    if (Array.isArray(install))
+      return await Promise.all(install.map(install => this.install(install))).then(installs => installs.find(i => i));
+
+    // Split the case of multiple install subpaths:
     if (typeof install !== 'string' && install.subpaths !== undefined) {
       install.subpaths.every(subpath => {
         if (typeof subpath !== 'string' || (subpath !== '.' && !subpath.startsWith('./')))
@@ -727,10 +745,12 @@ export class Generator {
         subpath
       }))).then(installs => installs.find(i => i));
     }
+
+    // Handle case of a single install target with at most one subpath:
     let error = false;
     if (this.installCnt++ === 0)
       this.traceMap.startInstall();
-    await this.traceMap.processInputMap;
+    await this.traceMap.processInputMap; // don't race input processing
     try {
       let alias, target, subpath;
       if (typeof install === 'string' || typeof install.target === 'string') {
@@ -1043,7 +1063,8 @@ async function installToTarget (this: Generator, install: Install | string, defa
     throw new Error('All installs require a "target" string.');
   if (install.subpath !== undefined && (typeof install.subpath !== 'string' || (install.subpath !== '.' && !install.subpath.startsWith('./'))))
     throw new Error(`Install subpath "${install.subpath}" must be a string equal to "." or starting with "./".${typeof install.subpath === 'string' ? `\nTry setting the subpath to "./${install.subpath}"` : ''}`);
-  const { alias, target, subpath } = await toPackageTarget(this.traceMap.resolver, install.target as string, this.baseUrl, defaultRegistry);
+
+  const { alias, target, subpath } = await parseTarget(this.traceMap.resolver, install.target as string, this.baseUrl, defaultRegistry);
   return {
     target,
     alias: install.alias || alias,

@@ -9,15 +9,25 @@ import { InstallTarget } from "./installer.js";
 import { Resolver } from "../trace/resolver.js";
 import { builtinSchemes } from "../providers/index.js";
 
-export interface ExactPackage {
-  registry: string;
-  name: string;
-  version: string;
-}
-
+/**
+ * ExportsTarget defines specifier mappings for the public entry points of a 
+ * package, with support for conditionals.
+ *   see https://nodejs.org/dist/latest-v19.x/docs/api/packages.html#exports
+ */
 export type ExportsTarget = '.' | `./${string}` | null | { [condition: string]: ExportsTarget } | ExportsTarget[];
+
+
+/**
+ * ImportsTarget defines private specifier mappings that apply only to the
+ * internal imports of a package, with support for conditionals.
+ *   see https://nodejs.org/dist/latest-v19.x/docs/api/packages.html#imports
+ */
 export type ImportsTarget = string | null | { [condition: string]: ExportsTarget } | ExportsTarget[];
 
+/**
+ * PackageConfig is a parsed version of a package's package.json file.
+ *   see https://nodejs.org/dist/latest-v19.x/docs/api/packages.html
+ */
 export interface PackageConfig {
   registry?: string;
   name?: string;
@@ -35,6 +45,20 @@ export interface PackageConfig {
   devDependencies?: Record<string, string>;
 }
 
+/**
+ * ExactPackage pins down an exact version of a package on an external registry,
+ * such as npm or deno.
+ */
+export interface ExactPackage {
+  registry: string;
+  name: string;
+  version: string;
+}
+
+/**
+ * PackageTarget pins down a particular version range of a package on an
+ * external registry, such as npm or deno.
+ */
 export interface PackageTarget {
   registry: string;
   name: string;
@@ -42,6 +66,10 @@ export interface PackageTarget {
   unstable: boolean;
 }
 
+/**
+ * LatestPackageTarget pins down the latest version of a package on an external
+ * registry, such as npm or deno.
+ */
 export interface LatestPackageTarget {
   registry: string;
   name: string;
@@ -100,14 +128,13 @@ export function isPackageTarget (targetStr: string): boolean {
   return true;
 }
 
-export async function toPackageTarget (resolver: Resolver, targetStr: string, parentPkgUrl: URL, defaultRegistry: string): Promise<{ target: InstallTarget, alias: string, subpath: '.' | `./${string}` }> {
-  const urlTarget = await parseUrlOrBuiltinTarget(resolver, targetStr,  parentPkgUrl);
+export async function parseTarget (resolver: Resolver, targetStr: string, parentPkgUrl: URL, defaultRegistry: string): Promise<{ target: InstallTarget, alias: string, subpath: '.' | `./${string}` }> {
+  const urlTarget = await parseUrlOrBuiltinTarget(resolver, targetStr, parentPkgUrl);
   if (urlTarget)
     return urlTarget;
 
-  const registryIndex = targetStr.indexOf(':');
-
   // TODO: package aliases support as per https://github.com/npm/rfcs/blob/latest/implemented/0001-package-aliases.md
+  const registryIndex = targetStr.indexOf(':');
   const versionOrScopeIndex = targetStr.indexOf('@');
   if (targetStr.indexOf(':') !== -1 && versionOrScopeIndex !== -1 && versionOrScopeIndex < registryIndex)
     throw new Error(`Package aliases not yet supported. PRs welcome.`);
@@ -182,12 +209,25 @@ export function pkgToStr (pkg: ExactPackage) {
   return `${pkg.registry ? pkg.registry + ':' : ''}${pkg.name}${pkg.version ? '@' + pkg.version : ''}`;
 }
 
+/**
+ * Throws unless the given specifier is a valid npm-style package specifier.
+ *
+ * @param {string} specifier Specifier to validate.
+ */
 export function validatePkgName (specifier: string) {
   const parsed = parsePkg(specifier);
   if (!parsed || parsed.subpath !== '.')
     throw new Error(`"${specifier}" is not a valid npm-style package name. Subpaths must be provided separately to the installation package name.`);
 }
 
+/**
+ * Parses an npm-style package specifier, such as '@jspm/generator/index.js',
+ * and splits it into the package name ('@jspm/generator') and subpath
+ * ('./index.js'). Returns undefined if the given specifier is invalid.
+ *
+ * @param {string} specifier Specifier to parse.
+ * @returns {{ pkgName: string, subpath: '.' | `./${string}` } | undefined}
+ */
 export function parsePkg (specifier: string): { pkgName: string, subpath: '.' | `./${string}` } | undefined {
   let sepIndex = specifier.indexOf('/');
   if (specifier[0] === '@') {
@@ -199,13 +239,3 @@ export function parsePkg (specifier: string): { pkgName: string, subpath: '.' | 
     return { pkgName: specifier, subpath: '.' };
   return { pkgName: specifier.slice(0, sepIndex), subpath: `.${specifier.slice(sepIndex)}` as '.' | `./${string}` };
 }
-
-// export function getPackageName (specifier: string, parentUrl: string) {
-//   let sepIndex = specifier.indexOf('/');
-//   if (specifier[0] === '@') {
-//     if (sepIndex === -1)
-//       throw new Error(`${specifier} is not an invalid scope name${importedFrom(parentUrl)}.`);
-//     sepIndex = specifier.indexOf('/', sepIndex + 1);
-//   }
-//   return sepIndex === -1 ? specifier : specifier.slice(0, sepIndex);
-// }
