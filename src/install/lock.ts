@@ -256,14 +256,18 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
       const pkgUrl = parsedTarget ? resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source) : await resolver.getPackageBase(targetUrl);
       const subpath = '.' + targetUrl.slice(pkgUrl.length - 1) as '.' | `./{string}`;
       pkgUrls.add(pkgUrl);
-      const exportSubpath = parsedTarget && await resolver.getExportResolution(pkgUrl, subpath, key);
-      if (exportSubpath) {
+      const exportSubpath = await resolver.getExportResolution(pkgUrl, subpath, key);
+
+      // If the plain specifier resolves to a package on some provider's CDN, 
+      // and we can find a suitable export for the module, then we can lock 
+      // the package down to an exact version:
+      if (parsedTarget && exportSubpath) {
         // Imports resolutions that resolve as expected can be skipped
         if (key[0] === '#')
           continue;
         // If there is no constraint, make one as the semver major on the current version
         if (!constraints.primary[parsedKey.pkgName])
-          constraints.primary[parsedKey.pkgName] = parsedTarget ? packageTargetFromExact(parsedTarget.pkg) : pkgUrl;
+          constraints.primary[parsedKey.pkgName] = packageTargetFromExact(parsedTarget.pkg);
 
         // In the case of subpaths having diverging versions, we force convergence on one version
         // Only scopes permit unpacking
@@ -286,7 +290,16 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
           continue;
         }
       }
+
+      // Otherwise if the plain specifier is a reference to the base package
+      // containing the import map, we can safely ignore it, as the tracemap
+      // will always resolve such imports correctly at the top-level:
+      const pcfg = await resolver.getPackageConfig(pkgUrl);
+      if (pcfg && pcfg.name === parsedKey.pkgName) {
+        continue;
+      }
     }
+
     // Fallback -> Custom import with normalization
     maps.imports[isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl)] = resolveUrl(map.imports[key], mapUrl, rootUrl);
   }

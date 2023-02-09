@@ -834,8 +834,9 @@ export class Generator {
   async uninstall (names: string | string[]) {
     if (typeof names === 'string')
       names = [names];
-    if (this.installCnt++ === 0)
+    if (this.installCnt++ === 0) {
       this.traceMap.startInstall();
+    }
     await this.traceMap.processInputMap;
     let pins = this.traceMap.pins;
     const unusedNames = new Set([...names]);
