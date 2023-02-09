@@ -118,8 +118,6 @@ export function setConstraint (constraints: VersionConstraints, name: string, ta
 }
 
 export function setResolution (resolutions: LockResolutions, name: string, installUrl: `${string}/`, pkgScope: `${string}/` | null = null, installSubpath: `./${string}` | null = null) {
-  if (installSubpath === './std')
-    throw new Error('NEIN');
   if (pkgScope && !pkgScope.endsWith('/'))
     throwInternalError(pkgScope);
   if (pkgScope === null) {

@@ -80,10 +80,6 @@ export async function resolveLatestTarget (target: LatestPackageTarget, layer: s
   }, layer, parentUrl);
 }
 
-// export function parsePkg (pkg: string): { pkg: ExactPackage, subpath: null | `.${string}` } {
-
-// }
-
 export function parseUrlPkg (url: string): ExactPackage | undefined {
   if (!url.startsWith('node:'))
     return;

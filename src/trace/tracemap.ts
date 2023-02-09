@@ -106,6 +106,14 @@ export default class TraceMap {
     });
   }
 
+  /**
+   * Resolves, analyses and recursively visits the given module specifier and all of its dependencies.
+   *
+   * @param {string} specifier Module specifier to visit.
+   * @param {VisitOpts} opts Visitor configuration.
+   * @param {} parentUrl URL of the parent context for the specifier.
+   * @param {} seen Cache for optimisation.
+   */
   async visit (specifier: string, opts: VisitOpts, parentUrl = this.baseUrl.href, seen = new Set()) {
     if (!parentUrl)
       throw new Error('Internal error: expected parentUrl');
