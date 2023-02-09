@@ -1,6 +1,7 @@
 {
   "name": "localpkg",
   "exports": {
+    ".": "./index.js",
     "./custom": "./a.js",
     "./withdep": "./b.js",
     "./withdep2": "./c.js",

@@ -1,6 +1,10 @@
 import { Generator } from '@jspm/generator';
 import assert from 'assert';
 
+// TODO(bubblyworld): This test should be failing, as the current version of
+// @jspm/generator is >1.0.0 and therefore local source files should not be
+// linked by the generator here.
+
 const generator = new Generator({
   mapUrl: import.meta.url,
   env: ['source']
