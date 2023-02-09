@@ -1,4 +1,3 @@
-import { throwInternalError } from "../common/err.js";
 import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
 import { LatestPackageTarget } from "../install/package.js";

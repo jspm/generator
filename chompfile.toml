@@ -6,8 +6,8 @@ default-task = 'build'
 
 [[task]]
 target = 'docs'
-deps = ['src/**/*.ts']
-run = 'typedoc src/generator.ts'
+deps = ['src/*.ts', 'src/**/*.ts']
+run = 'typedoc src/*.ts src/**/*.ts'
 
 [[task]]
 name = 'build'
