@@ -151,6 +151,17 @@ export class Installer {
     return provider;
   }
 
+  /**
+   * Installs the given installation target.
+   *
+   * @param {string} pkgName Name of the package being installed.
+   * @param {InstallTarget} target The installation target being installed.
+   * @param {`./${string}` | '.'} traceSubpath
+   * @param {ResolutionMode} mode Specifies how to interact with existing installs.
+   * @param {`${string}/` | null} pkgScope URL of the package scope in which this install is occurring, null if it's a top-level install.
+   * @param {string} parentUrl URL of the parent for this install.
+   * @returns {Promise<InstalledResolution>}
+   */
   async installTarget (
     pkgName: string,
     { pkgTarget, installSubpath }: InstallTarget,
@@ -162,7 +173,7 @@ export class Installer {
     if (this.opts.freeze && mode === 'existing')
       throw new JspmError(`"${pkgName}" is not installed in the current map to freeze install, imported from ${parentUrl}.`, 'ERR_NOT_INSTALLED');
 
-    // resolutions are authoritative at the top-level
+    // Resolutions are always authoritative, and override the existing target:
     if (this.resolutions[pkgName]) {
       const resolutionTarget = newPackageTarget(this.resolutions[pkgName], this.opts.baseUrl, this.defaultRegistry, pkgName);
       resolutionTarget.installSubpath = installSubpath;
@@ -215,6 +226,16 @@ export class Installer {
     return { installUrl: pkgUrl, installSubpath };
   }
 
+  /**
+   * Installs the given package specifier.
+   *
+   * @param {string} pkgName The package specifier being installed.
+   * @param {ResolutionMode} mode Specifies how to interact with existing installs.
+   * @param {`${string}/` | null} pkgScope URL of the package scope in which this install is occurring, null if it's a top-level install.
+   * @param {`./${string}` | '.'} traceSubpath
+   * @param {string} parentUrl URL of the parent for this install.
+   * @returns {Promise<string | InstalledResolution>}
+   */
   async install (pkgName: string, mode: ResolutionMode, pkgScope: `${string}/` | null = null, traceSubpath: `./${string}` | '.', parentUrl: string = this.installBaseUrl): Promise<string | InstalledResolution> {
     if (!this.installing)
       throwInternalError('Not installing');

@@ -448,6 +448,7 @@ export class Resolver {
     const env = cjsEnv ? this.cjsEnv : this.env;
     const pcfg = await this.getPackageConfig(pkgUrl) || {};
 
+    // If the package has no exports then we resolve against "node:@empty":
     if (typeof pcfg.exports === 'object' && pcfg.exports !== null && Object.keys(pcfg.exports).length === 0) {
       const stdlibTarget = { registry: 'npm', name: '@jspm/core', ranges: [new SemverRange('*')], unstable: true };
       const provider = installer.getProvider(stdlibTarget);

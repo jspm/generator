@@ -1,13 +1,18 @@
 {
   "name": "localpkg",
   "exports": {
+    ".": "./index.js",
     "./custom": "./a.js",
     "./withdep": "./b.js",
     "./withdep2": "./c.js",
     "./remotedep": "./d.js",
     "./cjs": "./e.cjs",
     "./jquery": "./jquery.js",
-    "./json": "./json.ts"
+    "./json": "./json.ts",
+    "./conditional": {
+      "development": "./a.js",
+      "production": "./b.js"
+    }
   },
   "imports": {
     "#cjsdep": "./f.cjs"

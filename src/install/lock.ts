@@ -118,8 +118,6 @@ export function setConstraint (constraints: VersionConstraints, name: string, ta
 }
 
 export function setResolution (resolutions: LockResolutions, name: string, installUrl: `${string}/`, pkgScope: `${string}/` | null = null, installSubpath: `./${string}` | null = null) {
-  if (installSubpath === './std')
-    throw new Error('NEIN');
   if (pkgScope && !pkgScope.endsWith('/'))
     throwInternalError(pkgScope);
   if (pkgScope === null) {
@@ -256,16 +254,22 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
       const targetUrl = resolveUrl(map.imports[key], mapUrl, rootUrl);
       const parsedTarget = resolver.parseUrlPkg(targetUrl);
       const pkgUrl = parsedTarget ? resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source) : await resolver.getPackageBase(targetUrl);
-      const subpath = '.' + targetUrl.slice(pkgUrl.length - 1) as '.' | `./{string}`;
+      const targetSubpath = '.' + targetUrl.slice(pkgUrl.length - 1) as '.' | `./{string}`;
+      const exportSubpath = parsedTarget && await resolver.getExportResolution(pkgUrl, targetSubpath, key);
       pkgUrls.add(pkgUrl);
-      const exportSubpath = parsedTarget && await resolver.getExportResolution(pkgUrl, subpath, key);
-      if (exportSubpath) {
+
+      // If the plain specifier resolves to a package on some provider's CDN, 
+      // and there's a corresponding export in that package's pjson, then the
+      // generator can handle this case, provided we lock the package version
+      // to match:
+      if (parsedTarget && exportSubpath) {
         // Imports resolutions that resolve as expected can be skipped
         if (key[0] === '#')
           continue;
+
         // If there is no constraint, make one as the semver major on the current version
         if (!constraints.primary[parsedKey.pkgName])
-          constraints.primary[parsedKey.pkgName] = parsedTarget ? packageTargetFromExact(parsedTarget.pkg) : pkgUrl;
+          constraints.primary[parsedKey.pkgName] = packageTargetFromExact(parsedTarget.pkg);
 
         // In the case of subpaths having diverging versions, we force convergence on one version
         // Only scopes permit unpacking
@@ -276,11 +280,10 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
           }
           else if (exportSubpath === '.') {
             installSubpath = false;
-            // throw new Error('CASE B');
           }
-          else {
-            if (exportSubpath.endsWith(parsedKey.subpath.slice(1)))
-              installSubpath = exportSubpath.slice(0, parsedKey.subpath.length) as `./${string}/`;
+          else if (exportSubpath.endsWith(parsedKey.subpath.slice(1))) {
+            // TODO(bubblyworld): Test this, think we're using slice wrong:
+            installSubpath = exportSubpath.slice(0, parsedKey.subpath.length) as `./${string}/`;
           }
         }
         if (installSubpath !== false) {
@@ -288,8 +291,22 @@ export async function extractLockConstraintsAndMap (map: IImportMap, preloadUrls
           continue;
         }
       }
+
+      // Another possibility is that the bare specifier is a remapping for the
+      // primary package's own-name, in which case we should check whether
+      // there's a corresponding export in the primary pjson:
+      if (primaryPcfg && primaryPcfg.name === parsedKey.pkgName) {
+        const exportSubpath = await resolver.getExportResolution(primaryBase, targetSubpath, key);
+
+        // If the export subpath matches the key's subpath, then the generator
+        // can handle this case:
+        if (parsedKey.subpath === exportSubpath)
+          continue;
+      }
     }
-    // Fallback -> Custom import with normalization
+
+    // Fallback - the generator doesn't know how to resolve this bare specifier,
+    // so we need to record it as a custom import override:
     maps.imports[isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl)] = resolveUrl(map.imports[key], mapUrl, rootUrl);
   }
 
