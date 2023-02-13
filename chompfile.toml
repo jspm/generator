@@ -1,13 +1,8 @@
 version = 0.1
 
-extensions = ['chomp@0.1:swc', 'chomp@0.1:rollup']
+extensions = ['chomp@0.1:swc', 'chomp@0.1:rollup', 'chomp@0.1:prettier']
 
 default-task = 'build'
-
-[[task]]
-target = 'docs'
-deps = ['src/*.ts', 'src/**/*.ts']
-run = 'typedoc src/*.ts src/**/*.ts'
 
 [[task]]
 name = 'build'
@@ -108,3 +103,16 @@ run = '''
     });
     await writeFile(process.env.TARGET, html);
 '''
+
+[[task]]
+target = 'docs'
+deps = ['src/*.ts', 'src/**/*.ts']
+run = 'typedoc src/*.ts src/**/*.ts'
+
+[[task]]
+name = 'prettier'
+template = 'prettier'
+deps = ['src/**/*', 'src/*', 'test/**/*', 'test/*']
+[task.template-options]
+files = 'src/**/* src/* test/**/* test/*'
+loglevel = 'warn'

@@ -2,41 +2,37 @@
 // restrict in-flight fetches to a pool of 100
 let p = [];
 let c = 0;
-function pushFetchPool () {
-  if (++c > 100)
-    return new Promise(r => p.push(r));
+function pushFetchPool() {
+  if (++c > 100) return new Promise((r) => p.push(r));
 }
-function popFetchPool () {
+function popFetchPool() {
   c--;
-  if (p.length)
-    p.shift()();
+  if (p.length) p.shift()();
 }
 
-export async function fetch (url, opts) {
+export async function fetch(url, opts) {
   const poolQueue = pushFetchPool();
   if (poolQueue) await poolQueue;
   try {
     return await globalThis.fetch(url, opts);
-  }
-  catch (e) {
+  } catch (e) {
     // CORS errors throw a fetch type error
     // Instead, treat this as an actual unauthorized response
     if (e instanceof TypeError) {
       return {
         status: 401,
-        async text () {
-          return '';
+        async text() {
+          return "";
         },
-        async json () {
-          throw new Error('Not JSON');
+        async json() {
+          throw new Error("Not JSON");
         },
-        arrayBuffer () {
+        arrayBuffer() {
           return new ArrayBuffer(0);
-        }
+        },
       };
     }
-  }
-  finally {
+  } finally {
     popFetchPool();
   }
 }

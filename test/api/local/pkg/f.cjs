@@ -1,4 +1,4 @@
-module.exports = 'f';
+module.exports = "f";
 (function () {
-  require('./a.js');
+  require("./a.js");
 })();

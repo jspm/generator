@@ -1,1 +1,1 @@
-export var dep: string = 'dep';
+export var dep: string = "dep";

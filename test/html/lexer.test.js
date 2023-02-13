@@ -1,7 +1,7 @@
-import assert from 'assert';
-import { parseHtml } from '../../lib/html/lexer.js';
+import assert from "assert";
+import { parseHtml } from "../../lib/html/lexer.js";
 
-console.group('Simple script');
+console.group("Simple script");
 {
   const source = `
     <script type="module">test</script>
@@ -23,7 +23,7 @@ console.group('Simple script');
 }
 console.groupEnd();
 
-console.group('Edge cases');
+console.group("Edge cases");
 {
   const source = `
     <!-- <script>
@@ -54,23 +54,23 @@ console.group('Edge cases');
   assert.strictEqual(scripts[1].attributes.length, 1);
   let attr = scripts[1].attributes[0];
   assert.strictEqual(source.slice(attr.nameStart, attr.nameEnd), 'ta"');
-  assert.strictEqual(source.slice(attr.valueStart, attr.valueEnd), '===\'s\'\\');
+  assert.strictEqual(source.slice(attr.valueStart, attr.valueEnd), "==='s'\\");
   assert.strictEqual(scripts[1].innerStart, 195);
   assert.strictEqual(scripts[1].innerEnd, 227);
   assert.strictEqual(scripts[1].start, 172);
   assert.strictEqual(scripts[1].end, 236);
   assert.strictEqual(scripts[2].attributes.length, 3);
   attr = scripts[2].attributes[0];
-  assert.strictEqual(source.slice(attr.nameStart, attr.nameEnd), '<!--');
+  assert.strictEqual(source.slice(attr.nameStart, attr.nameEnd), "<!--");
   assert.strictEqual(attr.valueStart, -1);
   assert.strictEqual(attr.valueEnd, -1);
   attr = scripts[2].attributes[1];
-  assert.strictEqual(source.slice(attr.nameStart, attr.nameEnd), '<p');
+  assert.strictEqual(source.slice(attr.nameStart, attr.nameEnd), "<p");
   assert.strictEqual(attr.valueStart, -1);
   assert.strictEqual(attr.valueEnd, -1);
   attr = scripts[2].attributes[2];
-  assert.strictEqual(source.slice(attr.nameStart, attr.nameEnd), 'type');
-  assert.strictEqual(source.slice(attr.valueStart, attr.valueEnd), 'module');
+  assert.strictEqual(source.slice(attr.nameStart, attr.nameEnd), "type");
+  assert.strictEqual(source.slice(attr.valueStart, attr.valueEnd), "module");
   assert.strictEqual(scripts[2].innerStart, 276);
   assert.strictEqual(scripts[2].innerEnd, 331);
   assert.strictEqual(scripts[2].start, 246);

@@ -1,38 +1,36 @@
 // @ts-ignore
-import { Buffer } from 'buffer';
+import { Buffer } from "buffer";
 
-const tryAPIs = [
-  '/ip4/127.0.0.1/tcp/45005/http',
-  '/ip4/127.0.0.1/tcp/5001'
-];
+const tryAPIs = ["/ip4/127.0.0.1/tcp/45005/http", "/ip4/127.0.0.1/tcp/5001"];
 
 let client, clientAPI;
 
-async function initClient (api = tryAPIs) {
-  if (!('AbortController' in globalThis)) {
-    const { AbortController, AbortSignal } = await import('abort-controller')
-    globalThis.AbortController = AbortController
-    globalThis.AbortSignal = AbortSignal
+async function initClient(api = tryAPIs) {
+  if (!("AbortController" in globalThis)) {
+    const { AbortController, AbortSignal } = await import("abort-controller");
+    globalThis.AbortController = AbortController;
+    globalThis.AbortSignal = AbortSignal;
   }
-  const { create } = await import('ipfs-client')
+  const { create } = await import("ipfs-client");
 
-  if (typeof api === 'string')
-    api = [api];
-  if (client && api.some(api => api === clientAPI))
-    return;
+  if (typeof api === "string") api = [api];
+  if (client && api.some((api) => api === clientAPI)) return;
   for (const http of api) {
     client = create({ http });
     try {
       await client.repo.version();
       clientAPI = http;
       return;
-    }
-    catch {}
+    } catch {}
   }
-  throw new Error(`Unable to contact IPFS API at ${api.join(', ')}. Make sure an IPFS node is running with the API enabled. Set the ipfsAPI option to customize the API address.`);
+  throw new Error(
+    `Unable to contact IPFS API at ${api.join(
+      ", "
+    )}. Make sure an IPFS node is running with the API enabled. Set the ipfsAPI option to customize the API address.`
+  );
 }
 
-export async function get (id, api) {
+export async function get(id, api) {
   await initClient(api);
 
   const chunks = [];
@@ -41,18 +39,15 @@ export async function get (id, api) {
     for await (const chunk of client.cat(id)) {
       chunks.push(chunk);
     }
-  }
-  catch (e) {
-    if (e.message.includes('node is a directory'))
-      return null;
-    if (e.message.includes('no link named'))
-      return undefined;
+  } catch (e) {
+    if (e.message.includes("node is a directory")) return null;
+    if (e.message.includes("no link named")) return undefined;
     throw e;
   }
   return Buffer.concat(chunks);
 }
 
-export async function ls (cid, api) {
+export async function ls(cid, api) {
   await initClient(api);
 
   const result = await client.ls(cid);
@@ -64,17 +59,20 @@ export async function ls (cid, api) {
   return files;
 }
 
-export async function add (content, api) {
+export async function add(content, api) {
   await initClient(api);
-  
+
   const result = await client.add(content, { cidVersion: 1 });
   return result.cid.toString();
 }
 
-export async function addAll (files, api) {
+export async function addAll(files, api) {
   await initClient(api);
-  
-  const result = await client.addAll(files, { wrapWithDirectory: true, cidVersion: 1 });
+
+  const result = await client.addAll(files, {
+    wrapWithDirectory: true,
+    cidVersion: 1,
+  });
   let lastCid;
   for await (const item of result) {
     lastCid = item.cid;

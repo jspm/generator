@@ -1,2 +1,1 @@
-import 'dep';
-
+import "dep";
