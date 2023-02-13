@@ -44,7 +44,9 @@
     "es-module-lexer": "^1.1.1",
     "ipfs-client": "^0.9.2",
     "make-fetch-happen": "^8.0.14",
-    "sver": "^1.8.3"
+    "rimraf": "^4.1.2",
+    "sver": "^1.8.3",
+    "vscode": "^1.1.37"
   },
   "devDependencies": {
     "@swc/cli": "^0.1.61",
