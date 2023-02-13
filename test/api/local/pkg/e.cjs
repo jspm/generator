@@ -1,2 +1,2 @@
-require('#cjsdep');
-import('#cjsdep');
+require("#cjsdep");
+import("#cjsdep");

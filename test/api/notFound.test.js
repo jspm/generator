@@ -21,7 +21,10 @@ const generator = new Generator({
 
 try {
   await generator.install("react@24");
-  assert.fail("react@24 is released")
+  assert.fail("react@24 is released");
 } catch (e) {
-  assert.strictEqual(e.message, "Unable to resolve npm:react@24 to a valid version imported from default");
+  assert.strictEqual(
+    e.message,
+    "Unable to resolve npm:react@24 to a valid version imported from default"
+  );
 }

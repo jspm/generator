@@ -1,14 +1,14 @@
-import { Generator } from '@jspm/generator';
-import assert from 'assert';
+import { Generator } from "@jspm/generator";
+import assert from "assert";
 
 const generator = new Generator({
-  mapUrl: new URL('./local/pkg/asdf', import.meta.url),
-  defaultProvider: 'jspm',
-  env: ['production', 'browser']
+  mapUrl: new URL("./local/pkg/asdf", import.meta.url),
+  defaultProvider: "jspm",
+  env: ["production", "browser"],
 });
 
-await generator.traceInstall('localpkg/jquery');
+await generator.traceInstall("localpkg/jquery");
 const json = generator.getMap();
 
-assert.ok(json.imports['localpkg/jquery']);
-assert.ok(json.scopes['./'].jquery.includes('@2'));
+assert.ok(json.imports["localpkg/jquery"]);
+assert.ok(json.scopes["./"].jquery.includes("@2"));

@@ -1,2 +1,2 @@
-import './dep.ts';
+import "./dep.ts";
 export var p: number = 5;

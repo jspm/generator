@@ -1,13 +1,13 @@
-import { Generator } from '@jspm/generator';
-import assert from 'assert';
+import { Generator } from "@jspm/generator";
+import assert from "assert";
 
 const generator = new Generator({
   mapUrl: import.meta.url,
-  defaultProvider: 'nodemodules'
+  defaultProvider: "nodemodules",
 });
 
-await generator.install('./legacypkg');
+await generator.install("./legacypkg");
 
 const json = generator.getMap();
 
-assert.strictEqual(json.imports['legacypkg'], './legacypkg/m/index.js');
+assert.strictEqual(json.imports["legacypkg"], "./legacypkg/m/index.js");
