@@ -177,7 +177,7 @@ export function setResolution(
   }
 }
 
-export function extendLock(
+export function mergeLocks(
   resolutions: LockResolutions,
   newResolutions: LockResolutions
 ) {
@@ -199,7 +199,7 @@ export function extendLock(
   }
 }
 
-export function extendConstraints(
+export function mergeConstraints(
   constraints: VersionConstraints,
   newConstraints: VersionConstraints
 ) {
@@ -348,7 +348,7 @@ export async function extractLockConstraintsAndMap(
   defaultRegistry: string,
   resolver: Resolver
 ): Promise<{
-  lock: LockResolutions;
+  locks: LockResolutions;
   constraints: VersionConstraints;
   maps: IImportMap;
 }> {
@@ -555,5 +555,5 @@ export async function extractLockConstraintsAndMap(
   //   }
   // }
 
-  return { lock, constraints, maps };
+  return { locks: lock, constraints, maps };
 }

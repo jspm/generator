@@ -10,7 +10,7 @@ if (typeof document === "undefined") {
   await generator.install("chalk");
 
   const json = generator.getMap();
-
   assert.equal(Object.keys(json.imports).length, 5);
+  console.log(json)
   assert.equal(Object.keys(json.scopes["../../node_modules/"]).length, 4);
 }

@@ -23,8 +23,8 @@ import {
 import { isBuiltinScheme, isMappableScheme, Resolver } from "./resolver.js";
 import { Log } from "../common/log.js";
 import {
-  extendConstraints,
-  extendLock,
+  mergeConstraints,
+  mergeLocks,
   extractLockConstraintsAndMap,
 } from "../install/lock.js";
 
@@ -146,7 +146,7 @@ export default class TraceMap {
       for (const pin of pins) {
         if (!this.pins.includes(pin)) this.pins.push(pin);
       }
-      const { maps, lock, constraints } = await extractLockConstraintsAndMap(
+      const { maps, locks, constraints } = await extractLockConstraintsAndMap(
         inMap,
         preloads,
         mapUrl,
@@ -155,8 +155,8 @@ export default class TraceMap {
         this.resolver
       );
       this.inputMap.extend(maps);
-      extendLock(this.installer.installs, lock);
-      extendConstraints(this.installer.constraints, constraints);
+      mergeLocks(this.installer.installs, locks);
+      mergeConstraints(this.installer.constraints, constraints);
     }));
   }
 
