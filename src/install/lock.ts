@@ -15,12 +15,6 @@ import sver from "sver";
 import { getPackageConfig } from "../generator.js";
 const { Semver, SemverRange } = sver;
 
-export interface LockEntry {
-  pkgUrl: string;
-  subpath: `./${string}` | null;
-  target: PackageTarget;
-}
-
 export interface LockResolutions {
   primary: {
     [pkgName: string]: InstalledResolution;
@@ -41,15 +35,15 @@ export interface LockResolutions {
   };
 }
 
+interface PackageTargetMap {
+  [pkgName: string]: PackageTarget | URL,
+}
+
 export interface VersionConstraints {
-  primary: {
-    [pkgName: string]: PackageTarget;
-  };
+  primary: PackageTargetMap,
   secondary: {
-    [pkgUrl: `${string}/`]: {
-      [pkgName: string]: PackageTarget;
-    };
-  };
+    [pkgUrl: `${string}/`]: PackageTargetMap,
+  }
 }
 
 export interface InstalledResolution {
@@ -216,13 +210,13 @@ export function mergeConstraints(
   }
 }
 
-function toVersionConstraints(
+function toPackageTargetMap(
   pcfg: PackageConfig,
   pkgUrl: URL,
   defaultRegistry = "npm",
   includeDev = false
-) {
-  const constraints: Record<string, InstallTarget> = Object.create(null);
+): PackageTargetMap {
+  const constraints: PackageTargetMap = Object.create(null);
 
   if (pcfg.dependencies)
     for (const name of Object.keys(pcfg.dependencies)) {
@@ -231,7 +225,7 @@ function toVersionConstraints(
         pkgUrl,
         defaultRegistry,
         name
-      );
+      ).pkgTarget;
     }
 
   if (pcfg.peerDependencies)
@@ -242,7 +236,7 @@ function toVersionConstraints(
         pkgUrl,
         defaultRegistry,
         name
-      );
+      ).pkgTarget;
     }
 
   if (pcfg.optionalDependencies)
@@ -253,7 +247,7 @@ function toVersionConstraints(
         pkgUrl,
         defaultRegistry,
         name
-      );
+      ).pkgTarget;
     }
   if (includeDev && pcfg.devDependencies)
     for (const name of Object.keys(pcfg.devDependencies)) {
@@ -263,8 +257,9 @@ function toVersionConstraints(
         pkgUrl,
         defaultRegistry,
         name
-      );
+      ).pkgTarget;
     }
+
   return constraints;
 }
 
@@ -326,14 +321,14 @@ export function getInstallsFor(
   const installs: PackageInstall[] = [];
   for (const alias of Object.keys(constraints.primary)) {
     const target = constraints.primary[alias];
-    if (target.registry === registry && target.name === name)
+    if (!(target instanceof URL) && target.registry === registry && target.name === name)
       installs.push({ alias, pkgScope: null, ranges: target.ranges });
   }
   for (const pkgScope of Object.keys(constraints.secondary) as `${string}/`[]) {
     const scope = constraints.secondary[pkgScope];
     for (const alias of Object.keys(scope)) {
       const target = scope[alias];
-      if (target.registry === registry && target.name === name)
+      if (!(target instanceof URL) && target.registry === registry && target.name === name)
         installs.push({ alias, pkgScope, ranges: target.ranges });
     }
   }
@@ -365,9 +360,9 @@ export async function extractLockConstraintsAndMap(
   // Primary version constraints taken from the map configuration base (if found)
   const primaryBase = await resolver.getPackageBase(mapUrl.href);
   const primaryPcfg = await resolver.getPackageConfig(primaryBase);
-  const constraints = {
+  const constraints: VersionConstraints = {
     primary: primaryPcfg
-      ? toVersionConstraints(
+      ? toPackageTargetMap(
           primaryPcfg,
           new URL(primaryBase),
           defaultRegistry,
@@ -482,7 +477,7 @@ export async function extractLockConstraintsAndMap(
           if (!constraints.primary[parsedKey.pkgName])
             constraints.primary[parsedKey.pkgName] = parsedTarget
               ? packageTargetFromExact(parsedTarget.pkg)
-              : pkgUrl;
+              : new URL(pkgUrl); // TODO: resolve this?
 
           // In the case of subpaths having diverging versions, we force convergence on one version
           // Only scopes permit unpacking
@@ -537,7 +532,7 @@ export async function extractLockConstraintsAndMap(
       if (!isURL(pkgUrl)) return;
       const pcfg = await getPackageConfig(pkgUrl);
       if (pcfg)
-        constraints.secondary[pkgUrl] = toVersionConstraints(
+        constraints.secondary[pkgUrl] = toPackageTargetMap(
           pcfg,
           new URL(pkgUrl),
           defaultRegistry,
