@@ -409,11 +409,12 @@ export class Installer {
       (await this.resolver.getPackageConfig(definitelyPkgScope)) || {};
 
     // package dependencies
+    const isRootInstall = (!pkgScope && parentUrl === this.installBaseUrl) || pkgScope === this.installBaseUrl;
     const installTarget =
       pcfg.dependencies?.[pkgName] ||
       pcfg.peerDependencies?.[pkgName] ||
       pcfg.optionalDependencies?.[pkgName] ||
-      (pkgScope === this.installBaseUrl && pcfg.devDependencies?.[pkgName]);
+      (isRootInstall && pcfg.devDependencies?.[pkgName]);
     if (installTarget) {
       const target = newPackageTarget(
         installTarget,

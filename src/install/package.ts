@@ -207,6 +207,30 @@ export async function parseTarget(
   if (versionIndex !== -1) alias = pkg.pkgName.slice(0, versionIndex);
   else alias = pkg.pkgName;
 
+  // If no version is specified, we fallback to the constraints in the parent
+  // package config if they exist:
+  const pcfg = await resolver.getPackageConfig(parentPkgUrl.href);
+  if (versionIndex === -1 && pcfg) {
+    const dep = pcfg.dependencies?.[alias] ||
+      pcfg.peerDependencies?.[alias] ||
+      pcfg.optionalDependencies?.[alias] ||
+      pcfg.devDependencies?.[alias];
+
+    if (dep) {
+      return {
+        target: newPackageTarget(
+          dep,
+          parentPkgUrl,
+          registry || defaultRegistry,
+          pkg.pkgName
+        ),
+        alias,
+        subpath: pkg.subpath,
+      }
+    }
+  }
+
+  // Otherwise we construct a package target from what we were given:
   return {
     target: newPackageTarget(
       pkg.pkgName,

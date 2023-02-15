@@ -879,6 +879,7 @@ export class Generator {
     if (this.installCnt++ === 0) this.traceMap.startInstall();
     await this.traceMap.processInputMap; // don't race input processing
     try {
+      // Resolve input information to a target package:
       let alias, target, subpath;
       if (typeof install === "string" || typeof install.target === "string") {
         ({ alias, target, subpath } = await installToTarget.call(
@@ -890,12 +891,16 @@ export class Generator {
         ({ alias, target, subpath } = install);
         validatePkgName(alias);
       }
+
+      // Trace the target package and it's secondary dependencies:
       await this.traceMap.add(alias, target);
       await this.traceMap.visit(
         alias + subpath.slice(1),
         { mode: "new", toplevel: true },
         this.mapUrl.href
       );
+
+      // Add the target package as a top-level pin:
       if (!this.traceMap.pins.includes(alias + subpath.slice(1)))
         this.traceMap.pins.push(alias + subpath.slice(1));
     } catch (e) {
@@ -972,6 +977,7 @@ export class Generator {
         installs.push({ alias: name, subpaths, target });
       }
     }
+
     await this.install(installs);
     if (--this.installCnt === 0) {
       const { map, staticDeps, dynamicDeps } =
@@ -1267,6 +1273,7 @@ async function installToTarget(
     this.baseUrl,
     defaultRegistry
   );
+
   return {
     target,
     alias: install.alias || alias,
