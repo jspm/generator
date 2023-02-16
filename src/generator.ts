@@ -8,7 +8,7 @@ import {
 import TraceMap from "./trace/tracemap.js";
 // @ts-ignore
 import { clearCache as clearFetchCache, fetch as _fetch } from "#fetch";
-import { createLogger, LogStream } from "./common/log.js";
+import { createLogger, Log, LogStream } from "./common/log.js";
 import { Resolver } from "./trace/resolver.js";
 import { IImportMap, ImportMap } from "@jspm/import-map";
 import { Provider } from "./providers/index.js";
@@ -306,6 +306,7 @@ export class Generator {
   rootUrl: URL | null;
   map: ImportMap;
   logStream: LogStream;
+  log: Log;
 
   /**
    * The number of concurrent installs the generator is busy processing.
@@ -373,6 +374,7 @@ export class Generator {
         resolver.addCustomProvider(provider, customProviders[provider]);
       }
     }
+    this.log = log;
     this.logStream = logStream;
     if (process.env.JSPM_GENERATOR_LOG) {
       (async () => {
@@ -893,6 +895,10 @@ export class Generator {
       }
 
       // Trace the target package and it's secondary dependencies:
+      this.log(
+        "generator/install",
+        `Adding primary constraint for ${alias}: ${JSON.stringify(target)}`
+      );
       await this.traceMap.add(alias, target);
       await this.traceMap.visit(
         alias + subpath.slice(1),

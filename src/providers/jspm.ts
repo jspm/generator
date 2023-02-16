@@ -156,7 +156,7 @@ export async function resolveLatestTarget(
     if (lookup instanceof Promise) lookup = await lookup;
     if (!lookup) return null;
     this.log(
-      "resolve",
+      "jspm/resolveLatestTarget",
       `${target.registry}:${target.name}@${range} -> WILDCARD ${
         lookup.version
       }${parentUrl ? " [" + parentUrl + "]" : ""}`
@@ -180,7 +180,7 @@ export async function resolveLatestTarget(
     if (lookup instanceof Promise) lookup = await lookup;
     if (!lookup) return null;
     this.log(
-      "resolve",
+      "jspm/resolveLatestTarget",
       `${target.registry}:${target.name}@${range} -> TAG ${tag}${
         parentUrl ? " [" + parentUrl + "]" : ""
       }`
@@ -210,7 +210,7 @@ export async function resolveLatestTarget(
       stableFallback = true;
     } else {
       this.log(
-        "resolve",
+        "jspm/resolveLatestTarget",
         `${target.registry}:${target.name}@${range} -> MAJOR ${lookup.version}${
           parentUrl ? " [" + parentUrl + "]" : ""
         }`
@@ -237,7 +237,7 @@ export async function resolveLatestTarget(
     if (lookup instanceof Promise) lookup = await lookup;
     if (!lookup) return null;
     this.log(
-      "resolve",
+      "jspm/resolveLatestTarget",
       `${target.registry}:${target.name}@${range} -> MINOR ${lookup.version}${
         parentUrl ? " [" + parentUrl + "]" : ""
       }`

@@ -206,7 +206,7 @@ export class Installer {
     }
 
     if (pkgTarget instanceof URL) {
-      this.log("install", `${pkgName} ${pkgScope} -> ${pkgTarget.href}`);
+      this.log("installer/installTarget", `${pkgName} ${pkgScope} -> ${pkgTarget.href} (URL)`);
       const installUrl = (pkgTarget.href +
         (pkgTarget.href.endsWith("/") ? "" : "/")) as `${string}/`;
       this.newInstalls = setResolution(
@@ -228,7 +228,7 @@ export class Installer {
       const pkg = this.getBestExistingMatch(pkgTarget);
       if (pkg) {
         this.log(
-          "install",
+          "installer/installTarget",
           `${pkgName} ${pkgScope} -> ${pkg} (existing match)`
         );
         const installUrl = this.resolver.pkgToUrl(pkg, provider);
@@ -266,7 +266,7 @@ export class Installer {
         // cannot upgrade to latest -> stick with existing resolution (if compatible)
         if (pkg) {
           this.log(
-            "install",
+            "installer/installTarget",
             `${pkgName} ${pkgScope} -> ${latestPkg} (existing match not latest)`
           );
           const installUrl = this.resolver.pkgToUrl(pkg, provider);
@@ -284,7 +284,7 @@ export class Installer {
     }
 
     this.log(
-      "install",
+      "installer/installTarget",
       `${pkgName} ${pkgScope} -> ${pkgUrl} ${
         installSubpath ? installSubpath : "<no-subpath>"
       } (latest)`
@@ -318,7 +318,7 @@ export class Installer {
     traceSubpath: `./${string}` | ".",
     parentUrl: string = this.installBaseUrl
   ): Promise<string | InstalledResolution> {
-    this.log("install", `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`);
+    this.log("installer/install", `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`);
 
     if (!this.installing) throwInternalError("Not installing");
 
@@ -344,7 +344,7 @@ export class Installer {
         pkgScope
       );
       if (existingResolution) {
-        this.log("install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${existingResolution}`);
+        this.log("installer/install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${existingResolution}`);
         return existingResolution;
       }
 
