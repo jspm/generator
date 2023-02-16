@@ -137,42 +137,6 @@ export class Installer {
     this.installing = false;
   }
 
-  async lockInstall(
-    installs: string[],
-    pkgUrl = this.installBaseUrl,
-    prune = true
-  ) {
-    const visited = new Set<string>();
-    const visitInstall = async (
-      name: string,
-      pkgUrl: `${string}/`
-    ): Promise<void> => {
-      if (visited.has(name + "##" + pkgUrl)) return;
-      visited.add(name + "##" + pkgUrl);
-      const install = await this.install(name, "existing", pkgUrl, ".");
-      if (install && typeof install !== "string") {
-        const { installUrl } = install;
-        const deps = await this.resolver.getDepList(installUrl);
-        const existingDeps = Object.keys(
-          this.installs.secondary[installUrl] || {}
-        );
-        await Promise.all(
-          [...new Set([...deps, ...existingDeps])].map((dep) =>
-            visitInstall(dep, installUrl)
-          )
-        );
-      }
-    };
-    await Promise.all(installs.map((install) => visitInstall(install, pkgUrl)));
-    if (prune) {
-      const pruneList: [string, string][] = [...visited].map((item) => {
-        const [name, pkgUrl] = item.split("##");
-        return [name, pkgUrl];
-      });
-      this.installs = pruneResolutions(this.installs, pruneList);
-    }
-  }
-
   getProvider(target: PackageTarget) {
     let provider = this.defaultProvider;
     for (const name of Object.keys(this.providers)) {
@@ -354,6 +318,8 @@ export class Installer {
     traceSubpath: `./${string}` | ".",
     parentUrl: string = this.installBaseUrl
   ): Promise<string | InstalledResolution> {
+    this.log("install", `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`);
+
     if (!this.installing) throwInternalError("Not installing");
 
     if (this.resolutions[pkgName])
@@ -377,7 +343,11 @@ export class Installer {
         pkgName,
         pkgScope
       );
-      if (existingResolution) return existingResolution;
+      if (existingResolution) {
+        this.log("install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${existingResolution}`);
+        return existingResolution;
+      }
+
       // flattened resolution cascading for secondary
       if (
         (pkgScope && mode.includes("existing") && !this.opts.latest) ||
@@ -389,6 +359,7 @@ export class Installer {
           pkgScope,
           traceSubpath
         );
+
         // resolved flattened resolutions become real resolutions as they get picked up
         if (flattenedResolution) {
           this.newInstalls = setResolution(

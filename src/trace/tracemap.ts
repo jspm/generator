@@ -96,7 +96,7 @@ export default class TraceMap {
   installer: Installer | undefined;
   opts: TraceMapOptions;
   tracedUrls: TraceGraph = {};
-  inputMap: ImportMap;
+  inputMap: ImportMap; // custom imports
   mapUrl: URL;
   baseUrl: URL;
   rootUrl: URL | null;
@@ -216,11 +216,10 @@ export default class TraceMap {
       }
     }
 
-    // Trace install first bare specifier -> pin and start scoping
-    const toplevel = opts.toplevel;
-    if (toplevel && (isPlain(specifier) || isMappableScheme(specifier))) {
-      // if (this.pins.indexOf(specifier) === -1)
-      //   this.pins.push(specifier);
+    if (opts.toplevel && (
+      isMappableScheme(specifier) ||
+      isPlain(specifier)
+    )) {
       opts = { ...opts, toplevel: false };
     }
 
@@ -356,23 +355,6 @@ export default class TraceMap {
     );
   }
 
-  // async addAllPkgMappings (name: string, pkgUrl: string, parentPkgUrl: string | null = null) {
-  //   const [url, subpathFilter] = pkgUrl.split('|');
-  //   const exports = await this.resolver.getExports(url + (url.endsWith('/') ? '' : '/'), env, subpathFilter);
-  //   for (const key of Object.keys(exports)) {
-  //     if (key.endsWith('!cjs'))
-  //       continue;
-  //     if (!exports[key])
-  //       continue;
-  //     if (key.endsWith('*'))
-  //       continue;
-  //     let target = new URL(exports[key], url).href;
-  //     if (!exports[key].endsWith('/') && target.endsWith('/'))
-  //       target = target.slice(0, -1);
-  //     this.map.addMapping(name + key.slice(1), target, parentPkgUrl);
-  //   }
-  // }
-
   /**
    * @returns `resolved` - either a URL `string` pointing to the module or `null` if the specifier should be ignored.
    */
@@ -409,6 +391,7 @@ export default class TraceMap {
           parentPkgUrl
         )
       );
+
       // handle URL mappings
       const urlResolved = this.inputMap.resolve(finalized, parentUrl) as string;
       // TODO: avoid this hack - perhaps solved by conditional maps
@@ -426,7 +409,7 @@ export default class TraceMap {
         );
         resolvedUrl = new URL(finalized);
       }
-      this.log("resolve", `${specifier} ${parentUrl} -> ${resolvedUrl}`);
+      this.log("resolve", `${specifier} ${parentUrl} -> ${resolvedUrl} (URL resolution)`);
       return resolvedUrl.href;
     }
 
@@ -451,13 +434,14 @@ export default class TraceMap {
               this.inputMap.rootUrl
             )
           );
-          this.log("resolve", `${specifier} ${parentUrl} -> ${resolved}`);
+          this.log("resolve", `${specifier} ${parentUrl} -> ${resolved} (subscope resolution)`);
           return resolved;
         }
       }
     }
 
     // Scope override
+    // TODO: isn't this subsumed by previous check?
     const userScopeMatch = scopeMatches.find(([, url]) => url === parentPkgUrl);
     if (userScopeMatch) {
       const imports = this.inputMap.scopes[userScopeMatch[0]];
@@ -475,7 +459,7 @@ export default class TraceMap {
       if (userImportsResolved) {
         this.log(
           "resolve",
-          `${specifier} ${parentUrl} -> ${userImportsResolved}`
+          `${specifier} ${parentUrl} -> ${userImportsResolved} (scope resolution)`
         );
         return userImportsResolved;
       }
@@ -496,7 +480,7 @@ export default class TraceMap {
     if (userImportsResolved) {
       this.log(
         "resolve",
-        `${specifier} ${parentUrl} -> ${userImportsResolved}`
+        `${specifier} ${parentUrl} -> ${userImportsResolved} (imports resolution)`
       );
       return userImportsResolved;
     }
@@ -519,7 +503,7 @@ export default class TraceMap {
           new URL(parentUrl)
         )
       );
-      this.log("resolve", `${specifier} ${parentUrl} -> ${resolved}`);
+      this.log("resolve", `${specifier} ${parentUrl} -> ${resolved} (package own-name resolution)`);
       return resolved;
     }
 
@@ -543,7 +527,7 @@ export default class TraceMap {
         return this.resolve(target, parentUrl, mode, toplevel);
       }
       const resolved = await this.resolver.realPath(target);
-      this.log("resolve", `${specifier} ${parentUrl} -> ${resolved}`);
+      this.log("resolve", `${specifier} ${parentUrl} -> ${resolved} (package imports resolution)`);
       return resolved;
     }
 
@@ -570,7 +554,7 @@ export default class TraceMap {
           new URL(parentUrl)
         )
       );
-      this.log("resolve", `${specifier} ${parentUrl} -> ${resolved}`);
+      this.log("resolve", `${specifier} ${parentUrl} -> ${resolved} (installation resolution)`);
       return resolved;
     }
 

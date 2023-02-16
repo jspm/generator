@@ -377,7 +377,7 @@ export class Generator {
     if (process.env.JSPM_GENERATOR_LOG) {
       (async () => {
         for await (const { type, message } of this.logStream()) {
-          console.log(type, message);
+          console.log(`\x1b[1m${type}:\x1b[0m ${message}`);
         }
       })();
     }
