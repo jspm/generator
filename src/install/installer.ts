@@ -337,40 +337,38 @@ export class Installer {
         parentUrl
       );
 
-    if (!this.opts.reset) {
-      const existingResolution = getResolution(
+    const existingResolution = getResolution(
+      this.installs,
+      pkgName,
+      pkgScope === this.installBaseUrl ? null : pkgScope
+    );
+    if (existingResolution) {
+      this.log("installer/install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${JSON.stringify(existingResolution)}`);
+      return existingResolution;
+    }
+
+    // flattened resolution cascading for secondary
+    if (
+      (pkgScope && mode.includes("existing") && !this.opts.latest) ||
+      (pkgScope && mode.includes("new") && this.opts.freeze)
+    ) {
+      const flattenedResolution = getFlattenedResolution(
         this.installs,
         pkgName,
-        pkgScope
+        pkgScope,
+        traceSubpath
       );
-      if (existingResolution) {
-        this.log("installer/install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${JSON.stringify(existingResolution)}`);
-        return existingResolution;
-      }
 
-      // flattened resolution cascading for secondary
-      if (
-        (pkgScope && mode.includes("existing") && !this.opts.latest) ||
-        (pkgScope && mode.includes("new") && this.opts.freeze)
-      ) {
-        const flattenedResolution = getFlattenedResolution(
+      // resolved flattened resolutions become real resolutions as they get picked up
+      if (flattenedResolution) {
+        this.newInstalls = setResolution(
           this.installs,
           pkgName,
+          flattenedResolution.installUrl,
           pkgScope,
-          traceSubpath
+          flattenedResolution.installSubpath
         );
-
-        // resolved flattened resolutions become real resolutions as they get picked up
-        if (flattenedResolution) {
-          this.newInstalls = setResolution(
-            this.installs,
-            pkgName,
-            flattenedResolution.installUrl,
-            pkgScope,
-            flattenedResolution.installSubpath
-          );
-          return flattenedResolution;
-        }
+        return flattenedResolution;
       }
     }
 

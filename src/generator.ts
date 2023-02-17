@@ -520,8 +520,8 @@ export class Generator {
         specifier.map((specifier) =>
           this.traceMap.visit(
             specifier,
-            { mode: "new", toplevel: true },
-            this.baseUrl.href
+            { mode: "new-prefer-existing", toplevel: true },
+            parentUrl || this.baseUrl.href
           )
         )
       );
