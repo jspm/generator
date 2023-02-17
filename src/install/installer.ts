@@ -159,7 +159,7 @@ export class Installer {
   }
 
   /**
-   * Installs the given installation target.
+   * Locks a package against the given target.
    *
    * @param {string} pkgName Name of the package being installed.
    * @param {InstallTarget} target The installation target being installed.
@@ -229,7 +229,7 @@ export class Installer {
       if (pkg) {
         this.log(
           "installer/installTarget",
-          `${pkgName} ${pkgScope} -> ${pkg} (existing match)`
+          `${pkgName} ${pkgScope} -> ${JSON.stringify(pkg)} (existing match)`
         );
         const installUrl = this.resolver.pkgToUrl(pkg, provider);
         this.newInstalls = setResolution(
@@ -267,7 +267,7 @@ export class Installer {
         if (pkg) {
           this.log(
             "installer/installTarget",
-            `${pkgName} ${pkgScope} -> ${latestPkg} (existing match not latest)`
+            `${pkgName} ${pkgScope} -> ${JSON.stringify(latestPkg)} (existing match not latest)`
           );
           const installUrl = this.resolver.pkgToUrl(pkg, provider);
           this.newInstalls = setResolution(
@@ -344,7 +344,7 @@ export class Installer {
         pkgScope
       );
       if (existingResolution) {
-        this.log("installer/install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${existingResolution}`);
+        this.log("installer/install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${JSON.stringify(existingResolution)}`);
         return existingResolution;
       }
 
