@@ -21,8 +21,6 @@ await generator.install({ alias: "@jspm/generator", target: targetUrl });
 
 const map = generator.getMap();
 
-// console.log(replaceAll(JSON.stringify(map, null, 2), targetUrl, 'https://ga.jspm.io/npm:@jspm/generator@1.0.0-beta.7/'));
-
 await denoExec(
   generator.getMap(),
   `

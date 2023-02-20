@@ -137,42 +137,6 @@ export class Installer {
     this.installing = false;
   }
 
-  async lockInstall(
-    installs: string[],
-    pkgUrl = this.installBaseUrl,
-    prune = true
-  ) {
-    const visited = new Set<string>();
-    const visitInstall = async (
-      name: string,
-      pkgUrl: `${string}/`
-    ): Promise<void> => {
-      if (visited.has(name + "##" + pkgUrl)) return;
-      visited.add(name + "##" + pkgUrl);
-      const install = await this.install(name, "existing", pkgUrl, ".");
-      if (install && typeof install !== "string") {
-        const { installUrl } = install;
-        const deps = await this.resolver.getDepList(installUrl);
-        const existingDeps = Object.keys(
-          this.installs.secondary[installUrl] || {}
-        );
-        await Promise.all(
-          [...new Set([...deps, ...existingDeps])].map((dep) =>
-            visitInstall(dep, installUrl)
-          )
-        );
-      }
-    };
-    await Promise.all(installs.map((install) => visitInstall(install, pkgUrl)));
-    if (prune) {
-      const pruneList: [string, string][] = [...visited].map((item) => {
-        const [name, pkgUrl] = item.split("##");
-        return [name, pkgUrl];
-      });
-      this.installs = pruneResolutions(this.installs, pruneList);
-    }
-  }
-
   getProvider(target: PackageTarget) {
     let provider = this.defaultProvider;
     for (const name of Object.keys(this.providers)) {
@@ -195,7 +159,7 @@ export class Installer {
   }
 
   /**
-   * Installs the given installation target.
+   * Locks a package against the given target.
    *
    * @param {string} pkgName Name of the package being installed.
    * @param {InstallTarget} target The installation target being installed.
@@ -242,7 +206,7 @@ export class Installer {
     }
 
     if (pkgTarget instanceof URL) {
-      this.log("install", `${pkgName} ${pkgScope} -> ${pkgTarget.href}`);
+      this.log("installer/installTarget", `${pkgName} ${pkgScope} -> ${pkgTarget.href} (URL)`);
       const installUrl = (pkgTarget.href +
         (pkgTarget.href.endsWith("/") ? "" : "/")) as `${string}/`;
       this.newInstalls = setResolution(
@@ -264,8 +228,8 @@ export class Installer {
       const pkg = this.getBestExistingMatch(pkgTarget);
       if (pkg) {
         this.log(
-          "install",
-          `${pkgName} ${pkgScope} -> ${pkg} (existing match)`
+          "installer/installTarget",
+          `${pkgName} ${pkgScope} -> ${JSON.stringify(pkg)} (existing match)`
         );
         const installUrl = this.resolver.pkgToUrl(pkg, provider);
         this.newInstalls = setResolution(
@@ -302,8 +266,8 @@ export class Installer {
         // cannot upgrade to latest -> stick with existing resolution (if compatible)
         if (pkg) {
           this.log(
-            "install",
-            `${pkgName} ${pkgScope} -> ${latestPkg} (existing match not latest)`
+            "installer/installTarget",
+            `${pkgName} ${pkgScope} -> ${JSON.stringify(latestPkg)} (existing match not latest)`
           );
           const installUrl = this.resolver.pkgToUrl(pkg, provider);
           this.newInstalls = setResolution(
@@ -320,7 +284,7 @@ export class Installer {
     }
 
     this.log(
-      "install",
+      "installer/installTarget",
       `${pkgName} ${pkgScope} -> ${pkgUrl} ${
         installSubpath ? installSubpath : "<no-subpath>"
       } (latest)`
@@ -354,7 +318,14 @@ export class Installer {
     traceSubpath: `./${string}` | ".",
     parentUrl: string = this.installBaseUrl
   ): Promise<string | InstalledResolution> {
+    this.log("installer/install", `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`);
     if (!this.installing) throwInternalError("Not installing");
+
+    // Anything installed in the scope of the installer's base URL is treated
+    // as top-level, and hits the primary locks. Anything else is treated as
+    // a secondary dependency:
+    // TODO: wire this concept through the whole codebase.
+    const isTopLevel = !pkgScope || pkgScope == this.installBaseUrl;
 
     if (this.resolutions[pkgName])
       return this.installTarget(
@@ -367,39 +338,42 @@ export class Installer {
         ),
         traceSubpath,
         mode,
-        pkgScope,
+        isTopLevel ? null : pkgScope,
         parentUrl
       );
 
-    if (!this.opts.reset) {
-      const existingResolution = getResolution(
+    const existingResolution = getResolution(
+      this.installs,
+      pkgName,
+      isTopLevel ? null : pkgScope
+    );
+    if (existingResolution) {
+      this.log("installer/install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${JSON.stringify(existingResolution)}`);
+      return existingResolution;
+    }
+
+    // flattened resolution cascading for secondary
+    if (
+      (!isTopLevel && mode.includes("existing") && !this.opts.latest) ||
+      (!isTopLevel && mode.includes("new") && this.opts.freeze)
+    ) {
+      const flattenedResolution = getFlattenedResolution(
         this.installs,
         pkgName,
-        pkgScope
+        pkgScope,
+        traceSubpath
       );
-      if (existingResolution) return existingResolution;
-      // flattened resolution cascading for secondary
-      if (
-        (pkgScope && mode.includes("existing") && !this.opts.latest) ||
-        (pkgScope && mode.includes("new") && this.opts.freeze)
-      ) {
-        const flattenedResolution = getFlattenedResolution(
+
+      // resolved flattened resolutions become real resolutions as they get picked up
+      if (flattenedResolution) {
+        this.newInstalls = setResolution(
           this.installs,
           pkgName,
+          flattenedResolution.installUrl,
           pkgScope,
-          traceSubpath
+          flattenedResolution.installSubpath
         );
-        // resolved flattened resolutions become real resolutions as they get picked up
-        if (flattenedResolution) {
-          this.newInstalls = setResolution(
-            this.installs,
-            pkgName,
-            flattenedResolution.installUrl,
-            pkgScope,
-            flattenedResolution.installSubpath
-          );
-          return flattenedResolution;
-        }
+        return flattenedResolution;
       }
     }
 
@@ -413,7 +387,7 @@ export class Installer {
       pcfg.dependencies?.[pkgName] ||
       pcfg.peerDependencies?.[pkgName] ||
       pcfg.optionalDependencies?.[pkgName] ||
-      (pkgScope === this.installBaseUrl && pcfg.devDependencies?.[pkgName]);
+      (isTopLevel && pcfg.devDependencies?.[pkgName]);
     if (installTarget) {
       const target = newPackageTarget(
         installTarget,
@@ -426,7 +400,7 @@ export class Installer {
         target,
         traceSubpath,
         mode,
-        pkgScope,
+        isTopLevel ? null : pkgScope,
         parentUrl
       );
     }
@@ -440,7 +414,7 @@ export class Installer {
         builtin.target,
         traceSubpath,
         mode,
-        pkgScope,
+        isTopLevel ? null : pkgScope,
         parentUrl
       );
     }
@@ -463,7 +437,7 @@ export class Installer {
       target,
       null,
       mode,
-      pkgScope,
+      isTopLevel ? null : pkgScope,
       parentUrl
     );
     return { installUrl, installSubpath: null };

@@ -116,3 +116,10 @@ deps = ['src/**/*', 'src/*', 'test/**/*', 'test/*']
 [task.template-options]
 files = 'src/**/* src/* test/**/* test/*'
 loglevel = 'warn'
+
+[[task]]
+name = 'typecheck'
+deps = ['src/**/*.ts', 'src/*.ts']
+run = '''
+    npx tsc --noEmit
+'''
