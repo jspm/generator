@@ -319,8 +319,13 @@ export class Installer {
     parentUrl: string = this.installBaseUrl
   ): Promise<string | InstalledResolution> {
     this.log("installer/install", `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`);
-
     if (!this.installing) throwInternalError("Not installing");
+
+    // Anything installed in the scope of the installer's base URL is treated
+    // as top-level, and hits the primary locks. Anything else is treated as
+    // a secondary dependency:
+    // TODO: wire this concept through the whole codebase.
+    const isTopLevel = !pkgScope || pkgScope == this.installBaseUrl;
 
     if (this.resolutions[pkgName])
       return this.installTarget(
@@ -333,14 +338,14 @@ export class Installer {
         ),
         traceSubpath,
         mode,
-        pkgScope,
+        isTopLevel ? null : pkgScope,
         parentUrl
       );
 
     const existingResolution = getResolution(
       this.installs,
       pkgName,
-      pkgScope === this.installBaseUrl ? null : pkgScope
+      isTopLevel ? null : pkgScope
     );
     if (existingResolution) {
       this.log("installer/install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${JSON.stringify(existingResolution)}`);
@@ -349,8 +354,8 @@ export class Installer {
 
     // flattened resolution cascading for secondary
     if (
-      (pkgScope && mode.includes("existing") && !this.opts.latest) ||
-      (pkgScope && mode.includes("new") && this.opts.freeze)
+      (!isTopLevel && mode.includes("existing") && !this.opts.latest) ||
+      (!isTopLevel && mode.includes("new") && this.opts.freeze)
     ) {
       const flattenedResolution = getFlattenedResolution(
         this.installs,
@@ -378,12 +383,11 @@ export class Installer {
       (await this.resolver.getPackageConfig(definitelyPkgScope)) || {};
 
     // package dependencies
-    const isRootInstall = (!pkgScope && parentUrl === this.installBaseUrl) || pkgScope === this.installBaseUrl;
     const installTarget =
       pcfg.dependencies?.[pkgName] ||
       pcfg.peerDependencies?.[pkgName] ||
       pcfg.optionalDependencies?.[pkgName] ||
-      (isRootInstall && pcfg.devDependencies?.[pkgName]);
+      (isTopLevel && pcfg.devDependencies?.[pkgName]);
     if (installTarget) {
       const target = newPackageTarget(
         installTarget,
@@ -396,7 +400,7 @@ export class Installer {
         target,
         traceSubpath,
         mode,
-        pkgScope,
+        isTopLevel ? null : pkgScope,
         parentUrl
       );
     }
@@ -410,7 +414,7 @@ export class Installer {
         builtin.target,
         traceSubpath,
         mode,
-        pkgScope,
+        isTopLevel ? null : pkgScope,
         parentUrl
       );
     }
@@ -433,7 +437,7 @@ export class Installer {
       target,
       null,
       mode,
-      pkgScope,
+      isTopLevel ? null : pkgScope,
       parentUrl
     );
     return { installUrl, installSubpath: null };
