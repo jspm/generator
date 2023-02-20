@@ -33,45 +33,46 @@ const dirResponse = {
 // @ts-ignore
 const vscode = require("vscode");
 
-export const fetch: FetchFn = wrapWithRetry(
-  async function (url: URL, opts?: Record<string, any>) {
-    if (!opts) throw new Error("Always expect fetch options to be passed");
-    const urlString = url.toString();
-    const protocol = urlString.slice(0, urlString.indexOf(":") + 1);
-    switch (protocol) {
-      case "ipfs:":
-        throw new Error("IPFS Support for VSCode not yet implemented");
-      case "file:":
-        if (urlString.endsWith("/")) {
-          try {
-            await vscode.workspace.fs.readFile(vscode.Uri.parse(urlString));
-            return { status: 404, statusText: "Directory does not exist" };
-          } catch (e) {
-            if (e.code === "FileIsADirectory") return dirResponse;
-            throw e;
-          }
-        }
+export const fetch: FetchFn = wrapWithRetry(async function (
+  url: URL,
+  opts?: Record<string, any>
+) {
+  if (!opts) throw new Error("Always expect fetch options to be passed");
+  const urlString = url.toString();
+  const protocol = urlString.slice(0, urlString.indexOf(":") + 1);
+  switch (protocol) {
+    case "ipfs:":
+      throw new Error("IPFS Support for VSCode not yet implemented");
+    case "file:":
+      if (urlString.endsWith("/")) {
         try {
-          return sourceResponse(
-            new TextDecoder().decode(
-              await vscode.workspace.fs.readFile(vscode.Uri.parse(urlString))
-            )
-          );
+          await vscode.workspace.fs.readFile(vscode.Uri.parse(urlString));
+          return { status: 404, statusText: "Directory does not exist" };
         } catch (e) {
           if (e.code === "FileIsADirectory") return dirResponse;
-          if (
-            e.code === "Unavailable" ||
-            e.code === "EntryNotFound" ||
-            e.code === "FileNotFound"
-          )
-            return { status: 404, statusText: e.toString() };
-          return { status: 500, statusText: e.toString() };
+          throw e;
         }
-      case "data:":
-      case "http:":
-      case "https:":
-        // @ts-ignore
-        return _fetch(url, opts);
-    }
+      }
+      try {
+        return sourceResponse(
+          new TextDecoder().decode(
+            await vscode.workspace.fs.readFile(vscode.Uri.parse(urlString))
+          )
+        );
+      } catch (e) {
+        if (e.code === "FileIsADirectory") return dirResponse;
+        if (
+          e.code === "Unavailable" ||
+          e.code === "EntryNotFound" ||
+          e.code === "FileNotFound"
+        )
+          return { status: 404, statusText: e.toString() };
+        return { status: 500, statusText: e.toString() };
+      }
+    case "data:":
+    case "http:":
+    case "https:":
+      // @ts-ignore
+      return _fetch(url, opts);
   }
-);
+});

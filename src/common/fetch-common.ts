@@ -4,7 +4,7 @@ export interface Response {
   text?(): Promise<string>;
   json?(): Promise<any>;
   arrayBuffer?(): ArrayBuffer;
-};
+}
 
 export type FetchFn = (
   url: URL,
