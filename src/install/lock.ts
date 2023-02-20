@@ -36,14 +36,14 @@ export interface LockResolutions {
 }
 
 interface PackageTargetMap {
-  [pkgName: string]: PackageTarget | URL,
+  [pkgName: string]: PackageTarget | URL;
 }
 
 export interface VersionConstraints {
-  primary: PackageTargetMap,
+  primary: PackageTargetMap;
   secondary: {
-    [pkgUrl: `${string}/`]: PackageTargetMap,
-  }
+    [pkgUrl: `${string}/`]: PackageTargetMap;
+  };
 }
 
 export interface InstalledResolution {
@@ -321,14 +321,22 @@ export function getInstallsFor(
   const installs: PackageInstall[] = [];
   for (const alias of Object.keys(constraints.primary)) {
     const target = constraints.primary[alias];
-    if (!(target instanceof URL) && target.registry === registry && target.name === name)
+    if (
+      !(target instanceof URL) &&
+      target.registry === registry &&
+      target.name === name
+    )
       installs.push({ alias, pkgScope: null, ranges: target.ranges });
   }
   for (const pkgScope of Object.keys(constraints.secondary) as `${string}/`[]) {
     const scope = constraints.secondary[pkgScope];
     for (const alias of Object.keys(scope)) {
       const target = scope[alias];
-      if (!(target instanceof URL) && target.registry === registry && target.name === name)
+      if (
+        !(target instanceof URL) &&
+        target.registry === registry &&
+        target.name === name
+      )
         installs.push({ alias, pkgScope, ranges: target.ranges });
     }
   }

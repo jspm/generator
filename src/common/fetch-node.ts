@@ -1,18 +1,12 @@
 // @ts-ignore
 import version from "../version.js";
-// @ts-ignore
+import { wrapWithRetry, FetchFn } from "./fetch-common.js";
 import path from "path";
-// @ts-ignore
 import { homedir } from "os";
-// @ts-ignore
 import process from "process";
-// @ts-ignore
 import rimraf from "rimraf";
-// @ts-ignore
 import makeFetchHappen from "make-fetch-happen";
-// @ts-ignore
 import { readFileSync } from "fs";
-// @ts-ignore
 import { Buffer } from "buffer";
 
 let cacheDir: string;
@@ -38,7 +32,7 @@ const _fetch = makeFetchHappen.defaults({
   headers: { "User-Agent": `jspm/generator@${version}` },
 });
 
-function sourceResponse(buffer) {
+function sourceResponse(buffer: string | Buffer) {
   return {
     status: 200,
     async text() {
@@ -48,7 +42,8 @@ function sourceResponse(buffer) {
       return JSON.parse(buffer.toString());
     },
     arrayBuffer() {
-      return buffer.buffer || buffer;
+      if (buffer instanceof Buffer) return buffer.buffer;
+      return new TextEncoder().encode(buffer.toString()).buffer;
     },
   };
 }
@@ -66,45 +61,47 @@ const dirResponse = {
   },
 };
 
-export const fetch = async function (url: URL, opts?: Record<string, any>) {
-  if (!opts) throw new Error("Always expect fetch options to be passed");
-  const urlString = url.toString();
-  const protocol = urlString.slice(0, urlString.indexOf(":") + 1);
-  let source: string | Buffer;
-  switch (protocol) {
-    case "ipfs:":
-      const { get } = await import("./ipfs.js");
-      source = await get(urlString.slice(7), opts.ipfsAPI);
-      if (source === null) return dirResponse;
-      if (source === undefined) return { status: 404 };
-      return sourceResponse(source);
-    case "file:":
-      if (urlString.endsWith("/")) {
+export const fetch: FetchFn = wrapWithRetry(
+  async function (url: URL, opts?: Record<string, any>) {
+    if (!opts) throw new Error("Always expect fetch options to be passed");
+    const urlString = url.toString();
+    const protocol = urlString.slice(0, urlString.indexOf(":") + 1);
+    let source: string | Buffer;
+    switch (protocol) {
+      case "ipfs:":
+        const { get } = await import("./ipfs.js");
+        source = await get(urlString.slice(7), opts.ipfsAPI);
+        if (source === null) return dirResponse;
+        if (source === undefined) return { status: 404 };
+        return sourceResponse(source);
+      case "file:":
+        if (urlString.endsWith("/")) {
+          try {
+            readFileSync(new URL(urlString));
+            return { status: 404, statusText: "Directory does not exist" };
+          } catch (e) {
+            if (e.code === "EISDIR") return dirResponse;
+            throw e;
+          }
+        }
         try {
-          readFileSync(new URL(urlString));
-          return { status: 404, statusText: "Directory does not exist" };
+          return sourceResponse(readFileSync(new URL(urlString)));
         } catch (e) {
           if (e.code === "EISDIR") return dirResponse;
-          throw e;
+          if (e.code === "ENOENT" || e.code === "ENOTDIR")
+            return { status: 404, statusText: e.toString() };
+          return { status: 500, statusText: e.toString() };
         }
-      }
-      try {
-        return sourceResponse(readFileSync(new URL(urlString)));
-      } catch (e) {
-        if (e.code === "EISDIR") return dirResponse;
-        if (e.code === "ENOENT" || e.code === "ENOTDIR")
-          return { status: 404, statusText: e.toString() };
-        return { status: 500, statusText: e.toString() };
-      }
-    case "data:":
-      return sourceResponse(
-        decodeURIComponent(urlString.slice(urlString.indexOf(",")))
-      );
-    case "node:":
-      return sourceResponse("");
-    case "http:":
-    case "https:":
-      // @ts-ignore
-      return _fetch(url, opts);
+      case "data:":
+        return sourceResponse(
+          decodeURIComponent(urlString.slice(urlString.indexOf(",") + 1))
+        );
+      case "node:":
+        return sourceResponse("");
+      case "http:":
+      case "https:":
+        // @ts-ignore
+        return _fetch(url, opts);
+    }
   }
-};
+);

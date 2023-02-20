@@ -216,10 +216,7 @@ export default class TraceMap {
       }
     }
 
-    if (opts.toplevel && (
-      isMappableScheme(specifier) ||
-      isPlain(specifier)
-    )) {
+    if (opts.toplevel && (isMappableScheme(specifier) || isPlain(specifier))) {
       opts = { ...opts, toplevel: false };
     }
 
@@ -409,7 +406,10 @@ export default class TraceMap {
         );
         resolvedUrl = new URL(finalized);
       }
-      this.log("tracemap/resolve", `${specifier} ${parentUrl} -> ${resolvedUrl} (URL resolution)`);
+      this.log(
+        "tracemap/resolve",
+        `${specifier} ${parentUrl} -> ${resolvedUrl} (URL resolution)`
+      );
       return resolvedUrl.href;
     }
 
@@ -434,7 +434,10 @@ export default class TraceMap {
               this.inputMap.rootUrl
             )
           );
-          this.log("tracemap/resolve", `${specifier} ${parentUrl} -> ${resolved} (subscope resolution)`);
+          this.log(
+            "tracemap/resolve",
+            `${specifier} ${parentUrl} -> ${resolved} (subscope resolution)`
+          );
           return resolved;
         }
       }
@@ -503,7 +506,10 @@ export default class TraceMap {
           new URL(parentUrl)
         )
       );
-      this.log("tracemap/resolve", `${specifier} ${parentUrl} -> ${resolved} (package own-name resolution)`);
+      this.log(
+        "tracemap/resolve",
+        `${specifier} ${parentUrl} -> ${resolved} (package own-name resolution)`
+      );
       return resolved;
     }
 
@@ -527,7 +533,10 @@ export default class TraceMap {
         return this.resolve(target, parentUrl, mode, toplevel);
       }
       const resolved = await this.resolver.realPath(target);
-      this.log("tracemap/resolve", `${specifier} ${parentUrl} -> ${resolved} (package imports resolution)`);
+      this.log(
+        "tracemap/resolve",
+        `${specifier} ${parentUrl} -> ${resolved} (package imports resolution)`
+      );
       return resolved;
     }
 
@@ -554,7 +563,10 @@ export default class TraceMap {
           new URL(parentUrl)
         )
       );
-      this.log("tracemap/resolve", `${specifier} ${parentUrl} -> ${resolved} (installation resolution)`);
+      this.log(
+        "tracemap/resolve",
+        `${specifier} ${parentUrl} -> ${resolved} (installation resolution)`
+      );
       return resolved;
     }
 

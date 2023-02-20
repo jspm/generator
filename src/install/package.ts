@@ -211,7 +211,8 @@ export async function parseTarget(
   // package config if they exist:
   const pcfg = await resolver.getPackageConfig(parentPkgUrl.href);
   if (versionIndex === -1 && pcfg) {
-    const dep = pcfg.dependencies?.[alias] ||
+    const dep =
+      pcfg.dependencies?.[alias] ||
       pcfg.peerDependencies?.[alias] ||
       pcfg.optionalDependencies?.[alias] ||
       pcfg.devDependencies?.[alias];
@@ -226,7 +227,7 @@ export async function parseTarget(
         ),
         alias,
         subpath: pkg.subpath,
-      }
+      };
     }
   }
 
