@@ -206,7 +206,10 @@ export class Installer {
     }
 
     if (pkgTarget instanceof URL) {
-      this.log("installer/installTarget", `${pkgName} ${pkgScope} -> ${pkgTarget.href} (URL)`);
+      this.log(
+        "installer/installTarget",
+        `${pkgName} ${pkgScope} -> ${pkgTarget.href} (URL)`
+      );
       const installUrl = (pkgTarget.href +
         (pkgTarget.href.endsWith("/") ? "" : "/")) as `${string}/`;
       this.newInstalls = setResolution(
@@ -267,7 +270,9 @@ export class Installer {
         if (pkg) {
           this.log(
             "installer/installTarget",
-            `${pkgName} ${pkgScope} -> ${JSON.stringify(latestPkg)} (existing match not latest)`
+            `${pkgName} ${pkgScope} -> ${JSON.stringify(
+              latestPkg
+            )} (existing match not latest)`
           );
           const installUrl = this.resolver.pkgToUrl(pkg, provider);
           this.newInstalls = setResolution(
@@ -318,7 +323,10 @@ export class Installer {
     traceSubpath: `./${string}` | ".",
     parentUrl: string = this.installBaseUrl
   ): Promise<string | InstalledResolution> {
-    this.log("installer/install", `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`);
+    this.log(
+      "installer/install",
+      `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`
+    );
     if (!this.installing) throwInternalError("Not installing");
 
     // Anything installed in the scope of the installer's base URL is treated
@@ -348,7 +356,12 @@ export class Installer {
       isTopLevel ? null : pkgScope
     );
     if (existingResolution) {
-      this.log("installer/install", `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${JSON.stringify(existingResolution)}`);
+      this.log(
+        "installer/install",
+        `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${JSON.stringify(
+          existingResolution
+        )}`
+      );
       return existingResolution;
     }
 

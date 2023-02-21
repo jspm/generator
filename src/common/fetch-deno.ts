@@ -1,12 +1,12 @@
-// @ts-ignore
 import { fileURLToPath } from "url";
-// @ts-ignore
-// Caching disabled due to not respecting cache headers...
-// import { cache } from "https://deno.land/x/cache/mod.ts";
+import { wrapWithRetry, FetchFn } from "./fetch-common.js";
 
 export function clearCache() {}
 
-export const fetch = async function (url: URL, ...args: any[]) {
+export const fetch: FetchFn = wrapWithRetry(async function (
+  url: URL,
+  ...args: any[]
+) {
   const urlString = url.toString();
   if (
     urlString.startsWith("file:") ||
@@ -16,12 +16,14 @@ export const fetch = async function (url: URL, ...args: any[]) {
     try {
       let source: string;
       if (urlString.startsWith("file:")) {
-        // @ts-ignore
-        source = await Deno.readTextFile(fileURLToPath(urlString));
+        // @ts-ignore - can only resolve Deno when running in Deno
+        source = (await Deno.readTextFile(fileURLToPath(urlString))) as string;
       } else if (urlString.startsWith("node:")) {
         source = "";
       } else {
-        source = decodeURIComponent(urlString.slice(urlString.indexOf(",")));
+        source = decodeURIComponent(
+          urlString.slice(urlString.indexOf(",") + 1)
+        );
       }
       return {
         status: 200,
@@ -32,7 +34,7 @@ export const fetch = async function (url: URL, ...args: any[]) {
           return JSON.parse(source.toString());
         },
         arrayBuffer() {
-          return source;
+          return new TextEncoder().encode(source.toString()).buffer;
         },
       };
     } catch (e) {
@@ -55,34 +57,5 @@ export const fetch = async function (url: URL, ...args: any[]) {
     }
   } else {
     return globalThis.fetch(urlString, ...args);
-    // let file;
-    // try {
-    //   file = await cache(urlString);
-    // }
-    // catch (e) {
-    //   if (e.name === 'SyntaxError') {
-    //     // Weird bug in Deno cache...
-    //     // @ts-ignore
-    //     return _fetch(url, ...args);
-    //   }
-    //   if (e.name === 'CacheError' && e.message === 'Not Found') {
-    //     return { status: 404, statusText: e.toString() };
-    //   }
-    //   throw e;
-    // }
-    // @ts-ignore
-    // const source = await Deno.readTextFile(fromFileUrl(urlString));
-    // return {
-    //   status: 200,
-    //   async text () {
-    //     return source.toString();
-    //   },
-    //   async json () {
-    //     return JSON.parse(source.toString());
-    //   },
-    //   arrayBuffer () {
-    //     return source;
-    //   }
-    // };
   }
-};
+});

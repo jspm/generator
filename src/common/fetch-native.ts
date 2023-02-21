@@ -1,3 +1,5 @@
+import { FetchFn, wrapWithRetry } from "./fetch-common.js";
+
 // Browser native fetch doesn't deal well with high contention
 // restrict in-flight fetches to a pool of 100
 let p = [];
@@ -10,7 +12,7 @@ function popFetchPool() {
   if (p.length) p.shift()();
 }
 
-export async function fetch(url, opts) {
+export const fetch: FetchFn = wrapWithRetry(async function fetch(url, opts) {
   const poolQueue = pushFetchPool();
   if (poolQueue) await poolQueue;
   try {
@@ -35,5 +37,6 @@ export async function fetch(url, opts) {
   } finally {
     popFetchPool();
   }
-}
+});
+
 export const clearCache = () => {};

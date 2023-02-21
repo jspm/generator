@@ -1,3 +1,4 @@
+import { FetchFn, wrapWithRetry } from "./fetch-common.js";
 import { fetch as _fetch } from "./fetch-native.js";
 export { clearCache } from "./fetch-native.js";
 
@@ -32,7 +33,10 @@ const dirResponse = {
 // @ts-ignore
 const vscode = require("vscode");
 
-export const fetch = async function (url: URL, opts?: Record<string, any>) {
+export const fetch: FetchFn = wrapWithRetry(async function (
+  url: URL,
+  opts?: Record<string, any>
+) {
   if (!opts) throw new Error("Always expect fetch options to be passed");
   const urlString = url.toString();
   const protocol = urlString.slice(0, urlString.indexOf(":") + 1);
@@ -71,4 +75,4 @@ export const fetch = async function (url: URL, opts?: Record<string, any>) {
       // @ts-ignore
       return _fetch(url, opts);
   }
-};
+});

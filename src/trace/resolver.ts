@@ -95,9 +95,7 @@ export class Resolver {
     this.providers = Object.assign({}, this.providers, { [name]: provider });
   }
 
-  parseUrlPkg(
-    url: string
-  ): {
+  parseUrlPkg(url: string): {
     pkg: ExactPackage;
     subpath: null | `./${string}`;
     source: { layer: string; provider: string };

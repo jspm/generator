@@ -1,18 +1,12 @@
 // @ts-ignore
 import version from "../version.js";
-// @ts-ignore
+import { wrapWithRetry, FetchFn } from "./fetch-common.js";
 import path from "path";
-// @ts-ignore
 import { homedir } from "os";
-// @ts-ignore
 import process from "process";
-// @ts-ignore
 import rimraf from "rimraf";
-// @ts-ignore
 import makeFetchHappen from "make-fetch-happen";
-// @ts-ignore
 import { readFileSync } from "fs";
-// @ts-ignore
 import { Buffer } from "buffer";
 
 let cacheDir: string;
@@ -38,7 +32,7 @@ const _fetch = makeFetchHappen.defaults({
   headers: { "User-Agent": `jspm/generator@${version}` },
 });
 
-function sourceResponse(buffer) {
+function sourceResponse(buffer: string | Buffer) {
   return {
     status: 200,
     async text() {
@@ -48,7 +42,8 @@ function sourceResponse(buffer) {
       return JSON.parse(buffer.toString());
     },
     arrayBuffer() {
-      return buffer.buffer || buffer;
+      if (buffer instanceof Buffer) return buffer.buffer;
+      return new TextEncoder().encode(buffer.toString()).buffer;
     },
   };
 }
@@ -66,7 +61,10 @@ const dirResponse = {
   },
 };
 
-export const fetch = async function (url: URL, opts?: Record<string, any>) {
+export const fetch: FetchFn = wrapWithRetry(async function (
+  url: URL,
+  opts?: Record<string, any>
+) {
   if (!opts) throw new Error("Always expect fetch options to be passed");
   const urlString = url.toString();
   const protocol = urlString.slice(0, urlString.indexOf(":") + 1);
@@ -98,7 +96,7 @@ export const fetch = async function (url: URL, opts?: Record<string, any>) {
       }
     case "data:":
       return sourceResponse(
-        decodeURIComponent(urlString.slice(urlString.indexOf(",")))
+        decodeURIComponent(urlString.slice(urlString.indexOf(",") + 1))
       );
     case "node:":
       return sourceResponse("");
@@ -107,4 +105,4 @@ export const fetch = async function (url: URL, opts?: Record<string, any>) {
       // @ts-ignore
       return _fetch(url, opts);
   }
-};
+});
