@@ -18,7 +18,7 @@ export function denoExec(map, source) {
   execSync(
     `${
       process.env.DENO_BIN || "deno"
-    } run --reload --unstable --no-check --allow-all --import-map=${tmpMap} ${tmpSrc}`,
+    } run --quiet --reload --unstable --no-check --allow-all --import-map=${tmpMap} ${tmpSrc}`,
     { stdio: "inherit" }
   );
 }
