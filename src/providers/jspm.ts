@@ -173,7 +173,6 @@ export async function resolveLatestTarget(
         name,
         tag,
         unstable,
-        layer,
         parentUrl
       )));
     // Deno wat?
@@ -198,7 +197,6 @@ export async function resolveLatestTarget(
         name,
         major,
         unstable,
-        layer,
         parentUrl
       )));
     // Deno wat?
@@ -228,7 +226,6 @@ export async function resolveLatestTarget(
         name,
         minor,
         unstable,
-        layer,
         parentUrl
       )));
     // in theory a similar downgrade to the above can happen for stable prerelease ranges ~1.2.3-pre being downgraded to 1.2.2

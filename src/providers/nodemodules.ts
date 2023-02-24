@@ -46,6 +46,10 @@ export async function resolveLatestTarget(
   _layer: string,
   parentUrl: string
 ): Promise<ExactPackage | null> {
+  this.log(
+    `nodemodules/resolveLatestTarget`,
+    `Trying to resolve ${JSON.stringify(target)} from parent ${parentUrl}`
+  );
   let curUrl = new URL(`node_modules/${target.name}`, parentUrl);
   const rootUrl = new URL(`/node_modules/${target.name}`, parentUrl).href;
   while (!(await dirExists.call(this, curUrl))) {

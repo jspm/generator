@@ -11,6 +11,7 @@ import { fetch } from "#fetch";
 import { importedFrom } from "../common/url.js";
 // @ts-ignore
 import { parse } from "es-module-lexer/js";
+import { Install } from "../generator.js";
 import {
   getProvider,
   defaultProviders,
@@ -127,12 +128,7 @@ export class Resolver {
     );
   }
 
-  resolveBuiltin(
-    specifier: string
-  ):
-    | string
-    | { target: InstallTarget; alias: string; subpath?: "." | `./${string}` }
-    | undefined {
+  resolveBuiltin(specifier: string): string | Install | undefined {
     for (const provider of Object.values(this.providers)) {
       if (!provider.resolveBuiltin) continue;
       const builtin = provider.resolveBuiltin.call(this, specifier, this.env);
@@ -344,7 +340,6 @@ export class Resolver {
   async finalizeResolve(
     url: string,
     parentIsCjs: boolean,
-    installer: Installer | null,
     pkgUrl: `${string}/`
   ): Promise<string> {
     if (parentIsCjs && url.endsWith("/")) url = url.slice(0, -1);
@@ -358,27 +353,23 @@ export class Resolver {
             return this.finalizeResolve(
               await legacyMainResolve.call(this, pcfg.browser, new URL(url)),
               parentIsCjs,
-              installer,
               pkgUrl
             );
           if (this.env.includes("module") && typeof pcfg.module === "string")
             return this.finalizeResolve(
               await legacyMainResolve.call(this, pcfg.module, new URL(url)),
               parentIsCjs,
-              installer,
               pkgUrl
             );
           if (typeof pcfg.main === "string")
             return this.finalizeResolve(
               await legacyMainResolve.call(this, pcfg.main, new URL(url)),
               parentIsCjs,
-              installer,
               pkgUrl
             );
           return this.finalizeResolve(
             await legacyMainResolve.call(this, null, new URL(url)),
             parentIsCjs,
-            installer,
             pkgUrl
           );
         }
@@ -391,6 +382,7 @@ export class Resolver {
         if (await this.exists(url + ".node")) return url + ".node";
         return url;
       })();
+
     // Only browser maps apply to relative resolved paths
     if (this.env.includes("browser")) {
       pkgUrl = pkgUrl || (await this.getPackageBase(url));
@@ -413,19 +405,13 @@ export class Resolver {
             return await this.finalizeResolve(
               pkgUrl + target.slice(2),
               parentIsCjs,
-              installer,
               pkgUrl
             );
           }
         }
       }
     }
-    // // Node.js core resolutions
-    // if (installer && url.startsWith('node:')) {
-    //   const subpath: `./${string}` = `./nodelibs/${url.slice(5)}`;
-    //   const { installUrl } = await installer.installTarget(url.slice(5), installer.stdlibTarget, subpath, 'new', pkgUrl, pkgUrl);
-    //   return this.finalizeResolve(await this.resolveExport(installUrl, subpath, env, parentIsCjs, url, installer, new URL(pkgUrl)), parentIsCjs, env, installer, installUrl);
-    // }
+
     return url;
   }
 
@@ -449,7 +435,7 @@ export class Resolver {
       for (const curTarget of targets) {
         try {
           if (
-            (await this.finalizeResolve(curTarget, false, null, pkgUrl)) ===
+            (await this.finalizeResolve(curTarget, false, pkgUrl)) ===
             pkgUrl + subpath.slice(2)
           ) {
             return ".";
@@ -464,7 +450,7 @@ export class Resolver {
         const url = new URL(pcfg.exports, pkgUrl).href;
         try {
           if (
-            (await this.finalizeResolve(url, false, null, pkgUrl)) ===
+            (await this.finalizeResolve(url, false, pkgUrl)) ===
             pkgUrl + subpath.slice(2)
           )
             return ".";
@@ -479,7 +465,6 @@ export class Resolver {
               (await this.finalizeResolve(
                 new URL(curTarget, pkgUrl).href,
                 false,
-                null,
                 pkgUrl
               )) ===
               pkgUrl + subpath.slice(2)
@@ -501,7 +486,6 @@ export class Resolver {
                 (await this.finalizeResolve(
                   new URL(curTarget, pkgUrl).href,
                   false,
-                  null,
                   pkgUrl
                 )) ===
                 pkgUrl + subpath.slice(2)
@@ -562,7 +546,6 @@ export class Resolver {
             (await this.finalizeResolve(
               new URL(subpath, new URL(pkgUrl)).href,
               false,
-              null,
               pkgUrl
             )) ===
             pkgUrl + subpath.slice(2)
@@ -583,7 +566,6 @@ export class Resolver {
               pkgUrl
             ),
             false,
-            null,
             pkgUrl
           )) ===
             pkgUrl + subpath.slice(2)
@@ -601,7 +583,6 @@ export class Resolver {
               pkgUrl
             ),
             false,
-            null,
             pkgUrl
           )) ===
           pkgUrl + subpath.slice(2)
@@ -620,7 +601,6 @@ export class Resolver {
               pkgUrl
             ),
             false,
-            null,
             pkgUrl
           )) ===
             pkgUrl + subpath.slice(2)
@@ -639,7 +619,6 @@ export class Resolver {
               pkgUrl
             ),
             false,
-            null,
             pkgUrl
           )) ===
             pkgUrl + subpath.slice(2)
@@ -710,7 +689,6 @@ export class Resolver {
           return this.finalizeResolve(
             new URL(pcfg.exports, pkgUrl).href,
             parentIsCjs,
-            installer,
             pkgUrl
           );
         else throwExportNotDefined();
@@ -719,7 +697,6 @@ export class Resolver {
           return this.finalizeResolve(
             this.resolvePackageTarget(pcfg.exports, pkgUrl, cjsEnv, "", false),
             parentIsCjs,
-            installer,
             pkgUrl
           );
         else throwExportNotDefined();
@@ -747,7 +724,7 @@ export class Resolver {
             false
           );
           if (resolved === null) throwExportNotDefined();
-          return this.finalizeResolve(resolved, parentIsCjs, installer, pkgUrl);
+          return this.finalizeResolve(resolved, parentIsCjs, pkgUrl);
         }
         throwExportNotDefined();
       }
@@ -763,7 +740,6 @@ export class Resolver {
               pkgUrl
             ),
             parentIsCjs,
-            installer,
             pkgUrl
           );
         if (env.includes("module") && typeof pcfg.module === "string")
@@ -776,7 +752,6 @@ export class Resolver {
               pkgUrl
             ),
             parentIsCjs,
-            installer,
             pkgUrl
           );
         if (typeof pcfg.main === "string")
@@ -789,7 +764,6 @@ export class Resolver {
               pkgUrl
             ),
             parentIsCjs,
-            installer,
             pkgUrl
           );
         return this.finalizeResolve(
@@ -801,14 +775,12 @@ export class Resolver {
             pkgUrl
           ),
           parentIsCjs,
-          installer,
           pkgUrl
         );
       } else {
         return this.finalizeResolve(
           new URL(subpath, new URL(pkgUrl)).href,
           parentIsCjs,
-          installer,
           pkgUrl
         );
       }
@@ -1082,8 +1054,8 @@ async function legacyMainResolve(
   this: Resolver,
   main: string | null,
   pkgUrl: URL,
-  originalSpecifier: string,
-  parentUrl?: URL
+  originalSpecifier?: string,
+  parentUrl?: URL | string
 ) {
   let guess: string;
   if (main?.endsWith("index.js")) {
@@ -1123,9 +1095,9 @@ async function legacyMainResolve(
   }
   // Not found.
   throw new JspmError(
-    `Unable to resolve ${
-      main ? main + " in " : ""
-    }${pkgUrl} resolving ${originalSpecifier}${importedFrom(parentUrl)}.`,
+    `Unable to resolve ${main ? main + " in " : ""}${pkgUrl} resolving ${
+      originalSpecifier ?? ""
+    }${importedFrom(parentUrl)}.`,
     "MODULE_NOT_FOUND"
   );
 }

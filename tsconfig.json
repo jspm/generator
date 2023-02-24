@@ -8,7 +8,8 @@
     "sourceMap": true,
     "outDir": "lib",
     "declaration": true,
-    "removeComments": false
+    "removeComments": false,
+    "strictBindCallApply": true
   },
   "include": [
     "src/**/*.ts",

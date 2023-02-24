@@ -11,7 +11,7 @@ import { clearCache as clearFetchCache, fetch as _fetch } from "#fetch";
 import { createLogger, Log, LogStream } from "./common/log.js";
 import { Resolver } from "./trace/resolver.js";
 import { IImportMap, ImportMap } from "@jspm/import-map";
-import { Provider } from "./providers/index.js";
+import { type Provider } from "./providers/index.js";
 import { JspmError } from "./common/err.js";
 import { analyzeHtml } from "./html/analyze.js";
 import { SemverRange } from "sver";
@@ -23,6 +23,12 @@ import { InstallTarget } from "./install/installer.js";
 
 export { analyzeHtml };
 
+// Type exports for users:
+export { Provider };
+
+/**
+ * @interface GeneratorOptions.
+ */
 export interface GeneratorOptions {
   /**
    * The URL to use for resolutions without a parent context.
@@ -1138,15 +1144,17 @@ export async function lookup(
   { provider, cache }: LookupOptions = {}
 ) {
   const generator = new Generator({ cache: !cache, defaultProvider: provider });
-  const {
-    target: { pkgTarget, installSubpath },
-    subpath,
-    alias,
-  } = await installToTarget.call(
+  const { target, subpath, alias } = await installToTarget.call(
     generator,
     install,
     generator.traceMap.installer.defaultRegistry
   );
+  if (typeof target === "string")
+    throw new Error(
+      `Resolved install "${install}" to package specifier ${target}, but expected a fully qualified install target.`
+    );
+
+  const { pkgTarget, installSubpath } = target;
   if (pkgTarget instanceof URL) throw new Error("URL lookups not supported");
   const resolved = await generator.traceMap.resolver.resolveLatestTarget(
     pkgTarget,
@@ -1254,7 +1262,7 @@ async function installToTarget(
   this: Generator,
   install: Install | string,
   defaultRegistry: string
-) {
+): Promise<Install> {
   if (typeof install === "string") install = { target: install };
   if (typeof install.target !== "string")
     throw new Error('All installs require a "target" string.');

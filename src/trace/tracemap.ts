@@ -182,6 +182,7 @@ export default class TraceMap {
     seen.add(`${specifier}##${parentUrl}`);
 
     // This should probably be baseUrl?
+    this.log("tracemap/visit", `Attempting to resolve ${specifier} to a module from ${parentUrl}, toplevel=${opts.toplevel}, mode=${opts.mode}`);
     const resolved = await this.resolve(
       specifier,
       parentUrl,
@@ -384,7 +385,6 @@ export default class TraceMap {
         await this.resolver.finalizeResolve(
           resolvedHref,
           parentIsCjs,
-          this.installer,
           parentPkgUrl
         )
       );
