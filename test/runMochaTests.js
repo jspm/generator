@@ -7,7 +7,6 @@ setInterval(() => {
 
 (async () => {
   let tests = await (await fetch("/tests/list")).json();
-  tests = tests.slice(0, 5); // DEBUG
 
   mocha.setup("tdd");
   mocha.set;
