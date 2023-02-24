@@ -6,7 +6,8 @@ setInterval(() => {
 }, 3000);
 
 (async () => {
-  const tests = await (await fetch("/tests/list")).json();
+  let tests = await (await fetch("/tests/list")).json();
+  tests = tests.slice(0, 5); // DEBUG
 
   mocha.setup("tdd");
   mocha.set;
@@ -23,17 +24,32 @@ setInterval(() => {
     throw new Error(msg);
   };
 
+  // Keep track of reasons for failure in a global:
+  self.__TEST_FAILURES__ = [];
+
   suite("Browser Tests", async function () {
     this.timeout(30000);
     for (const name of tests) {
       if (name.startsWith("deno") || name.startsWith("node")) continue;
       test(name, async function () {
-        await import("./" + name + ".js");
+        try {
+          await import("./" + name + ".js");
+        } catch (err) {
+          __TEST_FAILURES__.push([name, err.stack]);
+          throw err;
+        }
       });
     }
   });
 
   mocha.run(function (failures) {
-    fetch(failures ? "/error?" + failures : "/done");
+    if (failures) {
+      fetch("/error?" + failures, {
+        method: "POST",
+        body: JSON.stringify(__TEST_FAILURES__),
+      });
+    } else {
+      fetch("/done");
+    }
   });
 })();
