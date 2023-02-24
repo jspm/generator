@@ -1160,7 +1160,7 @@ export async function lookup(
   const resolved = await generator.traceMap.resolver.resolveLatestTarget(
     pkgTarget,
     generator.traceMap.installer.getProvider(pkgTarget),
-    process.cwd() // TODO: should we find a package scope for this?
+    generator.baseUrl.href,
   );
   return {
     install: {
