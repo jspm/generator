@@ -1,24 +1,19 @@
 import { Generator } from "@jspm/generator";
 import { denoExec } from "#test/deno";
 
-function replaceAll(str, pattern, replacement) {
-  let last;
-  while (last !== str) {
-    last = str;
-    str = str.replace(pattern, replacement);
-  }
-  return str;
-}
-
 const generator = new Generator({
   mapUrl: "about:blank",
   env: ["production", "node", "deno", "module", "source"],
+
+  // Hack - deno bombs on the circular imports in @babel/core@7.21.0, despite
+  // it working fine in the browser and node. So we patch it:
+  resolutions: {
+    "@babel/core": "~7.20.0",
+  },
 });
 
 const targetUrl = new URL("../../", import.meta.url).href;
-
 await generator.install({ alias: "@jspm/generator", target: targetUrl });
-
 const map = generator.getMap();
 
 await denoExec(
