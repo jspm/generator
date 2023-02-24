@@ -1159,7 +1159,8 @@ export async function lookup(
   if (pkgTarget instanceof URL) throw new Error("URL lookups not supported");
   const resolved = await generator.traceMap.resolver.resolveLatestTarget(
     pkgTarget,
-    generator.traceMap.installer.getProvider(pkgTarget)
+    generator.traceMap.installer.getProvider(pkgTarget),
+    process.cwd() // TODO: should we find a package scope for this?
   );
   return {
     install: {

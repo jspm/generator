@@ -32,7 +32,7 @@ import {
   PackageProvider,
 } from "../install/installer.js";
 import { SemverRange } from "sver";
-import {resolve} from "@jspm/import-map/src/url.js";
+import { resolve } from "@jspm/import-map/src/url.js";
 
 let realpath, pathToFileURL;
 
@@ -286,16 +286,15 @@ export class Resolver {
       unstable: target.unstable,
     };
 
-    const resolveLatestTarget = getProvider(provider, this.providers)
-      .resolveLatestTarget
-      .bind(this);
-    const pkg = await resolveLatestTarget(latestTarget, layer, parentUrl)
+    const resolveLatestTarget = getProvider(
+      provider,
+      this.providers
+    ).resolveLatestTarget.bind(this);
+    const pkg = await resolveLatestTarget(latestTarget, layer, parentUrl);
     if (pkg) return pkg;
 
     throw new JspmError(
-      `Unable to resolve package ${latestTarget.registry}:${
-        latestTarget.name
-      } in range "${latestTarget.range}" from parent ${parentUrl}`
+      `Unable to resolve package ${latestTarget.registry}:${latestTarget.name} in range "${latestTarget.range}" from parent ${parentUrl}`
     );
   }
 
@@ -652,7 +651,11 @@ export class Resolver {
         unstable: true,
       };
       const provider = installer.getProvider(stdlibTarget);
-      const pkg = await this.resolveLatestTarget(stdlibTarget, provider);
+      const pkg = await this.resolveLatestTarget(
+        stdlibTarget,
+        provider,
+        parentUrl.href
+      );
       return this.resolveExport(
         this.pkgToUrl(pkg, provider),
         "./nodelibs/@empty",
