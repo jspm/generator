@@ -708,7 +708,8 @@ export class Generator {
           ranges: [new SemverRange("*")],
           unstable: false,
         },
-        this.traceMap.installer.defaultProvider
+        this.traceMap.installer.defaultProvider,
+        this.baseUrl.href
       );
       const esmsUrl =
         this.traceMap.resolver.pkgToUrl(
