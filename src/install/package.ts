@@ -8,6 +8,7 @@ import convertRange from "sver/convert-range.js";
 import { InstallTarget } from "./installer.js";
 import { Resolver } from "../trace/resolver.js";
 import { builtinSchemes } from "../providers/index.js";
+import { Install } from "../generator.js";
 
 /**
  * ExportsTarget defines specifier mappings for the public entry points of a
@@ -90,10 +91,7 @@ export async function parseUrlOrBuiltinTarget(
   resolver: Resolver,
   targetStr: string,
   parentUrl?: URL
-): Promise<
-  | { alias: string; target: InstallTarget; subpath: "." | `./${string}` }
-  | undefined
-> {
+): Promise<Install | undefined> {
   const registryIndex = targetStr.indexOf(":");
   if (
     isRelative(targetStr) ||
@@ -101,7 +99,7 @@ export async function parseUrlOrBuiltinTarget(
       supportedProtocols.includes(targetStr.slice(0, registryIndex))) ||
     builtinSchemes.has(targetStr.slice(0, registryIndex))
   ) {
-    let target: InstallTarget;
+    let target: string | InstallTarget;
     let alias: string;
     let subpath: "." | `./${string}` = ".";
     const maybeBuiltin =
@@ -109,7 +107,9 @@ export async function parseUrlOrBuiltinTarget(
       resolver.resolveBuiltin(targetStr);
     if (maybeBuiltin) {
       if (typeof maybeBuiltin === "string") {
-        throw new Error("How to install a string?");
+        throw new Error(
+          `Builtin "${targetStr}" was resolved to package specifier ${maybeBuiltin}, but JSPM does not currently support installing specifiers for builtins.`
+        );
       } else {
         ({ alias, subpath = ".", target } = maybeBuiltin);
       }
@@ -172,11 +172,7 @@ export async function parseTarget(
   targetStr: string,
   parentPkgUrl: URL,
   defaultRegistry: string
-): Promise<{
-  target: InstallTarget;
-  alias: string;
-  subpath: "." | `./${string}`;
-}> {
+): Promise<Install> {
   const urlTarget = await parseUrlOrBuiltinTarget(
     resolver,
     targetStr,

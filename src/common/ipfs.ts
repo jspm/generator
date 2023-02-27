@@ -8,7 +8,9 @@ let client, clientAPI;
 async function initClient(api = tryAPIs) {
   if (!("AbortController" in globalThis)) {
     const { AbortController, AbortSignal } = await import("abort-controller");
+    // @ts-ignore
     globalThis.AbortController = AbortController;
+    // @ts-ignore
     globalThis.AbortSignal = AbortSignal;
   }
   const { create } = await import("ipfs-client");

@@ -25,6 +25,6 @@ try {
 } catch (e) {
   assert.strictEqual(
     e.message,
-    "Unable to resolve npm:react@24 to a valid version imported from default"
+    "Unable to resolve npm:react@24 to a valid version imported from about:blank/"
   );
 }

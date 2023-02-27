@@ -74,6 +74,14 @@ http
     } else if (req.url.startsWith("/error?")) {
       const cnt = req.url.slice(7);
       console.log(kleur.red(cnt + " test failures found."));
+
+      // The reasons for the failures are in the request body:
+      const body = await once(req, "data");
+      const failures = JSON.parse(body);
+      for (const [name, err] of failures) {
+        console.log(kleur.red(`  ${name}: ${err}`));
+      }
+
       if (shouldExit) {
         failTimeout = setTimeout(() => process.exit(1), 5000);
       }

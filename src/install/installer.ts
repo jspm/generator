@@ -247,6 +247,12 @@ export class Installer {
       }
     }
 
+    this.log(
+      "installer/installTarget",
+      `Resolving latest version of ${JSON.stringify(
+        pkgTarget
+      )} against provider ${provider}`
+    );
     const latestPkg = await this.resolver.resolveLatestTarget(
       pkgTarget,
       provider,
@@ -424,7 +430,9 @@ export class Installer {
       if (typeof builtin === "string") return builtin;
       return this.installTarget(
         specifier,
-        builtin.target,
+        // TODO: either change the types so resolveBuiltin always returns a
+        // fully qualified InstallTarget, or support string targets here.
+        builtin.target as InstallTarget,
         traceSubpath,
         mode,
         isTopLevel ? null : pkgScope,
