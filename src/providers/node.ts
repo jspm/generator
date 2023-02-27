@@ -97,11 +97,9 @@ export function resolveBuiltin(
   // std@0.178.0, the standard library no longer ships node polyfills, so we
   // should always install builtins as base specifiers. This does mean that we
   // no longer support old versions of deno unless they use --compat.
-  if (env.includes("deno")) {
+  if (env.includes("deno") || env.includes("node")) {
     return `node:${builtin}`;
   }
-
-  if (env.includes("node")) return `node:${builtin}`;
 
   return {
     target: {
