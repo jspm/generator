@@ -13,7 +13,7 @@ for (const pkgName of pkgNames) {
 
   // Installing the package from within itself should resolve locally, since the
   // package.json has a local export for ".":
-  await generator.traceInstall(pkgName);
+  await generator.link(pkgName);
   let json = generator.getMap();
   assert.ok(json.imports[pkgName]);
 

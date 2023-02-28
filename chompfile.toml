@@ -95,7 +95,7 @@ run = '''
         env: ['browser', 'module', 'production']
     });
 
-    await generator.traceInstall('@jspm/generator');
+    await generator.link('@jspm/generator');
     await generator.install('node:assert');
 
     const html = await generator.htmlInject(await readFile(process.env.TARGET, 'utf8'), {
