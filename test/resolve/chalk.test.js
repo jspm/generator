@@ -5,6 +5,7 @@ if (typeof document === "undefined") {
   const generator = new Generator({
     mapUrl: import.meta.url,
     defaultProvider: "nodemodules",
+    commonJS: true,
   });
 
   await generator.install("chalk");
