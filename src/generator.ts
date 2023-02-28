@@ -271,6 +271,12 @@ export interface GeneratorOptions {
    * When using a lockfile, force update touched resolutions to latest
    */
   latest?: boolean;
+
+  /**
+   * Support tracing CommonJS dependencies locally. This is necessary if you
+   * are using the "nodemodules" provider and have CommonJS dependencies.
+   */
+  commonJS?: boolean;
 }
 
 export interface ModuleAnalysis {
@@ -359,6 +365,7 @@ export class Generator {
     freeze,
     latest,
     ipfsAPI,
+    commonJS = false,
   }: GeneratorOptions = {}) {
     let fetchOpts = undefined;
     if (cache === "offline")
@@ -435,6 +442,7 @@ export class Generator {
         resolutions,
         freeze,
         latest,
+        commonJS,
       },
       log,
       resolver

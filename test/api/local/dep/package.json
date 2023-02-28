@@ -1,4 +1,5 @@
 {
   "name": "localdep",
+  "type": "module",
   "exports": "./main.js"
 }

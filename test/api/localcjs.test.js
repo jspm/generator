@@ -7,6 +7,7 @@ if (typeof document === "undefined") {
     mapUrl: import.meta.url,
     defaultProvider: "jspm",
     env: ["production", "browser"],
+    commonJS: true,
   });
 
   await generator.install({ target: "./local/pkg", subpath: "./cjs" });

@@ -30,6 +30,9 @@ import {
 
 // TODO: options as trace-specific / stored as top-level per top-level load
 export interface TraceMapOptions extends InstallOptions {
+  /**
+   * Whether or not to trace the dependency tree as systemJS modules.
+   */
   system?: boolean;
 
   /**
@@ -47,6 +50,11 @@ export interface TraceMapOptions extends InstallOptions {
    * List of module specifiers to ignore during tracing.
    */
   ignore?: string[];
+
+  /**
+   * Whether or not to enable CommonJS tracing for local dependencies.
+   */
+  commonJS?: boolean;
 }
 
 interface TraceGraph {
@@ -61,7 +69,13 @@ interface TraceEntry {
   hasStaticParent: boolean;
   size: number;
   integrity: string;
+
+  // wasCJS is true if the module is a CJS module, but also if it's an ESM
+  // module that was transpiled from a CJS module. This is checkable on the
+  // jspm.io CDN by looking for an export for the module with a '!cjs'
+  // extension in its parent package:
   wasCJS: boolean;
+
   // For cjs modules, the list of hoisted deps
   // this is needed for proper cycle handling
   cjsLazyDeps: string[];
@@ -92,7 +106,6 @@ function combineSubpaths(
 
 // The tracemap fully drives the installer
 export default class TraceMap {
-  cjsEnv = null;
   installer: Installer | undefined;
   opts: TraceMapOptions;
   tracedUrls: TraceGraph = {};
@@ -175,13 +188,11 @@ export default class TraceMap {
     seen = new Set()
   ) {
     if (!parentUrl) throw new Error("Internal error: expected parentUrl");
-    // TODO: support ignoring prefixes?
     if (this.opts.ignore?.includes(specifier)) return;
 
     if (seen.has(`${specifier}##${parentUrl}`)) return;
     seen.add(`${specifier}##${parentUrl}`);
 
-    // This should probably be baseUrl?
     this.log(
       "tracemap/visit",
       `Attempting to resolve ${specifier} to a module from ${parentUrl}, toplevel=${opts.toplevel}, mode=${opts.mode}`
@@ -193,7 +204,15 @@ export default class TraceMap {
       opts.toplevel
     );
 
+    // We support analysis of CommonJS modules for local workflows, where it's
+    // very likely that the user has some CommonJS dependencies, but this is
+    // something that the user has to explicitly enable:
     const entry = await this.getTraceEntry(resolved, parentUrl);
+    if (entry?.format === "commonjs" && !this.opts.commonJS) {
+      throw new JspmError(
+        `Unable to trace ${resolved}, as it is a CommonJS module. Either enable CommonJS tracing explicitly by setting "GeneratorOptions.commonJS" to true, or use a provider that performs ESM transpiling like jspm.io via defaultProvider: 'jspm.io'.`
+      );
+    }
 
     if (opts.visitor) {
       const stop = await opts.visitor(

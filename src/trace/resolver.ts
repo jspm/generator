@@ -786,55 +786,6 @@ export class Resolver {
     }
   }
 
-  // async dlPackage (pkgUrl: string, outDirPath: string, beautify = false) {
-  //   if (existsSync(outDirPath))
-  //     throw new JspmError(`Checkout directory ${outDirPath} already exists.`);
-
-  //   if (!pkgUrl.endsWith('/'))
-  //     pkgUrl += '/';
-
-  //   const dlPool = new Pool(20);
-
-  //   const pkgContents: Record<string, string | ArrayBuffer> = Object.create(null);
-
-  //   const pcfg = await this.getPackageConfig(pkgUrl);
-  //   if (!pcfg || !pcfg.files || !(pcfg.files instanceof Array))
-  //     throw new JspmError(`Unable to checkout ${pkgUrl} as there is no package files manifest.`);
-
-  //   await Promise.all((pcfg.files).map(async file => {
-  //     const url = pkgUrl + file;
-  //     await dlPool.queue();
-  //     try {
-  //       const res = await fetch(url, this.fetchOpts);
-  //       switch (res.status) {
-  //         case 304:
-  //         case 200:
-  //           const contentType = res.headers && res.headers.get('content-type');
-  //           let contents: string | ArrayBuffer = await res.arrayBuffer();
-  //           if (beautify) {
-  //             if (contentType === 'application/javascript') {
-  //               // contents = jsBeautify(contents);
-  //             }
-  //             else if (contentType === 'application/json') {
-  //               contents = JSON.stringify(JSON.parse(contents.toString()), null, 2);
-  //             }
-  //           }
-  //           return pkgContents[file] = contents;
-  //         default: throw new JspmError(`Invalid status code ${res.status} looking up ${url} - ${res.statusText}`);
-  //       }
-  //     }
-  //     finally {
-  //       dlPool.pop();
-  //     }
-  //   }));
-
-  //   for (const file of Object.keys(pkgContents)) {
-  //     const filePath = outDirPath + '/' + file;
-  //     mkdirp.sync(path.dirname(filePath));
-  //     writeFileSync(filePath, Buffer.from(pkgContents[file]));
-  //   }
-  // }
-
   async analyze(
     resolvedUrl: string,
     parentUrl: string,
