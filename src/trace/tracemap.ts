@@ -209,7 +209,9 @@ export default class TraceMap {
     // something that the user has to explicitly enable:
     const entry = await this.getTraceEntry(resolved, parentUrl);
     if (entry?.format === "commonjs" && !this.opts.commonJS) {
-      throw new JspmError(`Unable to trace ${resolved}, as it is a CommonJS module. Either enable CommonJS tracing explicitly by setting "GeneratorOptions.commonJS" to true, or use a provider that performs ESM transpiling like "jspm.io".`);
+      throw new JspmError(
+        `Unable to trace ${resolved}, as it is a CommonJS module. Either enable CommonJS tracing explicitly by setting "GeneratorOptions.commonJS" to true, or use a provider that performs ESM transpiling like "jspm.io".`
+      );
     }
 
     if (opts.visitor) {
