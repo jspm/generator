@@ -3,7 +3,7 @@ import assert from "assert";
 
 const generator = new Generator({
   mapUrl: new URL("./local/pkg/asdf", import.meta.url),
-  defaultProvider: "jspm",
+  defaultProvider: "jspm.io",
   env: ["production", "browser"],
 });
 

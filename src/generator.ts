@@ -355,7 +355,7 @@ export class Generator {
     rootUrl = undefined,
     inputMap = undefined,
     env = ["browser", "development", "module", "import"],
-    defaultProvider = "jspm",
+    defaultProvider = "jspm.io",
     defaultRegistry = "npm",
     customProviders = undefined,
     providers,

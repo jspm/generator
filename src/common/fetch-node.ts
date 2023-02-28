@@ -11,7 +11,7 @@ import { Buffer } from "buffer";
 
 let cacheDir: string;
 if (process.platform === "darwin")
-  cacheDir = path.join(homedir(), "Library", "Caches", "jspm");
+  cacheDir = path.join(homedir(), "Library", "Caches", "jspm.io");
 else if (process.platform === "win32")
   cacheDir = path.join(
     process.env.LOCALAPPDATA || path.join(homedir(), "AppData", "Local"),
@@ -20,7 +20,7 @@ else if (process.platform === "win32")
 else
   cacheDir = path.join(
     process.env.XDG_CACHE_HOME || path.join(homedir(), ".cache"),
-    "jspm"
+    "jspm.io"
   );
 
 export function clearCache() {

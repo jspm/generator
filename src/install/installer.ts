@@ -76,7 +76,7 @@ export class Installer {
   installBaseUrl: `${string}/`;
   added = new Map<string, InstallTarget>();
   hasLock = false;
-  defaultProvider = { provider: "jspm", layer: "default" };
+  defaultProvider = { provider: "jspm.io", layer: "default" };
   defaultRegistry = "npm";
   providers: Record<string, string>;
   resolutions: Record<string, string>;
