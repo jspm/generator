@@ -77,21 +77,26 @@ export function analyzeHtml(source: string, url: URL = baseUrl): HtmlAnalysis {
     esModuleShims: null,
     comments: [],
   };
+
+  const tags = parseHtml(source, [
+    "!--",
+    "base",
+    "script",
+    "link",
+  ]);
+
   let createdInjectionPoint = false;
-  const tags = parseHtml(source);
   for (const tag of tags) {
     switch (tag.tagName) {
       case "!--":
         analysis.comments.push({ start: tag.start, end: tag.end, attrs: {} });
         break;
+
       case "base":
-        if (!createdInjectionPoint) {
-          createInjectionPoint(source, analysis.map, tag, analysis);
-          createdInjectionPoint = true;
-        }
         const href = getAttr(source, tag, "href");
         if (href) analysis.base = new URL(href, url);
         break;
+
       case "script":
         const type = getAttr(source, tag, "type");
         if (type === "importmap") {
@@ -102,7 +107,8 @@ export function analyzeHtml(source: string, url: URL = baseUrl): HtmlAnalysis {
             : parseStyled(mapText, url.href + "#importmap");
           const { start, end } = tag;
           const attrs = toHtmlAttrs(source, tag.attributes);
-          let lastChar = tag.innerEnd;
+
+          let lastChar = tag.start;
           while (isWs(source.charCodeAt(--lastChar)));
           analysis.newlineTab = detectIndent(source, lastChar + 1);
           analysis.map = { json, style, start, end, attrs, newScript: false };
@@ -155,26 +161,49 @@ export function analyzeHtml(source: string, url: URL = baseUrl): HtmlAnalysis {
             }
           }
         }
+
+        // If we haven't found an injection point already, then we default to
+        // injecting before the first link/script tag:
         if (!createdInjectionPoint) {
-          createInjectionPoint(source, analysis.map, tag, analysis);
+          createInjectionPoint(source, tag.start, analysis.map, tag, analysis)
           createdInjectionPoint = true;
         }
+
         break;
+
       case "link":
-        if (!createdInjectionPoint) {
-          createInjectionPoint(source, analysis.map, tag, analysis);
-          createdInjectionPoint = true;
-        }
         if (getAttr(source, tag, "rel") === "modulepreload") {
           const { start, end } = tag;
           const attrs = toHtmlAttrs(source, tag.attributes);
           analysis.preloads.push({ start, end, attrs });
         }
+
+        // If we haven't found an injection point already, then we default to
+        // injecting before the first link/script tag:
+        if (!createdInjectionPoint) {
+          createInjectionPoint(source, tag.start, analysis.map, tag, analysis)
+          createdInjectionPoint = true;
+        }
     }
   }
-  if (analysis.map.start === -1) {
+  
+  // If we haven't found an existing import map to base the injection on, we
+  // fall back to injecting into the head:
+  if (!createdInjectionPoint) {
+    const head = parseHtml(source, ["head"])?.[0];
+    if (head) {
+      let injectionPoint = head.innerStart;
+      while (source[injectionPoint] !== "<") injectionPoint++;
+      createInjectionPoint(source, injectionPoint, analysis.map, head, analysis);
+      createdInjectionPoint = true;
+    }
+  }
+
+  // As a final fallback we inject into the end of the document:
+  if (!createdInjectionPoint) {
     createInjectionPoint(
       source,
+      source.length,
       analysis.map,
       {
         tagName: "html",
@@ -187,16 +216,18 @@ export function analyzeHtml(source: string, url: URL = baseUrl): HtmlAnalysis {
       analysis
     );
   }
+
   return analysis;
 }
 
 function createInjectionPoint(
   source: string,
+  injectionPoint: number,
   map: ParsedMap,
   tag: ParsedTag,
   analysis: HtmlAnalysis
 ) {
-  let lastChar = tag.innerEnd;
+  let lastChar = injectionPoint;
   while (isWs(source.charCodeAt(--lastChar)));
   analysis.newlineTab = detectIndent(source, lastChar + 1);
   if (analysis.newlineTab.indexOf("\n") === -1) {
@@ -206,7 +237,7 @@ function createInjectionPoint(
   }
   map.newScript = true;
   map.attrs = toHtmlAttrs(source, tag.attributes);
-  map.start = map.end = tag.start;
+  map.start = map.end = injectionPoint;
 }
 
 function readAttr(
