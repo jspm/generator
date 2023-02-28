@@ -1160,7 +1160,7 @@ export async function lookup(
   const resolved = await generator.traceMap.resolver.resolveLatestTarget(
     pkgTarget,
     generator.traceMap.installer.getProvider(pkgTarget),
-    generator.baseUrl.href,
+    generator.baseUrl.href
   );
   return {
     install: {

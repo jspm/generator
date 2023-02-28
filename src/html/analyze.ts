@@ -78,12 +78,7 @@ export function analyzeHtml(source: string, url: URL = baseUrl): HtmlAnalysis {
     comments: [],
   };
 
-  const tags = parseHtml(source, [
-    "!--",
-    "base",
-    "script",
-    "link",
-  ]);
+  const tags = parseHtml(source, ["!--", "base", "script", "link"]);
 
   let createdInjectionPoint = false;
   for (const tag of tags) {
@@ -165,7 +160,7 @@ export function analyzeHtml(source: string, url: URL = baseUrl): HtmlAnalysis {
         // If we haven't found an injection point already, then we default to
         // injecting before the first link/script tag:
         if (!createdInjectionPoint) {
-          createInjectionPoint(source, tag.start, analysis.map, tag, analysis)
+          createInjectionPoint(source, tag.start, analysis.map, tag, analysis);
           createdInjectionPoint = true;
         }
 
@@ -181,12 +176,12 @@ export function analyzeHtml(source: string, url: URL = baseUrl): HtmlAnalysis {
         // If we haven't found an injection point already, then we default to
         // injecting before the first link/script tag:
         if (!createdInjectionPoint) {
-          createInjectionPoint(source, tag.start, analysis.map, tag, analysis)
+          createInjectionPoint(source, tag.start, analysis.map, tag, analysis);
           createdInjectionPoint = true;
         }
     }
   }
-  
+
   // If we haven't found an existing import map to base the injection on, we
   // fall back to injecting into the head:
   if (!createdInjectionPoint) {
@@ -194,7 +189,13 @@ export function analyzeHtml(source: string, url: URL = baseUrl): HtmlAnalysis {
     if (head) {
       let injectionPoint = head.innerStart;
       while (source[injectionPoint] !== "<") injectionPoint++;
-      createInjectionPoint(source, injectionPoint, analysis.map, head, analysis);
+      createInjectionPoint(
+        source,
+        injectionPoint,
+        analysis.map,
+        head,
+        analysis
+      );
       createdInjectionPoint = true;
     }
   }
