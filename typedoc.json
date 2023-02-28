@@ -1,4 +1,5 @@
 {
+  "out": "docs",
   "entryPoints": ["src/generator.ts"],
-  "out": "docs"
+  "plugin": ["typedoc-plugin-versions"]
 }

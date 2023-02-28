@@ -105,11 +105,6 @@ run = '''
 '''
 
 [[task]]
-target = 'docs'
-deps = ['src/*.ts', 'src/**/*.ts']
-run = 'typedoc src/*.ts src/**/*.ts'
-
-[[task]]
 name = 'prettier'
 template = 'prettier'
 deps = ['src/**/*', 'src/*', 'test/**/*', 'test/*']
