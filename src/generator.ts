@@ -701,16 +701,30 @@ export class Generator {
 
     let esms = "";
     if (esModuleShims) {
-      const esmsPkg = await this.traceMap.resolver.resolveLatestTarget(
-        {
-          name: "es-module-shims",
-          registry: "npm",
-          ranges: [new SemverRange("*")],
-          unstable: false,
-        },
-        this.traceMap.installer.defaultProvider,
-        this.baseUrl.href
-      );
+      let esmsPkg: ExactPackage;
+      try {
+        esmsPkg = await this.traceMap.resolver.resolveLatestTarget(
+          {
+            name: "es-module-shims",
+            registry: "npm",
+            ranges: [new SemverRange("*")],
+            unstable: false,
+          },
+          this.traceMap.installer.defaultProvider,
+          this.baseUrl.href
+        );
+      } catch (err) {
+        // This usually happens because the user is trying to use their
+        // node_modules as the provider but has not installed the shim:
+        let errMsg = `Unable to resolve "es-module-shims@*" under current provider "${this.traceMap.installer.defaultProvider.provider}".`;
+        if (
+          this.traceMap.installer.defaultProvider.provider === "nodemodules"
+        ) {
+          errMsg += `\n\nJspm automatically injects a shim so that the import map in your HTML file will be usable by older browsers.\nYou may need to run "npm install es-module-shims" to install the shim if you want to link against your local node_modules folder.`;
+        }
+        throw new JspmError(errMsg);
+      }
+
       const esmsUrl =
         this.traceMap.resolver.pkgToUrl(
           esmsPkg,
@@ -1160,7 +1174,7 @@ export async function lookup(
   const resolved = await generator.traceMap.resolver.resolveLatestTarget(
     pkgTarget,
     generator.traceMap.installer.getProvider(pkgTarget),
-    generator.baseUrl.href,
+    generator.baseUrl.href
   );
   return {
     install: {
