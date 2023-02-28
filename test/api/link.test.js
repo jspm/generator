@@ -13,7 +13,7 @@ const generator = new Generator({
   },
 });
 
-await generator.traceInstall("x");
+await generator.link("x");
 
 const json = generator.getMap();
 assert.strictEqual(

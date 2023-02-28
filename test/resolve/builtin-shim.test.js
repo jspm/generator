@@ -7,8 +7,8 @@ if (typeof document === "undefined") {
     defaultProvider: "nodemodules",
   });
 
-  // await generator.traceInstall('./cjspkg/mod.js');
-  await generator.traceInstall("./cjspkg/mod-shim.js");
+  // await generator.link('./cjspkg/mod.js');
+  await generator.link("./cjspkg/mod-shim.js");
 
   const json = generator.getMap();
 

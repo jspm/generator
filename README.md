@@ -192,7 +192,7 @@ The second HTML Generation options include:
 
 * `htmlUrl`: The URL of the HTML file for relative path handling in the map
 * `rootUrl`: The root URL of the HTML file for root-relative path handling in the map
-* `trace`: Whether to trace the HTML imports before injection (via `generator.traceInstall`)
+* `trace`: Whether to trace the HTML imports before injection (via `generator.link`)
 * `pins`: List of top-level pinned `"imports"` to inject, or `true` to inject all (the default if not tracing).
 * `comment`: Defaults to `Built with @jspm/generator` comment, set to false or an empty string to remove.
 * `preload`: Boolean, injects `<link rel="modulepreload">` preload tags. By default only injects static dependencies. Set to `'all'` to inject dyamic import preloads as well (this is the default when applying `integrity`).
@@ -257,13 +257,13 @@ in-page refreshing application workflows.
 Instead of installing specific packages into the map, you can also just trace any module
 module directly and JSPM will generate the scoped mappings to support that modules execution.
 
-We do this via `generator.traceInstall` because we want to be explicit that this graph is being included in the import map (unused mappings are always pruned if not pinned as "imports" or custom pins).
+We do this via `generator.link` because we want to be explicit that this graph is being included in the import map (unused mappings are always pruned if not pinned as "imports" or custom pins).
 
 generate.mjs
 ```js
 // all static and dynamic dependencies necessary to execute app will be traced and
 // put into the map as necessary
-await generator.traceInstall('./app.js');
+await generator.link('./app.js');
 ```
 
 The benefit of tracing is that it directly implements a Node.js-compatible resolver so that if you can trace something

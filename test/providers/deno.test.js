@@ -46,7 +46,7 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
 // {
 //   const generator = new Generator();
 
-//   await generator.traceInstall(new URL('./coremods/deno.js', import.meta.url).href);
+//   await generator.link(new URL('./coremods/deno.js', import.meta.url).href);
 
 //   const json = generator.getMap();
 
@@ -67,7 +67,7 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
 //   const generator = new Generator();
 
 //   try {
-//     await generator.traceInstall(new URL('./coremods/deno.notfound.js', import.meta.url).href);
+//     await generator.link(new URL('./coremods/deno.notfound.js', import.meta.url).href);
 //   }
 //   catch (e) {
 //     console.log(e);

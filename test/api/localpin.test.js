@@ -7,7 +7,7 @@ const generator = new Generator({
   env: ["production", "browser"],
 });
 
-await generator.traceInstall("./local/pkg/jquery.js");
+await generator.link("./local/pkg/jquery.js");
 const json = generator.getMap();
 
 assert.ok(json.imports["jquery"]);

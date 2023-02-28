@@ -493,7 +493,7 @@ export class Generator {
    * Trace and pin a module, installing all dependencies necessary into the map
    * to support its execution including static and dynamic module imports.
    *
-   * @deprecated Use "traceInstall" instead.
+   * @deprecated Use "link" instead.
    */
   async pin(
     specifier: string,
@@ -502,7 +502,7 @@ export class Generator {
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
-    return this.traceInstall(specifier, parentUrl);
+    return this.link(specifier, parentUrl);
   }
 
   /**
@@ -511,8 +511,23 @@ export class Generator {
    *
    * @param specifier Module to trace
    * @param parentUrl Optional parent URL
+   * @deprecated Use "link" instead.
    */
   async traceInstall(
+    specifier: string | string[],
+    parentUrl?: string
+  ): Promise<{ staticDeps: string[]; dynamicDeps: string[] }> {
+    return this.link(specifier, parentUrl);
+  }
+
+  /**
+   * Link a module, installing all dependencies necessary into the map
+   * to support its execution including static and dynamic module imports.
+   *
+   * @param specifier Module to trace
+   * @param parentUrl Optional parent URL
+   */
+  async link(
     specifier: string | string[],
     parentUrl?: string
   ): Promise<{ staticDeps: string[]; dynamicDeps: string[] }> {
@@ -554,7 +569,7 @@ export class Generator {
    *   const pins = await generator.addMappings(html, mapUrl, rootUrl);
    *   return await generator.htmlInject(html, { pins, htmlUrl: mapUrl, rootUrl, preload, integrity, whitespace, esModuleShims, comment });
    *
-   * Traces the module scripts of the HTML via traceInstall and install
+   * Traces the module scripts of the HTML via link and install
    * for URL-like specifiers and bare specifiers respectively.
    *
    * Injects the final generated import map returning the injected HTML
@@ -674,7 +689,7 @@ export class Generator {
       ];
       await Promise.all(
         impts.map((impt) =>
-          this.traceInstall(impt, (htmlUrl as URL | undefined)?.href)
+          this.link(impt, (htmlUrl as URL | undefined)?.href)
         )
       );
       modules = [...new Set([...modules, ...impts])];

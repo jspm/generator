@@ -51,7 +51,7 @@ const esmsUrl =
     generator.traceMap.installer.defaultProvider
   ) + "dist/es-module-shims.js";
 
-await generator.traceInstall("lit/html.js");
+await generator.link("lit/html.js");
 
 const primaryHtmlProcessed = await generator.htmlInject(primaryHtml);
 

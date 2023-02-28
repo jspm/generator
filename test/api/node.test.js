@@ -57,7 +57,7 @@ import assert from "assert";
     freeze: true,
   });
 
-  await generator.traceInstall("node:process");
+  await generator.link("node:process");
 
   const json = generator.getMap();
 

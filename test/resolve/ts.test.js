@@ -7,7 +7,7 @@ if (typeof document === "undefined") {
     defaultProvider: "nodemodules",
   });
 
-  await generator.traceInstall("./tspkg/main.ts");
+  await generator.link("./tspkg/main.ts");
 
   assert.strictEqual(
     generator.getAnalysis(new URL("./tspkg/dep.ts", import.meta.url)).format,

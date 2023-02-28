@@ -7,7 +7,7 @@ const generator = new Generator({
   env: ["production", "browser"],
 });
 
-await generator.traceInstall("./local/pkg/b.js");
+await generator.link("./local/pkg/b.js");
 
 const json = generator.getMap();
 
