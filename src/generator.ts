@@ -722,7 +722,7 @@ export class Generator {
         ) {
           errMsg += `\n\nJspm automatically injects a shim so that the import map in your HTML file will be usable by older browsers.\nYou may need to run "npm install es-module-shims" to install the shim if you want to link against your local node_modules folder.`;
         }
-        errMsg += '\nTo disable the import maps polyfill injection, set esModuleShims: false.`;
+        errMsg += `\nTo disable the import maps polyfill injection, set esModuleShims: false.`;
         throw new JspmError(errMsg);
       }
 
