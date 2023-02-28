@@ -78,7 +78,7 @@ export function parseHtml(
             if (i === source.length) return scripts;
           const tag = readTagName();
           if (tag === undefined) return scripts;
-          if (tag === "/script") {
+          if (tag === `/${curScript.tagName}`) {
             curScript.innerEnd = i - 8;
             while (scanAttr());
             curScript.end = i;
