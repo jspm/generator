@@ -752,7 +752,7 @@ export class Generator {
           esmsPkg,
           this.traceMap.installer.defaultProvider
         ) + "dist/es-module-shims.js";
-      if (esmsUrl.startsWith(htmlUrl.href)) {
+      if (htmlUrl && esmsUrl.startsWith(htmlUrl.href)) {
         esmsUrl = `./${esmsUrl.slice(htmlUrl.href.length)}`;
       }
 
