@@ -47,7 +47,7 @@ export function resolveBuiltin(
   if (specifier.startsWith("npm:")) return specifier;
 }
 
-export function pkgToUrl(pkg: ExactPackage): `${string}/` {
+export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
   if (pkg.registry === "deno") return `${stdlibUrl}@${pkg.version}/`;
   if (pkg.registry === "denoland")
     return `${cdnUrl}${pkg.name}@${vCache[pkg.name] ? "v" : ""}${pkg.version}/`;
@@ -151,11 +151,12 @@ export async function getPackageConfig(
 
 const vCache = {};
 
-export function parseUrlPkg(
+export async function parseUrlPkg(
   url: string
-):
+): Promise<
   | { pkg: ExactPackage; subpath: `./${string}` | null; layer: string }
-  | undefined {
+  | undefined
+> {
   let subpath = null;
   if (url.startsWith(stdlibUrl) && url[stdlibUrl.length] === "@") {
     const version = url.slice(
@@ -227,7 +228,7 @@ export async function resolveLatestTarget(
       : stdlibUrl + "/version.ts";
   const res = await fetch(fetchUrl, fetchOpts);
   if (!res.ok) throw new Error(`Deno: Unable to lookup ${fetchUrl}`);
-  const { version } = parseUrlPkg(res.url).pkg;
+  const { version } = (await parseUrlPkg(res.url)).pkg;
   if (registry === "deno") denoStdVersion = version;
   return { registry, name, version };
 }

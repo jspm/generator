@@ -2,12 +2,13 @@ import { ExactPackage } from "../install/package.js";
 
 const cdnUrl = "https://cdn.skypack.dev/";
 
-export function pkgToUrl(pkg: ExactPackage): `${string}/` {
+export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
   return `${cdnUrl}${pkg.name}@${pkg.version}/`;
 }
 
 const exactPkgRegEx = /^((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
-export function parseUrlPkg(url: string) {
+
+export async function parseUrlPkg(url: string) {
   if (!url.startsWith(cdnUrl)) return;
   const [, name, version] = url.slice(cdnUrl.length).match(exactPkgRegEx) || [];
   if (!name || !version) return;

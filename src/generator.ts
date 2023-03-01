@@ -748,10 +748,10 @@ export class Generator {
       }
 
       const esmsUrl =
-        this.traceMap.resolver.pkgToUrl(
+        (await this.traceMap.resolver.pkgToUrl(
           esmsPkg,
           this.traceMap.installer.defaultProvider
-        ) + "dist/es-module-shims.js";
+        )) + "dist/es-module-shims.js";
       esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${
         integrity
           ? ` integrity="${await getIntegrity(
@@ -1009,7 +1009,7 @@ export class Generator {
       }
       // otherwise synthetize a range from the current package version
       else {
-        const pkg = this.traceMap.resolver.parseUrlPkg(installUrl);
+        const pkg = await this.traceMap.resolver.parseUrlPkg(installUrl);
         if (!pkg)
           throw new Error(
             `Unable to determine a package version lookup for ${name}. Make sure it is supported as a provider package.`
@@ -1241,7 +1241,7 @@ export async function getPackageConfig(
 ): Promise<PackageConfig | null> {
   const generator = new Generator({ cache: !cache, defaultProvider: provider });
   if (typeof pkg === "object" && "name" in pkg)
-    pkg = generator.traceMap.resolver.pkgToUrl(
+    pkg = await generator.traceMap.resolver.pkgToUrl(
       pkg,
       generator.traceMap.installer.defaultProvider
     );

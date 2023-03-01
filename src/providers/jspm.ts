@@ -16,17 +16,22 @@ const apiUrl = "https://api.jspm.io/";
 const BUILD_POLL_TIME = 5 * 60 * 1000;
 const BUILD_POLL_INTERVAL = 5 * 1000;
 
-export function pkgToUrl(pkg: ExactPackage, layer: string): `${string}/` {
+export async function pkgToUrl(
+  pkg: ExactPackage,
+  layer: string
+): Promise<`${string}/`> {
   return `${layer === "system" ? systemCdnUrl : cdnUrl}${pkgToStr(pkg)}/`;
 }
 
 const exactPkgRegEx =
   /^(([a-z]+):)?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
-export function parseUrlPkg(
+
+export async function parseUrlPkg(
   url: string
-):
+): Promise<
   | { pkg: ExactPackage; layer: string; subpath: `./${string}` | null }
-  | undefined {
+  | undefined
+> {
   let subpath = null;
   let layer: string;
   if (url.startsWith(cdnUrl)) layer = "default";
@@ -91,7 +96,8 @@ async function checkBuildOrError(
 }
 
 async function ensureBuild(pkg: ExactPackage, fetchOpts: any) {
-  if (await checkBuildOrError(pkgToUrl(pkg, "default"), fetchOpts)) return;
+  if (await checkBuildOrError(await pkgToUrl(pkg, "default"), fetchOpts))
+    return;
 
   const fullName = `${pkg.name}@${pkg.version}`;
 
@@ -110,7 +116,8 @@ async function ensureBuild(pkg: ExactPackage, fetchOpts: any) {
   while (true) {
     await new Promise((resolve) => setTimeout(resolve, BUILD_POLL_INTERVAL));
 
-    if (await checkBuildOrError(pkgToUrl(pkg, "default"), fetchOpts)) return;
+    if (await checkBuildOrError(await pkgToUrl(pkg, "default"), fetchOpts))
+      return;
 
     if (Date.now() - startTime >= BUILD_POLL_TIME)
       throw new JspmError(

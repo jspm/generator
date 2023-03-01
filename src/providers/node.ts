@@ -77,7 +77,10 @@ export const nodeBuiltinSet = new Set<string>([
   "zlib",
 ]);
 
-export function pkgToUrl(pkg: ExactPackage, layer: string): `${string}/` {
+export async function pkgToUrl(
+  pkg: ExactPackage,
+  layer: string
+): Promise<`${string}/`> {
   if (pkg.registry !== "node") return pkgToUrlJspm(pkg, layer);
   return `node:${pkg.name}/`;
 }
@@ -143,7 +146,7 @@ export async function resolveLatestTarget(
   );
 }
 
-export function parseUrlPkg(url: string): ExactPackage | undefined {
+export async function parseUrlPkg(url: string): Promise<ExactPackage | null> {
   if (!url.startsWith("node:")) return;
   let name = url.slice(5);
   if (name.endsWith("/")) name = name.slice(0, -1);

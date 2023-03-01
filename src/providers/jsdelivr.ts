@@ -2,13 +2,14 @@ import { ExactPackage } from "../install/package.js";
 
 const cdnUrl = "https://cdn.jsdelivr.net/";
 
-export function pkgToUrl(pkg: ExactPackage): `${string}/` {
+export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
   return `${cdnUrl}${pkg.registry}/${pkg.name}@${pkg.version}/`;
 }
 
 const exactPkgRegEx =
   /^([^\/]+)\/((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
-export function parseUrlPkg(url: string): ExactPackage | undefined {
+
+export async function parseUrlPkg(url: string): Promise<ExactPackage | null> {
   if (!url.startsWith(cdnUrl)) return;
   const [, registry, name, version] =
     url.slice(cdnUrl.length).match(exactPkgRegEx) || [];

@@ -6,7 +6,7 @@ import { fetch } from "#fetch";
 import { JspmError, throwInternalError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
 
-export function pkgToUrl(pkg: ExactPackage): `${string}/` {
+export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
   const url = pkg.name.split("#");
   if (url.length === 1) {
     // TODO: this happens when we have existing ExactPackages from an input
@@ -17,7 +17,10 @@ export function pkgToUrl(pkg: ExactPackage): `${string}/` {
   return `${decodeBase64(url[1])}/`;
 }
 
-export function parseUrlPkg(this: Resolver, url: string): ExactPackage | null {
+export async function parseUrlPkg(
+  this: Resolver,
+  url: string
+): Promise<ExactPackage | null> {
   const nodeModulesIndex = url.lastIndexOf("/node_modules/");
   if (nodeModulesIndex === -1) return null;
 

@@ -16,10 +16,10 @@ const esmsPkg = await generator.traceMap.resolver.resolveLatestTarget(
 );
 
 const esmsUrl =
-  generator.traceMap.resolver.pkgToUrl(
+  (await generator.traceMap.resolver.pkgToUrl(
     esmsPkg,
     generator.traceMap.installer.defaultProvider
-  ) + "dist/es-module-shims.js";
+  )) + "dist/es-module-shims.js";
 
 async function checkIndent(html, expected) {
   generator = new Generator({

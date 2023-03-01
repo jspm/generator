@@ -17,27 +17,35 @@ export interface Provider {
   parseUrlPkg(
     this: Resolver,
     url: string
-  ):
+  ): Promise<
     | ExactPackage
     | { pkg: ExactPackage; subpath: `./${string}` | null; layer: string }
-    | null;
-  pkgToUrl(this: Resolver, pkg: ExactPackage, layer: string): `${string}/`;
+    | null
+  >;
+
+  pkgToUrl(
+    this: Resolver,
+    pkg: ExactPackage,
+    layer: string
+  ): Promise<`${string}/`>;
+
   resolveLatestTarget(
     this: Resolver,
     target: LatestPackageTarget,
     layer: string,
     parentUrl: string
   ): Promise<ExactPackage | null>;
+
   resolveBuiltin?(
     this: Resolver,
     specifier: string,
     env: string[]
   ): string | Install | null;
+
   getPackageConfig?(
     this: Resolver,
     pkgUrl: string
   ): Promise<PackageConfig | null>;
-  getFileList?(this: Resolver, pkgUrl: string): Promise<string[]>;
 }
 
 export const defaultProviders: Record<string, Provider> = {

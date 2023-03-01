@@ -11,7 +11,6 @@ import {
   InstalledResolution,
   LockResolutions,
   PackageInstall,
-  pruneResolutions,
   setConstraint,
   setResolution,
   VersionConstraints,
@@ -228,13 +227,13 @@ export class Installer {
       (this.opts.freeze || mode.includes("existing") || pkgScope !== null) &&
       !this.opts.latest
     ) {
-      const pkg = this.getBestExistingMatch(pkgTarget);
+      const pkg = await this.getBestExistingMatch(pkgTarget);
       if (pkg) {
         this.log(
           "installer/installTarget",
           `${pkgName} ${pkgScope} -> ${JSON.stringify(pkg)} (existing match)`
         );
-        const installUrl = this.resolver.pkgToUrl(pkg, provider);
+        const installUrl = await this.resolver.pkgToUrl(pkg, provider);
         this.newInstalls = setResolution(
           this.installs,
           pkgName,
@@ -259,7 +258,7 @@ export class Installer {
       parentUrl
     );
 
-    const pkgUrl = this.resolver.pkgToUrl(latestPkg, provider);
+    const pkgUrl = await this.resolver.pkgToUrl(latestPkg, provider);
     const installed = getInstallsFor(
       this.constraints,
       latestPkg.registry,
@@ -271,7 +270,7 @@ export class Installer {
       !this.tryUpgradeAllTo(latestPkg, pkgUrl, installed)
     ) {
       if (pkgScope && !this.opts.latest) {
-        const pkg = this.getBestExistingMatch(pkgTarget);
+        const pkg = await this.getBestExistingMatch(pkgTarget);
         // cannot upgrade to latest -> stick with existing resolution (if compatible)
         if (pkg) {
           this.log(
@@ -280,7 +279,7 @@ export class Installer {
               latestPkg
             )} (existing match not latest)`
           );
-          const installUrl = this.resolver.pkgToUrl(pkg, provider);
+          const installUrl = await this.resolver.pkgToUrl(pkg, provider);
           this.newInstalls = setResolution(
             this.installs,
             pkgName,
@@ -491,10 +490,12 @@ export class Installer {
     return pkgUrls;
   }
 
-  private getBestExistingMatch(matchPkg: PackageTarget): ExactPackage | null {
+  private async getBestExistingMatch(
+    matchPkg: PackageTarget
+  ): Promise<ExactPackage | null> {
     let bestMatch: ExactPackage | null = null;
     for (const pkgUrl of this.pkgUrls) {
-      const pkg = this.resolver.parseUrlPkg(pkgUrl);
+      const pkg = await this.resolver.parseUrlPkg(pkgUrl);
       if (pkg && this.inRange(pkg.pkg, matchPkg)) {
         if (bestMatch)
           bestMatch =

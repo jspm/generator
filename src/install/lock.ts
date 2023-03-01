@@ -1,8 +1,7 @@
 import { IImportMap } from "@jspm/import-map";
-import { JspmError, throwInternalError } from "../common/err.js";
-import { isPlain, isURL, relativeUrl, resolveUrl } from "../common/url.js";
+import { throwInternalError } from "../common/err.js";
+import { isPlain, isURL, resolveUrl } from "../common/url.js";
 import { Resolver } from "../trace/resolver.js";
-import { InstallTarget } from "./installer.js";
 import {
   PackageTarget,
   newPackageTarget,
@@ -385,9 +384,9 @@ export async function extractLockConstraintsAndMap(
     if (isPlain(key)) {
       const parsedKey = parsePkg(key);
       const targetUrl = resolveUrl(map.imports[key], mapUrl, rootUrl);
-      const parsedTarget = resolver.parseUrlPkg(targetUrl);
+      const parsedTarget = await resolver.parseUrlPkg(targetUrl);
       const pkgUrl = parsedTarget
-        ? resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
+        ? await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
         : await resolver.getPackageBase(targetUrl);
       const targetSubpath = ("." + targetUrl.slice(pkgUrl.length - 1)) as
         | "."
@@ -464,9 +463,9 @@ export async function extractLockConstraintsAndMap(
     for (const key of Object.keys(scope)) {
       if (isPlain(key)) {
         const targetUrl = resolveUrl(scope[key], mapUrl, rootUrl);
-        const parsedTarget = resolver.parseUrlPkg(targetUrl);
+        const parsedTarget = await resolver.parseUrlPkg(targetUrl);
         const pkgUrl = parsedTarget
-          ? resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
+          ? await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
           : await resolver.getPackageBase(targetUrl);
         const subpath = ("." + targetUrl.slice(pkgUrl.length - 1)) as
           | "."

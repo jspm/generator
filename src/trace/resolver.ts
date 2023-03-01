@@ -97,14 +97,14 @@ export class Resolver {
     this.providers = Object.assign({}, this.providers, { [name]: provider });
   }
 
-  parseUrlPkg(url: string): {
+  async parseUrlPkg(url: string): Promise<{
     pkg: ExactPackage;
     subpath: null | `./${string}`;
     source: { layer: string; provider: string };
-  } | null {
+  } | null> {
     for (const provider of Object.keys(this.providers)) {
       const providerInstance = this.providers[provider];
-      const result = providerInstance.parseUrlPkg.call(this, url);
+      const result = await providerInstance.parseUrlPkg.call(this, url);
       if (result)
         return {
           pkg: "pkg" in result ? result.pkg : result,
@@ -118,10 +118,10 @@ export class Resolver {
     return null;
   }
 
-  pkgToUrl(
+  async pkgToUrl(
     pkg: ExactPackage,
     { provider, layer }: PackageProvider
-  ): `${string}/` {
+  ): Promise<`${string}/`> {
     return getProvider(provider, this.providers).pkgToUrl.call(
       this,
       pkg,
@@ -138,7 +138,7 @@ export class Resolver {
   }
 
   async getPackageBase(url: string): Promise<`${string}/`> {
-    const pkg = this.parseUrlPkg(url);
+    const pkg = await this.parseUrlPkg(url);
     if (pkg) return this.pkgToUrl(pkg.pkg, pkg.source);
 
     let testUrl: URL;
@@ -178,7 +178,7 @@ export class Resolver {
     if (cached) return cached;
     if (!this.pcfgPromises[pkgUrl])
       this.pcfgPromises[pkgUrl] = (async () => {
-        const parsed = this.parseUrlPkg(pkgUrl);
+        const parsed = await this.parseUrlPkg(pkgUrl);
         if (parsed) {
           const pcfg = await getProvider(
             parsed.source.provider,
@@ -657,7 +657,7 @@ export class Resolver {
         parentUrl.href
       );
       return this.resolveExport(
-        this.pkgToUrl(pkg, provider),
+        await this.pkgToUrl(pkg, provider),
         "./nodelibs/@empty",
         cjsEnv,
         parentIsCjs,
