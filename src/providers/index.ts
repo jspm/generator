@@ -20,7 +20,7 @@ export interface Provider {
   ):
     | ExactPackage
     | { pkg: ExactPackage; subpath: `./${string}` | null; layer: string }
-    | undefined;
+    | null;
   pkgToUrl(this: Resolver, pkg: ExactPackage, layer: string): `${string}/`;
   resolveLatestTarget(
     this: Resolver,
@@ -32,11 +32,11 @@ export interface Provider {
     this: Resolver,
     specifier: string,
     env: string[]
-  ): string | Install | undefined;
+  ): string | Install | null;
   getPackageConfig?(
     this: Resolver,
     pkgUrl: string
-  ): Promise<PackageConfig | null | undefined>;
+  ): Promise<PackageConfig | null>;
   getFileList?(this: Resolver, pkgUrl: string): Promise<string[]>;
 }
 
