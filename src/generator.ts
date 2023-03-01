@@ -696,9 +696,7 @@ export class Generator {
         ...new Set([...analysis.staticImports, ...analysis.dynamicImports]),
       ];
       await Promise.all(
-        impts.map((impt) =>
-          this.link(impt, (htmlUrl as URL | undefined)?.href)
-        )
+        impts.map((impt) => this.link(impt, (htmlUrl as URL | undefined)?.href))
       );
       modules = [...new Set([...modules, ...impts])];
     }
