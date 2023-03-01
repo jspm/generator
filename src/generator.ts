@@ -696,9 +696,7 @@ export class Generator {
         ...new Set([...analysis.staticImports, ...analysis.dynamicImports]),
       ];
       await Promise.all(
-        impts.map((impt) =>
-          this.link(impt, (htmlUrl as URL | undefined)?.href)
-        )
+        impts.map((impt) => this.link(impt, (htmlUrl as URL | undefined)?.href))
       );
       modules = [...new Set([...modules, ...impts])];
     }
@@ -749,11 +747,15 @@ export class Generator {
         throw new JspmError(errMsg);
       }
 
-      const esmsUrl =
+      let esmsUrl =
         this.traceMap.resolver.pkgToUrl(
           esmsPkg,
           this.traceMap.installer.defaultProvider
         ) + "dist/es-module-shims.js";
+      if (esmsUrl.startsWith(htmlUrl.href)) {
+        esmsUrl = `./${esmsUrl.slice(htmlUrl.href.length)}`;
+      }
+
       esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${
         integrity
           ? ` integrity="${await getIntegrity(
