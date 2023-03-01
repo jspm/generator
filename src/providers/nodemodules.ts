@@ -3,24 +3,37 @@ import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 // @ts-ignore
 import { fetch } from "#fetch";
-import { JspmError } from "../common/err.js";
+import { JspmError, throwInternalError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
 
 export function pkgToUrl(pkg: ExactPackage): `${string}/` {
-  return `${new URL(pkg.version + pkg.name).href}/`;
+  const url = pkg.name.split("#");
+  if (url.length === 1) {
+    // TODO: this happens when we have existing ExactPackages from an input
+    // map that was using a different provider, need async to resolve
+    throwInternalError("Unimplemented in nodemodules: pkgToUrl");
+  }
+
+  return `${decodeBase64(url[1])}/`;
 }
 
-export function parseUrlPkg(
-  this: Resolver,
-  url: string
-): ExactPackage | undefined {
+export function parseUrlPkg(this: Resolver, url: string): ExactPackage | null {
   const nodeModulesIndex = url.lastIndexOf("/node_modules/");
-  if (nodeModulesIndex === -1) return undefined;
-  const version = url.slice(0, nodeModulesIndex + 14);
-  const pkgParts = url.slice(nodeModulesIndex + 14).split("/");
+  if (nodeModulesIndex === -1) return null;
+
+  const nameAndSubpaths = url.slice(nodeModulesIndex + 14).split("/");
   const name =
-    pkgParts[0][0] === "@" ? pkgParts[0] + "/" + pkgParts[1] : pkgParts[0];
-  return { registry: "node_modules", name, version };
+    nameAndSubpaths[0][0] === "@"
+      ? `${nameAndSubpaths[0]}/${nameAndSubpaths[1]}`
+      : nameAndSubpaths[0];
+  const nodeModules = `${url.slice(0, nodeModulesIndex + 14)}${name}`;
+
+  // TODO: make this async and do a pcfg lookup for the version
+  return {
+    name: `${name}#${encodeBase64(nodeModules)}`,
+    registry: "node_modules",
+    version: "1.0.0",
+  };
 }
 
 export async function resolveLatestTarget(
@@ -46,17 +59,21 @@ export async function resolveLatestTarget(
     );
   }
 
+  // Local packages might not have a package.json, and hence have no version:
+  const pcfg = await this.getPackageConfig(`${curUrl.href}/`);
+  const version = pcfg?.version || "";
+
   // Providers need to be able to translate between canonical package specs and
   // URLs in a one-to-one fashion. The nodemodules provider breaks this contract
   // as a node_modules folder may contain multiple copies of a given package
-  // and version, and if the user is doing local install overrides then these
-  // "identical" packages may have different contents! To work around this we
-  // attach the base64-encoded URL of the package to the package name, which
-  // we can then reverse to get the correct URL back in pkgToUrl:
+  // and version, and if the user has local packages installed then "identical"
+  // packages may have different contents! To work around this we attach the
+  // base64-encoded URL of the package to the package name, which we can then
+  // reverse to get the correct URL back in pkgToUrl:
   return {
     registry: "node_modules",
-    name: target.name,
-    version: curUrl.href.slice(0, -target.name.length),
+    name: `target.name#${encodeBase64(curUrl.href)}`,
+    version: version,
   };
 }
 
@@ -75,4 +92,20 @@ async function dirExists(url: URL, parentUrl?: string) {
         }${importedFrom(parentUrl)}`
       );
   }
+}
+
+function encodeBase64(data: string): string {
+  if (typeof window !== "undefined") {
+    return window.btoa(data);
+  }
+
+  return Buffer.from(data).toString("base64");
+}
+
+function decodeBase64(data: string): string {
+  if (typeof window !== "undefined") {
+    return window.atob(data);
+  }
+
+  return Buffer.from(data, "base64").toString("utf8");
 }
