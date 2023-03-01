@@ -12,6 +12,7 @@ import {
 } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 import { Install } from "../generator.js";
+import { JspmError } from "../common/err.js";
 
 export interface Provider {
   parseUrlPkg(
@@ -36,6 +37,8 @@ export interface Provider {
     parentUrl: string
   ): Promise<ExactPackage | null>;
 
+  ownsUrl?(this: Resolver, url: string): boolean;
+
   resolveBuiltin?(
     this: Resolver,
     specifier: string,
@@ -53,18 +56,14 @@ export const defaultProviders: Record<string, Provider> = {
   jsdelivr,
   jspm,
   node,
-  nodemodules,
   skypack,
   unpkg,
 };
 
-export function getProvider(
-  name: string,
-  providers: Record<string, Provider> = defaultProviders
-) {
+export function getProvider(name: string, providers: Record<string, Provider>) {
   const provider = providers[name];
   if (provider) return provider;
-  throw new Error("No " + name + " provider is defined.");
+  throw new JspmError(`No provider named "${name}" has been defined.`);
 }
 
 export const registryProviders: Record<string, string> = {

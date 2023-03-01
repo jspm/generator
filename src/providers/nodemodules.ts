@@ -1,63 +1,102 @@
 import { LatestPackageTarget } from "../install/package.js";
 import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
+import { Provider } from "./index.js";
 // @ts-ignore
 import { fetch } from "#fetch";
-import { JspmError, throwInternalError } from "../common/err.js";
+import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
 
-export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
-  const url = pkg.name.split("#");
-  if (url.length === 1) {
-    // TODO: this happens when we have existing ExactPackages from an input
-    // map that was using a different provider, need async to resolve
-    throwInternalError("Unimplemented in nodemodules: pkgToUrl");
+export function createProvider(baseUrl: string): Provider {
+  return {
+    ownsUrl,
+    pkgToUrl,
+    parseUrlPkg,
+    resolveLatestTarget,
+  };
+
+  function ownsUrl(this: Resolver, url: string) {
+    return url.includes("/node_modules/");
   }
 
-  return `${decodeBase64(url[1])}/`;
+  async function pkgToUrl(
+    this: Resolver,
+    pkg: ExactPackage
+  ): Promise<`${string}/`> {
+    // The node_modules registry does a special thing where it sticks the URL
+    // of the package in the package name, so we can just return that. See the
+    // comments in the `resolveLatestTarget` function for details:
+    if (pkg.registry === "node_modules") {
+      return `${decodeBase64(pkg.name.split("#")[1])}/`;
+    }
+
+    // If we don't have a URL in the package name, then we need to try and
+    // resolve the package against the node_modules in the base package:
+    const target = await nodeResolve.call(this, pkg.name, baseUrl);
+    if (!target)
+      throw new JspmError(
+        `Failed to resolve ${pkg.name} against node_modules from ${baseUrl}`
+      );
+
+    return `${decodeBase64(target.name.split("#")[1])}/`;
+  }
+
+  async function parseUrlPkg(
+    this: Resolver,
+    url: string
+  ): Promise<ExactPackage | null> {
+    // We can only resolve URLs in node_modules folders:
+    const nodeModulesIndex = url.lastIndexOf("/node_modules/");
+    if (nodeModulesIndex === -1) return null;
+
+    const nameAndSubpaths = url.slice(nodeModulesIndex + 14).split("/");
+    const name =
+      nameAndSubpaths[0][0] === "@"
+        ? `${nameAndSubpaths[0]}/${nameAndSubpaths[1]}`
+        : nameAndSubpaths[0];
+    const pkgUrl = `${url.slice(0, nodeModulesIndex + 14)}${name}`;
+
+    // Local packages might not have a package.json, and hence have no version:
+    const pcfg = await this.getPackageConfig(`${pkgUrl}/`);
+    const version = pcfg?.version || "";
+
+    return {
+      name: `${name}#${encodeBase64(pkgUrl)}`,
+      registry: "node_modules",
+      version,
+    };
+  }
+
+  async function resolveLatestTarget(
+    this: Resolver,
+    target: LatestPackageTarget,
+    _layer: string,
+    parentUrl: string
+  ): Promise<ExactPackage | null> {
+    return nodeResolve.call(this, target.name, parentUrl);
+  }
 }
 
-export async function parseUrlPkg(
+/**
+ * Mimics the node resolution algorithm: look for a node_modules in the
+ * current directory with a package matching the target, and if you can't
+ * find it then recurse through the parent directories until you do.
+ * TODO: we don't currently handle the target's version constraints here
+ */
+async function nodeResolve(
   this: Resolver,
-  url: string
-): Promise<ExactPackage | null> {
-  const nodeModulesIndex = url.lastIndexOf("/node_modules/");
-  if (nodeModulesIndex === -1) return null;
-
-  const nameAndSubpaths = url.slice(nodeModulesIndex + 14).split("/");
-  const name =
-    nameAndSubpaths[0][0] === "@"
-      ? `${nameAndSubpaths[0]}/${nameAndSubpaths[1]}`
-      : nameAndSubpaths[0];
-  const nodeModules = `${url.slice(0, nodeModulesIndex + 14)}${name}`;
-
-  // TODO: make this async and do a pcfg lookup for the version
-  return {
-    name: `${name}#${encodeBase64(nodeModules)}`,
-    registry: "node_modules",
-    version: "1.0.0",
-  };
-}
-
-export async function resolveLatestTarget(
-  this: Resolver,
-  target: LatestPackageTarget,
-  _layer: string,
+  name: string,
   parentUrl: string
 ): Promise<ExactPackage | null> {
-  let curUrl = new URL(`node_modules/${target.name}`, parentUrl);
-  const rootUrl = new URL(`/node_modules/${target.name}`, parentUrl).href;
-  const isScoped = target.name[0] === "@";
+  let curUrl = new URL(`node_modules/${name}`, parentUrl);
+  const rootUrl = new URL(`/node_modules/${name}`, parentUrl).href;
+  const isScoped = name[0] === "@";
 
-  // Mimics the node resolution algorithm: look for a node_modules in the
-  // current directory with a package matching the target, and if you can't
-  // find it then recurse through the parent directories until you do.
-  // TODO: we don't currently handle the target's version constraints here
   while (!(await dirExists.call(this, curUrl))) {
     if (curUrl.href === rootUrl) return null; // failed to resolve
 
     curUrl = new URL(
-      `../../${isScoped ? "../" : ""}node_modules/${target.name}`,
+      `../../${isScoped ? "../" : ""}node_modules/${name}`,
       curUrl
     );
   }
@@ -75,7 +114,7 @@ export async function resolveLatestTarget(
   // reverse to get the correct URL back in pkgToUrl:
   return {
     registry: "node_modules",
-    name: `target.name#${encodeBase64(curUrl.href)}`,
+    name: `${name}#${encodeBase64(curUrl.href)}`,
     version: version,
   };
 }

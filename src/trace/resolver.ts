@@ -26,13 +26,8 @@ import {
   createEsmAnalysis,
   createTsAnalysis,
 } from "./analysis.js";
-import {
-  Installer,
-  InstallTarget,
-  PackageProvider,
-} from "../install/installer.js";
+import { Installer, PackageProvider } from "../install/installer.js";
 import { SemverRange } from "sver";
-import { resolve } from "@jspm/import-map/src/url.js";
 
 let realpath, pathToFileURL;
 
@@ -95,6 +90,18 @@ export class Resolver {
           '" must define a "resolveLatestTarget" method.'
       );
     this.providers = Object.assign({}, this.providers, { [name]: provider });
+  }
+
+  async providerForUrl(url: string): Promise<Provider | null> {
+    for (const name of Object.keys(this.providers)) {
+      const provider = this.providers[name];
+      if (
+        (provider.ownsUrl && provider.ownsUrl.call(this, url)) ||
+        (await provider.parseUrlPkg.call(this, url))
+      ) {
+        return provider;
+      }
+    }
   }
 
   async parseUrlPkg(url: string): Promise<{
@@ -178,17 +185,15 @@ export class Resolver {
     if (cached) return cached;
     if (!this.pcfgPromises[pkgUrl])
       this.pcfgPromises[pkgUrl] = (async () => {
-        const parsed = await this.parseUrlPkg(pkgUrl);
-        if (parsed) {
-          const pcfg = await getProvider(
-            parsed.source.provider,
-            this.providers
-          ).getPackageConfig?.call(this, pkgUrl);
+        const provider = await this.providerForUrl(pkgUrl);
+        if (provider) {
+          const pcfg = await provider.getPackageConfig?.call(this, pkgUrl);
           if (pcfg !== undefined) {
             this.pcfgs[pkgUrl] = pcfg;
             return;
           }
         }
+
         const res = await fetch(`${pkgUrl}package.json`, this.fetchOpts);
         switch (res.status) {
           case 200:
