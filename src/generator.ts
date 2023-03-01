@@ -355,7 +355,7 @@ export class Generator {
     rootUrl = undefined,
     inputMap = undefined,
     env = ["browser", "development", "module", "import"],
-    defaultProvider = "jspm",
+    defaultProvider = "jspm.io",
     defaultRegistry = "npm",
     customProviders = undefined,
     providers,
@@ -696,9 +696,7 @@ export class Generator {
         ...new Set([...analysis.staticImports, ...analysis.dynamicImports]),
       ];
       await Promise.all(
-        impts.map((impt) =>
-          this.link(impt, (htmlUrl as URL | undefined)?.href)
-        )
+        impts.map((impt) => this.link(impt, (htmlUrl as URL | undefined)?.href))
       );
       modules = [...new Set([...modules, ...impts])];
     }

@@ -4,7 +4,7 @@ import assert from "assert";
 const generator = new Generator({
   baseUrl: new URL("../", import.meta.url),
   mapUrl: import.meta.url,
-  defaultProvider: "jspm",
+  defaultProvider: "jspm.io",
   env: ["production", "browser"],
   resolutions: {
     dep: "./api/local/dep/",

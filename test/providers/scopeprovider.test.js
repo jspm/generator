@@ -5,7 +5,7 @@ const generator = new Generator({
   mapUrl: new URL("../../", import.meta.url),
   defaultProvider: "nodemodules",
   providers: {
-    "lit-html": "jspm",
+    "lit-html": "jspm.io",
   },
 });
 
