@@ -3,7 +3,7 @@ import assert from "assert";
 
 const generator = new Generator({
   mapUrl: import.meta.url,
-  defaultProvider: "jspm.system",
+  defaultProvider: "jspm.io#system",
   env: ["production", "browser"],
 });
 

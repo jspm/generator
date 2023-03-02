@@ -245,10 +245,13 @@ export function newPackageTarget(
   defaultRegistry: string,
   pkgName?: string
 ): InstallTarget {
+  if (target === ".") {
+    // useful shorthand
+    target = "./";
+  }
+
   let registry: string, name: string, ranges: any[];
-
   const registryIndex = target.indexOf(":");
-
   if (
     target.startsWith("./") ||
     target.startsWith("../") ||

@@ -35,7 +35,7 @@ assert.strictEqual(
   import 'react';
 </script>
 `,
-    { preload: true }
+    { preload: true, rootUrl: generator.rootUrl }
   ),
   "\n" +
     "<!doctype html>\n" +

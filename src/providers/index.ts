@@ -54,10 +54,10 @@ export interface Provider {
 export const defaultProviders: Record<string, Provider> = {
   deno,
   jsdelivr,
-  jspm,
   node,
   skypack,
   unpkg,
+  "jspm.io": jspm,
 };
 
 export function getProvider(name: string, providers: Record<string, Provider>) {
