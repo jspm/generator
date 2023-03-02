@@ -144,9 +144,9 @@ export class Resolver {
     }
   }
 
-  remapUrl(url: URL): URL | null {
+  async remapUrl(url: URL): Promise<URL | null> {
     for (const provider of Object.values(this.providers)) {
-      const mapped = provider.remapUrl?.call(this, url);
+      const mapped = await provider.remapUrl?.call(this, url);
       if (mapped) return mapped;
     }
   }

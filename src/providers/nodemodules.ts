@@ -6,13 +6,17 @@ import { Provider } from "./index.js";
 import { fetch } from "#fetch";
 import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
+import { PackageConfig } from "../install/package.js";
 
 export function createProvider(baseUrl: string): Provider {
+  let mappings: Record<string, string> | null;
+
   return {
     ownsUrl,
     pkgToUrl,
     parseUrlPkg,
     resolveLatestTarget,
+    remapUrl,
   };
 
   function ownsUrl(this: Resolver, url: string) {
@@ -68,6 +72,23 @@ export function createProvider(baseUrl: string): Provider {
   ): Promise<ExactPackage | null> {
     return nodeResolve.call(this, target.name, parentUrl);
   }
+
+  async function remapUrl(this: Resolver, url: URL): Promise<URL | null> {
+    if (!mappings) {
+      const pcfg = await this.getPackageConfig(baseUrl);
+      if (!pcfg) {
+        mappings = {};
+      } else {
+        mappings = await localMappings(pcfg, new URL(baseUrl));
+      }
+    }
+
+    const name = mappings[url.href];
+    if (name) {
+      const target = await nodeResolve.call(this, name, baseUrl);
+      if (target) return new URL(decodeBase64(target.version));
+    }
+  }
 }
 
 /**
@@ -106,6 +127,31 @@ async function nodeResolve(
     registry: "node_modules",
     version: encodeBase64(curUrl.href),
   };
+}
+
+// Constructs a mapping of local URLs in the given package config to their
+// corresponding package names, which we can use to resolve local package
+// installs to the node_modules folder:
+async function localMappings(
+  pcfg: PackageConfig,
+  baseUrl: URL
+): Promise<Record<string, string>> {
+  const mappings: Record<string, string> = {};
+
+  const allDeps = {
+    ...pcfg.dependencies,
+    ...pcfg.devDependencies,
+    ...pcfg.peerDependencies,
+    ...pcfg.optionalDependencies,
+  };
+  for (const [name, dep] of Object.entries(allDeps)) {
+    if (!dep.startsWith("file:")) continue;
+
+    const url = new URL(dep.slice(5), baseUrl);
+    mappings[url.href] = name;
+  }
+
+  return mappings;
 }
 
 async function dirExists(url: URL, parentUrl?: string) {

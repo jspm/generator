@@ -198,7 +198,7 @@ export class Installer {
 
     if (pkgTarget instanceof URL) {
       let installHref =
-        this.resolver.remapUrl(pkgTarget)?.href || pkgTarget.href;
+        (await this.resolver.remapUrl(pkgTarget))?.href || pkgTarget.href;
       const installUrl = (installHref +
         (installHref.endsWith("/") ? "" : "/")) as `${string}/`;
 
