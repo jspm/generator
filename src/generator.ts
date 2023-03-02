@@ -290,7 +290,6 @@ export interface ModuleAnalysis {
 export interface Install {
   target: string | InstallTarget;
   alias?: string;
-  installSubpath?: null | `./${string}`;
   subpath?: "." | `./${string}`;
   subpaths?: ("." | `./${string}`)[];
 }
