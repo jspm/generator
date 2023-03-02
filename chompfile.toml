@@ -109,6 +109,7 @@ name = 'prettier'
 template = 'prettier'
 deps = ['src/**/*', 'src/*', 'test/**/*', 'test/*']
 [task.template-options]
+ignore-path = '.prettierignore'
 files = 'src/**/* src/* test/**/* test/*'
 loglevel = 'warn'
 
