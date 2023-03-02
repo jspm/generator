@@ -32,6 +32,7 @@ async function checkIndent(html, expected) {
 
   const res = await generator.htmlGenerate(html, {
     preload: true,
+    rootUrl: generator.rootUrl,
   });
 
   assert.strictEqual(res.trim(), expected.trim());

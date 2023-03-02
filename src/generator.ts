@@ -747,11 +747,18 @@ export class Generator {
         throw new JspmError(errMsg);
       }
 
-      const esmsUrl =
+      let esmsUrl =
         this.traceMap.resolver.pkgToUrl(
           esmsPkg,
           this.traceMap.installer.defaultProvider
         ) + "dist/es-module-shims.js";
+      if (htmlUrl || rootUrl)
+        esmsUrl = relativeUrl(
+          new URL(esmsUrl),
+          new URL(rootUrl ?? htmlUrl),
+          !!rootUrl
+        );
+
       esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${
         integrity
           ? ` integrity="${await getIntegrity(
@@ -780,20 +787,28 @@ export class Generator {
         if (first || whitespace) preloads += newlineTab;
         if (first) first = false;
         if (integrity) {
-          preloads += `<link rel="modulepreload" href="${relativeUrl(
-            new URL(dep),
-            this.rootUrl || this.baseUrl,
-            !!this.rootUrl
-          )}" integrity="${await getIntegrity(
+          preloads += `<link rel="modulepreload" href="${
+            rootUrl || htmlUrl
+              ? relativeUrl(
+                  new URL(dep),
+                  new URL(rootUrl ?? htmlUrl),
+                  !!rootUrl
+                )
+              : dep
+          }" integrity="${await getIntegrity(
             dep,
             this.traceMap.resolver.fetchOpts
           )}" />`;
         } else {
-          preloads += `<link rel="modulepreload" href="${relativeUrl(
-            new URL(dep),
-            this.rootUrl || this.baseUrl,
-            !!this.rootUrl
-          )}" />`;
+          preloads += `<link rel="modulepreload" href="${
+            rootUrl || htmlUrl
+              ? relativeUrl(
+                  new URL(dep),
+                  new URL(rootUrl ?? htmlUrl),
+                  !!rootUrl
+                )
+              : dep
+          }" />`;
         }
       }
     }
