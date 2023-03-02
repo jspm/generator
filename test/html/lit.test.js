@@ -18,10 +18,10 @@ const esmsPkg = await generator.traceMap.resolver.resolveLatestTarget(
   generator.traceMap.installer.defaultProvider
 );
 const esmsUrl =
-  generator.traceMap.resolver.pkgToUrl(
+  (await generator.traceMap.resolver.pkgToUrl(
     esmsPkg,
     generator.traceMap.installer.defaultProvider
-  ) + "dist/es-module-shims.js";
+  )) + "dist/es-module-shims.js";
 
 assert.strictEqual(
   await generator.htmlGenerate(

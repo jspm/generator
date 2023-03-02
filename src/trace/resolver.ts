@@ -26,13 +26,8 @@ import {
   createEsmAnalysis,
   createTsAnalysis,
 } from "./analysis.js";
-import {
-  Installer,
-  InstallTarget,
-  PackageProvider,
-} from "../install/installer.js";
+import { Installer, PackageProvider } from "../install/installer.js";
 import { SemverRange } from "sver";
-import { resolve } from "@jspm/import-map/src/url.js";
 
 let realpath, pathToFileURL;
 
@@ -97,14 +92,26 @@ export class Resolver {
     this.providers = Object.assign({}, this.providers, { [name]: provider });
   }
 
-  parseUrlPkg(url: string): {
+  async providerForUrl(url: string): Promise<Provider | null> {
+    for (const name of Object.keys(this.providers)) {
+      const provider = this.providers[name];
+      if (
+        (provider.ownsUrl && provider.ownsUrl.call(this, url)) ||
+        (await provider.parseUrlPkg.call(this, url))
+      ) {
+        return provider;
+      }
+    }
+  }
+
+  async parseUrlPkg(url: string): Promise<{
     pkg: ExactPackage;
     subpath: null | `./${string}`;
     source: { layer: string; provider: string };
-  } | null {
+  } | null> {
     for (const provider of Object.keys(this.providers)) {
       const providerInstance = this.providers[provider];
-      const result = providerInstance.parseUrlPkg.call(this, url);
+      const result = await providerInstance.parseUrlPkg.call(this, url);
       if (result)
         return {
           pkg: "pkg" in result ? result.pkg : result,
@@ -118,10 +125,10 @@ export class Resolver {
     return null;
   }
 
-  pkgToUrl(
+  async pkgToUrl(
     pkg: ExactPackage,
     { provider, layer }: PackageProvider
-  ): `${string}/` {
+  ): Promise<`${string}/`> {
     return getProvider(provider, this.providers).pkgToUrl.call(
       this,
       pkg,
@@ -138,7 +145,7 @@ export class Resolver {
   }
 
   async getPackageBase(url: string): Promise<`${string}/`> {
-    const pkg = this.parseUrlPkg(url);
+    const pkg = await this.parseUrlPkg(url);
     if (pkg) return this.pkgToUrl(pkg.pkg, pkg.source);
 
     let testUrl: URL;
@@ -178,17 +185,15 @@ export class Resolver {
     if (cached) return cached;
     if (!this.pcfgPromises[pkgUrl])
       this.pcfgPromises[pkgUrl] = (async () => {
-        const parsed = this.parseUrlPkg(pkgUrl);
-        if (parsed) {
-          const pcfg = await getProvider(
-            parsed.source.provider,
-            this.providers
-          ).getPackageConfig?.call(this, pkgUrl);
+        const provider = await this.providerForUrl(pkgUrl);
+        if (provider) {
+          const pcfg = await provider.getPackageConfig?.call(this, pkgUrl);
           if (pcfg !== undefined) {
             this.pcfgs[pkgUrl] = pcfg;
             return;
           }
         }
+
         const res = await fetch(`${pkgUrl}package.json`, this.fetchOpts);
         switch (res.status) {
           case 200:
@@ -657,7 +662,7 @@ export class Resolver {
         parentUrl.href
       );
       return this.resolveExport(
-        this.pkgToUrl(pkg, provider),
+        await this.pkgToUrl(pkg, provider),
         "./nodelibs/@empty",
         cjsEnv,
         parentIsCjs,

@@ -20,6 +20,7 @@ import { getIntegrity } from "./common/integrity.js";
 import { LockResolutions } from "./install/lock.js";
 import process from "process";
 import { InstallTarget } from "./install/installer.js";
+import * as nodemodules from "./providers/nodemodules.js";
 
 export { analyzeHtml };
 
@@ -367,6 +368,19 @@ export class Generator {
     ipfsAPI,
     commonJS = false,
   }: GeneratorOptions = {}) {
+    // Initialise the debug logger:
+    const { log, logStream } = createLogger();
+    this.log = log;
+    this.logStream = logStream;
+    if (process.env.JSPM_GENERATOR_LOG) {
+      (async () => {
+        for await (const { type, message } of this.logStream()) {
+          console.log(`\x1b[1m${type}:\x1b[0m ${message}`);
+        }
+      })();
+    }
+
+    // Initialise the resource fetcher:
     let fetchOpts = undefined;
     if (cache === "offline")
       fetchOpts = {
@@ -380,23 +394,8 @@ export class Generator {
       };
     else fetchOpts = { headers: { "Accept-Encoding": "gzip, br" } };
     if (ipfsAPI) fetchOpts.ipfsAPI = ipfsAPI;
-    const { log, logStream } = createLogger();
-    const resolver = new Resolver(env, log, fetchOpts, true);
-    if (customProviders) {
-      for (const provider of Object.keys(customProviders)) {
-        resolver.addCustomProvider(provider, customProviders[provider]);
-      }
-    }
-    this.log = log;
-    this.logStream = logStream;
-    if (process.env.JSPM_GENERATOR_LOG) {
-      (async () => {
-        for await (const { type, message } of this.logStream()) {
-          console.log(`\x1b[1m${type}:\x1b[0m ${message}`);
-        }
-      })();
-    }
 
+    // Default logic for the mapUrl, baseUrl and rootUrl:
     if (mapUrl && !baseUrl) {
       mapUrl = typeof mapUrl === "string" ? new URL(mapUrl, _baseUrl) : mapUrl;
       try {
@@ -430,6 +429,21 @@ export class Generator {
         this.mapUrl = new URL(this.mapUrl.href + "/");
       }
     }
+
+    // Initialise the resolver:
+    const resolver = new Resolver(env, log, fetchOpts, true);
+    if (customProviders) {
+      for (const provider of Object.keys(customProviders)) {
+        resolver.addCustomProvider(provider, customProviders[provider]);
+      }
+    }
+
+    // The node_modules provider is special, because it needs to be rooted to
+    // perform resolutions against the local node_modules directory:
+    const nmProvider = nodemodules.createProvider(this.baseUrl.href);
+    resolver.addCustomProvider("nodemodules", nmProvider);
+
+    // Initialise the tracer:
     this.traceMap = new TraceMap(
       {
         mapUrl: this.mapUrl,
@@ -447,6 +461,8 @@ export class Generator {
       log,
       resolver
     );
+
+    // Reconstruct constraints and locks from the input map:
     this.map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     if (inputMap) this.addMappings(inputMap);
   }
@@ -748,10 +764,10 @@ export class Generator {
       }
 
       let esmsUrl =
-        this.traceMap.resolver.pkgToUrl(
+        (await this.traceMap.resolver.pkgToUrl(
           esmsPkg,
           this.traceMap.installer.defaultProvider
-        ) + "dist/es-module-shims.js";
+        )) + "dist/es-module-shims.js";
       if (htmlUrl || rootUrl)
         esmsUrl = relativeUrl(
           new URL(esmsUrl),
@@ -1024,7 +1040,7 @@ export class Generator {
       }
       // otherwise synthetize a range from the current package version
       else {
-        const pkg = this.traceMap.resolver.parseUrlPkg(installUrl);
+        const pkg = await this.traceMap.resolver.parseUrlPkg(installUrl);
         if (!pkg)
           throw new Error(
             `Unable to determine a package version lookup for ${name}. Make sure it is supported as a provider package.`
@@ -1256,7 +1272,7 @@ export async function getPackageConfig(
 ): Promise<PackageConfig | null> {
   const generator = new Generator({ cache: !cache, defaultProvider: provider });
   if (typeof pkg === "object" && "name" in pkg)
-    pkg = generator.traceMap.resolver.pkgToUrl(
+    pkg = await generator.traceMap.resolver.pkgToUrl(
       pkg,
       generator.traceMap.installer.defaultProvider
     );
