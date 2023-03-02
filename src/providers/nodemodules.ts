@@ -23,11 +23,11 @@ export function createProvider(baseUrl: string): Provider {
     this: Resolver,
     pkg: ExactPackage
   ): Promise<`${string}/`> {
-    // The node_modules registry does a special thing where it sticks the URL
-    // of the package in the package name, so we can just return that. See the
+    // The node_modules registry uses the base64-encoded URL of the package as
+    // the package version, so we need to decode it to get the right copy. See
     // comments in the `resolveLatestTarget` function for details:
     if (pkg.registry === "node_modules") {
-      return `${decodeBase64(pkg.name.split("#")[1])}/`;
+      return `${decodeBase64(pkg.version)}/`;
     }
 
     // If we don't have a URL in the package name, then we need to try and
@@ -38,7 +38,7 @@ export function createProvider(baseUrl: string): Provider {
         `Failed to resolve ${pkg.name} against node_modules from ${baseUrl}`
       );
 
-    return `${decodeBase64(target.name.split("#")[1])}/`;
+    return `${decodeBase64(target.version)}/`;
   }
 
   async function parseUrlPkg(
@@ -56,14 +56,10 @@ export function createProvider(baseUrl: string): Provider {
         : nameAndSubpaths[0];
     const pkgUrl = `${url.slice(0, nodeModulesIndex + 14)}${name}`;
 
-    // Local packages might not have a package.json, and hence have no version:
-    const pcfg = await this.getPackageConfig(`${pkgUrl}/`);
-    const version = pcfg?.version || "";
-
     return {
-      name: `${name}#${encodeBase64(pkgUrl)}`,
+      name,
       registry: "node_modules",
-      version,
+      version: encodeBase64(pkgUrl),
     };
   }
 
@@ -101,21 +97,17 @@ async function nodeResolve(
     );
   }
 
-  // Local packages might not have a package.json, and hence have no version:
-  const pcfg = await this.getPackageConfig(`${curUrl.href}/`);
-  const version = pcfg?.version || "";
-
   // Providers need to be able to translate between canonical package specs and
   // URLs in a one-to-one fashion. The nodemodules provider breaks this contract
   // as a node_modules folder may contain multiple copies of a given package
   // and version, and if the user has local packages installed then "identical"
-  // packages may have different contents! To work around this we attach the
-  // base64-encoded URL of the package to the package name, which we can then
-  // reverse to get the correct URL back in pkgToUrl:
+  // packages may have different contents! To work around this use the
+  // base64-encoded URL of the package as the package version in the local
+  // registry, which we can decode to get the right copy:
   return {
+    name,
     registry: "node_modules",
-    name: `${name}#${encodeBase64(curUrl.href)}`,
-    version: version,
+    version: encodeBase64(curUrl.href),
   };
 }
 
