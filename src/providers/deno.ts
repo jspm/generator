@@ -151,12 +151,11 @@ export async function getPackageConfig(
 
 const vCache = {};
 
-export async function parseUrlPkg(
+export function parseUrlPkg(
   url: string
-): Promise<
+):
   | { pkg: ExactPackage; subpath: `./${string}` | null; layer: string }
-  | undefined
-> {
+  | undefined {
   let subpath = null;
   if (url.startsWith(stdlibUrl) && url[stdlibUrl.length] === "@") {
     const version = url.slice(

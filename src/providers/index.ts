@@ -3,7 +3,6 @@ import * as jspm from "./jspm.js";
 import * as skypack from "./skypack.js";
 import * as jsdelivr from "./jsdelivr.js";
 import * as unpkg from "./unpkg.js";
-import * as nodemodules from "./nodemodules.js";
 import * as node from "./node.js";
 import {
   PackageConfig,
@@ -18,11 +17,10 @@ export interface Provider {
   parseUrlPkg(
     this: Resolver,
     url: string
-  ): Promise<
+  ):
     | ExactPackage
     | { pkg: ExactPackage; subpath: `./${string}` | null; layer: string }
-    | null
-  >;
+    | null;
 
   pkgToUrl(
     this: Resolver,

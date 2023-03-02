@@ -26,12 +26,7 @@ export async function pkgToUrl(
 const exactPkgRegEx =
   /^(([a-z]+):)?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
 
-export async function parseUrlPkg(
-  url: string
-): Promise<
-  | { pkg: ExactPackage; layer: string; subpath: `./${string}` | null }
-  | undefined
-> {
+export function parseUrlPkg(url: string) {
   let subpath = null;
   let layer: string;
   if (url.startsWith(cdnUrl)) layer = "default";

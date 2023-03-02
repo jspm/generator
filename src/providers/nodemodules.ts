@@ -41,10 +41,7 @@ export function createProvider(baseUrl: string): Provider {
     return `${decodeBase64(target.version)}/`;
   }
 
-  async function parseUrlPkg(
-    this: Resolver,
-    url: string
-  ): Promise<ExactPackage | null> {
+  function parseUrlPkg(this: Resolver, url: string): ExactPackage | null {
     // We can only resolve URLs in node_modules folders:
     const nodeModulesIndex = url.lastIndexOf("/node_modules/");
     if (nodeModulesIndex === -1) return null;

@@ -9,7 +9,7 @@ export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
 const exactPkgRegEx =
   /^([^\/]+)\/((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
 
-export async function parseUrlPkg(url: string): Promise<ExactPackage | null> {
+export function parseUrlPkg(url: string) {
   if (!url.startsWith(cdnUrl)) return;
   const [, registry, name, version] =
     url.slice(cdnUrl.length).match(exactPkgRegEx) || [];

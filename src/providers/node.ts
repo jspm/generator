@@ -146,7 +146,7 @@ export async function resolveLatestTarget(
   );
 }
 
-export async function parseUrlPkg(url: string): Promise<ExactPackage | null> {
+export function parseUrlPkg(url: string) {
   if (!url.startsWith("node:")) return;
   let name = url.slice(5);
   if (name.endsWith("/")) name = name.slice(0, -1);
