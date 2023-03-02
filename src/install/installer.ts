@@ -76,7 +76,7 @@ export class Installer {
   installBaseUrl: `${string}/`;
   added = new Map<string, InstallTarget>();
   hasLock = false;
-  defaultProvider = { provider: "jspm", layer: "default" };
+  defaultProvider = { provider: "jspm.io", layer: "default" };
   defaultRegistry = "npm";
   providers: Record<string, string>;
   resolutions: Record<string, string>;
@@ -106,10 +106,7 @@ export class Installer {
     };
     if (opts.defaultRegistry) this.defaultRegistry = opts.defaultRegistry;
     if (opts.defaultProvider)
-      this.defaultProvider = {
-        provider: opts.defaultProvider.split(".")[0],
-        layer: opts.defaultProvider.split(".")[1] || "default",
-      };
+      this.defaultProvider = parseProviderStr(opts.defaultProvider);
     this.providers = Object.assign({}, registryProviders);
     if (opts.providers) Object.assign(this.providers, opts.providers);
   }
@@ -146,12 +143,7 @@ export class Installer {
           (target.name.length === name.length ||
             target.name[name.length] === "/"))
       ) {
-        provider = { provider: this.providers[name], layer: "default" };
-        const layerIndex = provider.provider.indexOf(".");
-        if (layerIndex !== -1) {
-          provider.layer = provider.provider.slice(layerIndex + 1);
-          provider.provider = provider.provider.slice(0, layerIndex);
-        }
+        provider = parseProviderStr(this.providers[name]);
         break;
       }
     }
@@ -570,4 +562,12 @@ export class Installer {
       );
     }
   }
+}
+
+function parseProviderStr(provider: string): PackageProvider {
+  const split = provider.split("#");
+  return {
+    provider: split[0],
+    layer: split[1] || "default",
+  };
 }

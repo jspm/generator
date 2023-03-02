@@ -15,7 +15,7 @@ import assert from "assert";
       },
     },
     mapUrl: import.meta.url,
-    defaultProvider: "jspm",
+    defaultProvider: "jspm.io",
     env: ["production", "browser"],
   });
 
@@ -54,7 +54,7 @@ import assert from "assert";
       },
     },
     mapUrl: import.meta.url,
-    defaultProvider: "jspm",
+    defaultProvider: "jspm.io",
     env: ["production", "browser"],
   });
 

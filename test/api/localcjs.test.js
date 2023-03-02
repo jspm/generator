@@ -5,7 +5,7 @@ import assert from "assert";
 if (typeof document === "undefined") {
   const generator = new Generator({
     mapUrl: import.meta.url,
-    defaultProvider: "jspm",
+    defaultProvider: "jspm.io",
     env: ["production", "browser"],
     commonJS: true,
   });
