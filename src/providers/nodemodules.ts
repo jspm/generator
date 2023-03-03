@@ -57,11 +57,14 @@ export function createProvider(baseUrl: string): Provider {
         : nameAndSubpaths[0];
     const pkgUrl = `${url.slice(0, nodeModulesIndex + 14)}${name}`;
 
-    return {
-      name,
-      registry: "node_modules",
-      version: encodeBase64(pkgUrl),
-    };
+    if (name && pkgUrl) {
+      // don't interpret "node_modules/" base as a pkg
+      return {
+        name,
+        registry: "node_modules",
+        version: encodeBase64(pkgUrl),
+      };
+    }
   }
 
   async function resolveLatestTarget(

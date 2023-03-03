@@ -97,7 +97,7 @@ export class Resolver {
       const provider = this.providers[name];
       if (
         (provider.ownsUrl && provider.ownsUrl.call(this, url)) ||
-        (await provider.parseUrlPkg.call(this, url))
+        provider.parseUrlPkg.call(this, url)
       ) {
         return provider;
       }
@@ -111,7 +111,7 @@ export class Resolver {
   } | null> {
     for (const provider of Object.keys(this.providers)) {
       const providerInstance = this.providers[provider];
-      const result = await providerInstance.parseUrlPkg.call(this, url);
+      const result = providerInstance.parseUrlPkg.call(this, url);
       if (result)
         return {
           pkg: "pkg" in result ? result.pkg : result,
@@ -172,8 +172,13 @@ export class Resolver {
     } while ((testUrl = new URL("../", testUrl)));
   }
 
-  // TODO split this into getPackageDependencyConfig and getPackageResolutionConfig
-  // since "dependencies" come from package base, while "imports" come from local pjson
+  // TODO: there are actually two different kinds of "package" in the codebase.
+  // There's a registry package, which is something that can be pinned exactly
+  // by name and version against a registry like "npm" or "denoland". Then we
+  // have a resolver package, which is any URL that has a "package.json" as a
+  // child. We should only be doing providerForUrl checks for _registry_
+  // packages, and in resolution contexts we should skip straight to npm-style
+  // backtracking to find package bases.
 
   async getPackageConfig(pkgUrl: string): Promise<PackageConfig | null> {
     if (

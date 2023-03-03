@@ -13,4 +13,3 @@ await generator.link("./index.js");
 const map = generator.getMap();
 assert.strictEqual(map.imports?.["tar"], "./node_modules/tar/index.js");
 assert.strictEqual(map.imports?.["dep"], "./node_modules/dep/index.js");
-

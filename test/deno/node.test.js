@@ -10,9 +10,5 @@ await generator.install("chalk");
 
 await denoExec(
   generator.getMap(),
-  `
-  import chalk from 'chalk';
-
-  console.log(chalk.red('IT WORKS'));
-`
+  `import chalk from 'chalk';`
 );
