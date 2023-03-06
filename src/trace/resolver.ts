@@ -144,13 +144,6 @@ export class Resolver {
     }
   }
 
-  async remapUrl(url: URL): Promise<URL | null> {
-    for (const provider of Object.values(this.providers)) {
-      const mapped = await provider.remapUrl?.call(this, url);
-      if (mapped) return mapped;
-    }
-  }
-
   async getPackageBase(url: string): Promise<`${string}/`> {
     const pkg = await this.parseUrlPkg(url);
     if (pkg) return this.pkgToUrl(pkg.pkg, pkg.source);

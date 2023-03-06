@@ -8,7 +8,4 @@ const generator = new Generator({
 
 await generator.install("chalk");
 
-await denoExec(
-  generator.getMap(),
-  `import chalk from 'chalk';`
-);
+await denoExec(generator.getMap(), `import chalk from 'chalk';`);

@@ -43,8 +43,6 @@ export interface Provider {
     env: string[]
   ): string | Install | null;
 
-  remapUrl?(this: Resolver, url: URL): Promise<URL | null>;
-
   getPackageConfig?(
     this: Resolver,
     pkgUrl: string

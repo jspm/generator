@@ -9,18 +9,18 @@ import { importedFrom } from "../common/url.js";
 import { PackageConfig } from "../install/package.js";
 
 export function createProvider(baseUrl: string): Provider {
-  let mappings: Record<string, string> | null;
-
   return {
     ownsUrl,
     pkgToUrl,
     parseUrlPkg,
     resolveLatestTarget,
-    remapUrl,
+    getPackageConfig,
   };
 
   function ownsUrl(this: Resolver, url: string) {
-    return url.includes("/node_modules/");
+    // The nodemodules provider owns the base URL so that it can resolve
+    // a user's local installs, which lets us support "file:" dependencies:
+    return url === baseUrl || url.includes("/node_modules/");
   }
 
   async function pkgToUrl(
@@ -46,7 +46,7 @@ export function createProvider(baseUrl: string): Provider {
   }
 
   function parseUrlPkg(this: Resolver, url: string): ExactPackage | null {
-    // We can only resolve URLs in node_modules folders:
+    // We can only resolve packages in node_modules folders:
     const nodeModulesIndex = url.lastIndexOf("/node_modules/");
     if (nodeModulesIndex === -1) return null;
 
@@ -58,7 +58,6 @@ export function createProvider(baseUrl: string): Provider {
     const pkgUrl = `${url.slice(0, nodeModulesIndex + 14)}${name}`;
 
     if (name && pkgUrl) {
-      // don't interpret "node_modules/" base as a pkg
       return {
         name,
         registry: "node_modules",
@@ -76,21 +75,40 @@ export function createProvider(baseUrl: string): Provider {
     return nodeResolve.call(this, target.name, parentUrl);
   }
 
-  async function remapUrl(this: Resolver, url: URL): Promise<URL | null> {
-    if (!mappings) {
-      const pcfg = await this.getPackageConfig(baseUrl);
-      if (!pcfg) {
-        mappings = {};
-      } else {
-        mappings = await localMappings(pcfg, new URL(baseUrl));
+  async function getPackageConfig(
+    this: Resolver,
+    pkgUrl: string
+  ): Promise<PackageConfig | null> {
+    if (!ownsUrl.call(this, pkgUrl)) return null;
+
+    const pkgJsonUrl = new URL("package.json", pkgUrl);
+    const res = await fetch(pkgJsonUrl.href, this.fetchOpts);
+    switch (res.status) {
+      case 200:
+      case 304:
+        break;
+      default:
+        return null;
+    }
+
+    async function remap(this: Resolver, deps: Record<string, string> | null) {
+      if (!deps) return;
+      for (const [name, dep] of Object.entries(deps)) {
+        if (!isLocal(dep)) continue;
+
+        const remappedUrl = new URL(`./node_modules/${name}`, pkgUrl);
+        if (!(await dirExists.call(this, remappedUrl))) continue;
+
+        deps[name] = remappedUrl.href;
       }
     }
 
-    const name = mappings[url.href];
-    if (name) {
-      const target = await nodeResolve.call(this, name, baseUrl);
-      if (target) return new URL(decodeBase64(target.version));
-    }
+    const pcfg = (await res.json()) as PackageConfig;
+    await remap.call(this, pcfg.dependencies);
+    await remap.call(this, pcfg.peerDependencies);
+    await remap.call(this, pcfg.optionalDependencies);
+    await remap.call(this, pcfg.devDependencies);
+    return pcfg;
   }
 }
 
@@ -132,32 +150,7 @@ async function nodeResolve(
   };
 }
 
-// Constructs a mapping of local URLs in the given package config to their
-// corresponding package names, which we can use to resolve local package
-// installs to the node_modules folder:
-async function localMappings(
-  pcfg: PackageConfig,
-  baseUrl: URL
-): Promise<Record<string, string>> {
-  const mappings: Record<string, string> = {};
-
-  const allDeps = {
-    ...pcfg.dependencies,
-    ...pcfg.devDependencies,
-    ...pcfg.peerDependencies,
-    ...pcfg.optionalDependencies,
-  };
-  for (const [name, dep] of Object.entries(allDeps)) {
-    if (!dep.startsWith("file:")) continue;
-
-    const url = new URL(dep.slice(5), baseUrl);
-    mappings[url.href] = name;
-  }
-
-  return mappings;
-}
-
-async function dirExists(url: URL, parentUrl?: string) {
+async function dirExists(this: Resolver, url: URL, parentUrl?: string) {
   const res = await fetch(url, this.fetchOpts);
   switch (res.status) {
     case 304:
@@ -188,4 +181,8 @@ function decodeBase64(data: string): string {
   }
 
   return Buffer.from(data, "base64").toString("utf8");
+}
+
+function isLocal(dep: string): boolean {
+  return dep.startsWith("file:");
 }
