@@ -325,8 +325,8 @@ export function validatePkgName(specifier: string) {
 }
 
 /**
- * Parses an npm-style package specifier, such as '@jspm/generator/index.js',
- * and splits it into the package name ('@jspm/generator') and subpath
+ * Parses an npm-style module specifier, such as '@jspm/generator/index.js',
+ * and splits it into the package name ('@jspm/generator') and module subpath
  * ('./index.js'). Returns undefined if the given specifier is invalid.
  *
  * @param {string} specifier Specifier to parse.

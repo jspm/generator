@@ -197,12 +197,15 @@ export class Installer {
     }
 
     if (pkgTarget instanceof URL) {
+      const installHref = pkgTarget.href;
+      const installUrl = (installHref +
+        (installHref.endsWith("/") ? "" : "/")) as `${string}/`;
+
       this.log(
         "installer/installTarget",
-        `${pkgName} ${pkgScope} -> ${pkgTarget.href} (URL)`
+        `${pkgName} ${pkgScope} -> ${installHref} (URL)`
       );
-      const installUrl = (pkgTarget.href +
-        (pkgTarget.href.endsWith("/") ? "" : "/")) as `${string}/`;
+
       this.newInstalls = setResolution(
         this.installs,
         pkgName,
@@ -238,12 +241,6 @@ export class Installer {
       }
     }
 
-    this.log(
-      "installer/installTarget",
-      `Resolving latest version of ${JSON.stringify(
-        pkgTarget
-      )} against provider ${provider}`
-    );
     const latestPkg = await this.resolver.resolveLatestTarget(
       pkgTarget,
       provider,
@@ -405,6 +402,7 @@ export class Installer {
         this.defaultRegistry,
         pkgName
       );
+
       return this.installTarget(
         pkgName,
         target,

@@ -6,6 +6,7 @@ import { Provider } from "./index.js";
 import { fetch } from "#fetch";
 import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
+import { PackageConfig } from "../install/package.js";
 
 export function createProvider(baseUrl: string): Provider {
   return {
@@ -13,10 +14,13 @@ export function createProvider(baseUrl: string): Provider {
     pkgToUrl,
     parseUrlPkg,
     resolveLatestTarget,
+    getPackageConfig,
   };
 
   function ownsUrl(this: Resolver, url: string) {
-    return url.includes("/node_modules/");
+    // The nodemodules provider owns the base URL so that it can resolve
+    // a user's local installs, which lets us support "file:" dependencies:
+    return url === baseUrl || url.includes("/node_modules/");
   }
 
   async function pkgToUrl(
@@ -42,7 +46,7 @@ export function createProvider(baseUrl: string): Provider {
   }
 
   function parseUrlPkg(this: Resolver, url: string): ExactPackage | null {
-    // We can only resolve URLs in node_modules folders:
+    // We can only resolve packages in node_modules folders:
     const nodeModulesIndex = url.lastIndexOf("/node_modules/");
     if (nodeModulesIndex === -1) return null;
 
@@ -53,11 +57,13 @@ export function createProvider(baseUrl: string): Provider {
         : nameAndSubpaths[0];
     const pkgUrl = `${url.slice(0, nodeModulesIndex + 14)}${name}`;
 
-    return {
-      name,
-      registry: "node_modules",
-      version: encodeBase64(pkgUrl),
-    };
+    if (name && pkgUrl) {
+      return {
+        name,
+        registry: "node_modules",
+        version: encodeBase64(pkgUrl),
+      };
+    }
   }
 
   async function resolveLatestTarget(
@@ -67,6 +73,42 @@ export function createProvider(baseUrl: string): Provider {
     parentUrl: string
   ): Promise<ExactPackage | null> {
     return nodeResolve.call(this, target.name, parentUrl);
+  }
+
+  async function getPackageConfig(
+    this: Resolver,
+    pkgUrl: string
+  ): Promise<PackageConfig | null> {
+    if (!ownsUrl.call(this, pkgUrl)) return null;
+
+    const pkgJsonUrl = new URL("package.json", pkgUrl);
+    const res = await fetch(pkgJsonUrl.href, this.fetchOpts);
+    switch (res.status) {
+      case 200:
+      case 304:
+        break;
+      default:
+        return null;
+    }
+
+    async function remap(this: Resolver, deps: Record<string, string> | null) {
+      if (!deps) return;
+      for (const [name, dep] of Object.entries(deps)) {
+        if (!isLocal(dep)) continue;
+
+        const remappedUrl = new URL(`./node_modules/${name}`, pkgUrl);
+        if (!(await dirExists.call(this, remappedUrl))) continue;
+
+        deps[name] = remappedUrl.href;
+      }
+    }
+
+    const pcfg = (await res.json()) as PackageConfig;
+    await remap.call(this, pcfg.dependencies);
+    await remap.call(this, pcfg.peerDependencies);
+    await remap.call(this, pcfg.optionalDependencies);
+    await remap.call(this, pcfg.devDependencies);
+    return pcfg;
   }
 }
 
@@ -108,7 +150,7 @@ async function nodeResolve(
   };
 }
 
-async function dirExists(url: URL, parentUrl?: string) {
+async function dirExists(this: Resolver, url: URL, parentUrl?: string) {
   const res = await fetch(url, this.fetchOpts);
   switch (res.status) {
     case 304:
@@ -139,4 +181,8 @@ function decodeBase64(data: string): string {
   }
 
   return Buffer.from(data, "base64").toString("utf8");
+}
+
+function isLocal(dep: string): boolean {
+  return dep.startsWith("file:");
 }

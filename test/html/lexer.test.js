@@ -1,7 +1,6 @@
 import assert from "assert";
 import { parseHtml } from "../../lib/html/lexer.js";
 
-console.group("Simple script");
 {
   const source = `
     <script type="module">test</script>
@@ -21,9 +20,7 @@ console.group("Simple script");
   assert.strictEqual(scripts[1].end, 84);
   assert.strictEqual(scripts[1].attributes.length, 2);
 }
-console.groupEnd();
 
-console.group("Edge cases");
 {
   const source = `
     <!-- <script>
@@ -76,4 +73,3 @@ console.group("Edge cases");
   assert.strictEqual(scripts[2].start, 246);
   assert.strictEqual(scripts[2].end, 356);
 }
-console.groupEnd();

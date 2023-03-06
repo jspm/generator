@@ -397,18 +397,18 @@ export async function extractLockConstraintsAndMap(
       pkgUrls.add(pkgUrl);
 
       // If the plain specifier resolves to a package on some provider's CDN,
-      // and there's a corresponding export in that package's pjson, then the
-      // generator can handle this case, provided we lock the package version
-      // to match:
-      if (parsedTarget && exportSubpath) {
-        // Imports resolutions that resolve as expected can be skipped
+      // and there's a corresponding import/export map entry in that package,
+      // then the resolution is standard and we can lock it:
+      if (exportSubpath) {
+        // Package "imports" resolutions don't constrain versions.
         if (key[0] === "#") continue;
 
-        // If there is no constraint, make one as the semver major on the current version
-        if (!constraints.primary[parsedKey.pkgName])
+        // Otherwise we treat top-level package versions as a constraint.
+        if (!constraints.primary[parsedKey.pkgName]) {
           constraints.primary[parsedKey.pkgName] = packageTargetFromExact(
             parsedTarget.pkg
           );
+        }
 
         // In the case of subpaths having diverging versions, we force convergence on one version
         // Only scopes permit unpacking
@@ -442,14 +442,14 @@ export async function extractLockConstraintsAndMap(
           key
         );
 
-        // If the export subpath matches the key's subpath, then the generator
-        // can handle this case:
+        // If the export subpath matches the key's subpath, then this is a
+        // standard resolution:
         if (parsedKey.subpath === exportSubpath) continue;
       }
     }
 
-    // Fallback - the generator doesn't know how to resolve this bare specifier,
-    // so we need to record it as a custom import override:
+    // Fallback - this resolution is non-standard, so we need to record it as
+    // a custom import override:
     maps.imports[isPlain(key) ? key : resolveUrl(key, mapUrl, rootUrl)] =
       resolveUrl(map.imports[key], mapUrl, rootUrl);
   }
@@ -459,6 +459,7 @@ export async function extractLockConstraintsAndMap(
     const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
     const flattenedScope = new URL(scopePkgUrl).pathname === "/";
     pkgUrls.add(scopePkgUrl);
+
     const scope = map.scopes[scopeUrl];
     for (const key of Object.keys(scope)) {
       if (isPlain(key)) {
@@ -474,6 +475,11 @@ export async function extractLockConstraintsAndMap(
         const exportSubpath =
           parsedTarget &&
           (await resolver.getExportResolution(pkgUrl, subpath, key));
+
+        // TODO: we don't handle trailing-slash mappings here at all, which
+        // leads to them sticking around in the import map as custom
+        // resolutions forever.
+
         if (exportSubpath) {
           // Imports resolutions that resolve as expected can be skipped
           if (key[0] === "#") continue;
@@ -494,7 +500,6 @@ export async function extractLockConstraintsAndMap(
               installSubpath = exportSubpath as `./${string}/`;
             } else if (exportSubpath === ".") {
               installSubpath = false;
-              // throw new Error('CASE B');
             } else {
               if (exportSubpath.endsWith(parsedKey.subpath.slice(1)))
                 installSubpath = exportSubpath.slice(
