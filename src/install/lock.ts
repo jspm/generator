@@ -2,6 +2,8 @@ import { IImportMap } from "@jspm/import-map";
 import { throwInternalError } from "../common/err.js";
 import { isPlain, isURL, resolveUrl } from "../common/url.js";
 import { Resolver } from "../trace/resolver.js";
+import { JspmError } from "../common/err.js";
+import { PackageProvider } from "./installer.js";
 import {
   PackageTarget,
   newPackageTarget,
@@ -12,6 +14,7 @@ import {
 // @ts-ignore
 import sver from "sver";
 import { getPackageConfig } from "../generator.js";
+import { decodeBase64 } from "../common/b64.js";
 const { Semver, SemverRange } = sver;
 
 export interface LockResolutions {
@@ -56,32 +59,10 @@ export interface FlatInstalledResolution {
   resolution: InstalledResolution;
 }
 
-export function pruneResolutions(
-  resolutions: LockResolutions,
-  to: [string, string | null][]
-): LockResolutions {
-  const newResolutions: LockResolutions = {
-    primary: Object.create(null),
-    secondary: Object.create(null),
-    flattened: Object.create(null),
-  };
-  for (const [name, parent] of to) {
-    if (parent) {
-      newResolutions[parent] = newResolutions[parent] || {};
-      newResolutions[parent][name] = resolutions.secondary[parent][name];
-    } else {
-      newResolutions.primary[name] = resolutions.primary[name];
-    }
-  }
-  return newResolutions;
-}
-
-function enumerateParentScopes(url: string): `${string}/`[] {
+function enumerateParentScopes(url: `${string}/`): `${string}/`[] {
   const parentScopes: `${string}/`[] = [];
   let separatorIndex = url.lastIndexOf("/");
   const protocolIndex = url.indexOf("://") + 1;
-  if (separatorIndex !== url.length - 1)
-    throw new Error("Internal error: expected package URL");
   while (
     (separatorIndex = url.lastIndexOf("/", separatorIndex - 1)) !==
     protocolIndex
@@ -97,7 +78,7 @@ export function getResolution(
   pkgScope: `${string}/` | null
 ): InstalledResolution | null {
   if (pkgScope && !pkgScope.endsWith("/")) throwInternalError(pkgScope);
-  if (!pkgScope) return resolutions.primary[name] || null;
+  if (!pkgScope) return resolutions.primary[name];
   const scope = resolutions.secondary[pkgScope];
   return scope?.[name] ?? null;
 }
@@ -249,6 +230,7 @@ function toPackageToTarget(
         name
       ).pkgTarget;
     }
+
   if (includeDev && pcfg.devDependencies)
     for (const name of Object.keys(pcfg.devDependencies)) {
       if (name in constraints) continue;
@@ -263,14 +245,33 @@ function toPackageToTarget(
   return constraints;
 }
 
-function packageTargetFromExact(
+async function packageTargetFromExact(
   pkg: ExactPackage,
+  resolver: Resolver,
   permitDowngrades = false
-): PackageTarget {
-  // TODO: the nodemodules provider returns ExactPackages with the version
-  // string set to a hash, rather than a valid semver range. Handle it!
+): Promise<PackageTarget> {
+  let registry: string, name: string, version: string;
+  if (pkg.registry === "node_modules") {
+    // The node_modules versions are always URLs to npm-installed packages:
+    const pkgUrl = decodeBase64(pkg.version);
+    const pcfg = await resolver.getPackageConfig(pkgUrl);
+    if (!pcfg)
+      throw new JspmError(
+        `Package ${pkgUrl} has no package config, cannot create package target.`
+      );
+    if (!pcfg.name || !pcfg.version)
+      throw new JspmError(
+        `Package ${pkgUrl} has no name or version, cannot create package target.`
+      );
 
-  const { registry, name, version } = pkg;
+    name = pcfg.name;
+    version = pcfg.version;
+    registry = "npm";
+  } else {
+    // The other registries all use semver ranges:
+    ({ registry, name, version } = pkg);
+  }
+
   const v = new Semver(version);
   if (v.tag)
     return {
@@ -310,18 +311,18 @@ function packageTargetFromExact(
   }
 }
 
-export interface PackageInstall {
+export interface PackageConstraint {
   alias: string;
   pkgScope: `${string}/` | null;
   ranges: any[];
 }
 
-export function getInstallsFor(
-  constraints: VersionConstraints,
+export function getConstraintFor(
+  name: string,
   registry: string,
-  name: string
-) {
-  const installs: PackageInstall[] = [];
+  constraints: VersionConstraints
+): PackageConstraint[] {
+  const installs: PackageConstraint[] = [];
   for (const [alias, target] of Object.entries(constraints.primary)) {
     if (
       !(target instanceof URL) &&
@@ -338,7 +339,11 @@ export function getInstallsFor(
         target.registry === registry &&
         target.name === name
       )
-        installs.push({ alias, pkgScope: pkgScope as `${string}/`, ranges: target.ranges });
+        installs.push({
+          alias,
+          pkgScope: pkgScope as `${string}/`,
+          ranges: target.ranges,
+        });
     }
   }
   return installs;
@@ -402,14 +407,14 @@ export async function extractLockConstraintsAndMap(
       // and there's a corresponding import/export map entry in that package,
       // then the resolution is standard and we can lock it:
       if (exportSubpath) {
-        console.log(JSON.stringify(parsedTarget));
         // Package "imports" resolutions don't constrain versions.
         if (key[0] === "#") continue;
 
         // Otherwise we treat top-level package versions as a constraint.
         if (!constraints.primary[parsedKey.pkgName]) {
-          constraints.primary[parsedKey.pkgName] = packageTargetFromExact(
-            parsedTarget.pkg
+          constraints.primary[parsedKey.pkgName] = await packageTargetFromExact(
+            parsedTarget.pkg,
+            resolver
           );
         }
 
@@ -491,7 +496,7 @@ export async function extractLockConstraintsAndMap(
           // If there is no constraint, we just make one as the semver major on the current version
           if (!constraints.primary[parsedKey.pkgName])
             constraints.primary[parsedKey.pkgName] = parsedTarget
-              ? packageTargetFromExact(parsedTarget.pkg)
+              ? await packageTargetFromExact(parsedTarget.pkg, resolver)
               : new URL(pkgUrl);
 
           // In the case of subpaths having diverging versions, we force convergence on one version
@@ -565,4 +570,27 @@ export async function extractLockConstraintsAndMap(
   // }
 
   return { locks: lock, constraints, maps };
+}
+
+export async function changeProvider(
+  pkg: ExactPackage,
+  { provider, layer }: PackageProvider,
+  resolver: Resolver,
+  parentUrl: string
+): Promise<ExactPackage | null> {
+  if (pkg.registry === "deno" || pkg.registry === "denoland") {
+    return null; // TODO: handle these
+  }
+
+  const target = await packageTargetFromExact(pkg, resolver);
+  return resolver.resolveLatestTarget(target, { provider, layer }, parentUrl);
+}
+
+export function changeRegistry(
+  pkgTarget: PackageTarget,
+  registry: string,
+  resolver: Resolver
+): PackageTarget {
+  // TODO: implement me
+  return pkgTarget;
 }

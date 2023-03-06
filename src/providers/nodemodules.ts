@@ -7,6 +7,7 @@ import { fetch } from "#fetch";
 import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
 import { PackageConfig } from "../install/package.js";
+import { encodeBase64, decodeBase64 } from "../common/b64.js";
 
 export function createProvider(baseUrl: string): Provider {
   return {
@@ -31,7 +32,7 @@ export function createProvider(baseUrl: string): Provider {
     // the package version, so we need to decode it to get the right copy. See
     // comments in the `resolveLatestTarget` function for details:
     if (pkg.registry === "node_modules") {
-      return `${decodeBase64(pkg.version)}/`;
+      return `${decodeBase64(pkg.version)}` as `${string}/`;
     }
 
     // If we don't have a URL in the package name, then we need to try and
@@ -42,7 +43,7 @@ export function createProvider(baseUrl: string): Provider {
         `Failed to resolve ${pkg.name} against node_modules from ${baseUrl}`
       );
 
-    return `${decodeBase64(target.version)}/`;
+    return `${decodeBase64(target.version)}` as `${string}/`;
   }
 
   function parseUrlPkg(this: Resolver, url: string): ExactPackage | null {
@@ -55,7 +56,7 @@ export function createProvider(baseUrl: string): Provider {
       nameAndSubpaths[0][0] === "@"
         ? `${nameAndSubpaths[0]}/${nameAndSubpaths[1]}`
         : nameAndSubpaths[0];
-    const pkgUrl = `${url.slice(0, nodeModulesIndex + 14)}${name}`;
+    const pkgUrl = `${url.slice(0, nodeModulesIndex + 14)}${name}/`;
 
     if (name && pkgUrl) {
       return {
@@ -146,7 +147,7 @@ async function nodeResolve(
   return {
     name,
     registry: "node_modules",
-    version: encodeBase64(curUrl.href),
+    version: encodeBase64(`${curUrl.href}/`),
   };
 }
 
@@ -165,22 +166,6 @@ async function dirExists(this: Resolver, url: URL, parentUrl?: string) {
         }${importedFrom(parentUrl)}`
       );
   }
-}
-
-function encodeBase64(data: string): string {
-  if (typeof window !== "undefined") {
-    return window.btoa(data);
-  }
-
-  return Buffer.from(data).toString("base64");
-}
-
-function decodeBase64(data: string): string {
-  if (typeof window !== "undefined") {
-    return window.atob(data);
-  }
-
-  return Buffer.from(data, "base64").toString("utf8");
 }
 
 function isLocal(dep: string): boolean {

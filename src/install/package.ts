@@ -59,8 +59,8 @@ export interface PackageConfig {
  * such as npm or deno.
  */
 export interface ExactPackage {
-  registry: string;
   name: string;
+  registry: string;
   version: string;
 }
 

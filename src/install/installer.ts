@@ -6,11 +6,11 @@ import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
 import { JspmError, throwInternalError } from "../common/err.js";
 import {
   getFlattenedResolution,
-  getInstallsFor,
+  getConstraintFor,
   getResolution,
   InstalledResolution,
   LockResolutions,
-  PackageInstall,
+  PackageConstraint,
   setConstraint,
   setResolution,
   VersionConstraints,
@@ -248,10 +248,10 @@ export class Installer {
     );
 
     const pkgUrl = await this.resolver.pkgToUrl(latestPkg, provider);
-    const installed = getInstallsFor(
-      this.constraints,
+    const installed = getConstraintFor(
+      latestPkg.name,
       latestPkg.registry,
-      latestPkg.name
+      this.constraints
     );
     if (
       !this.opts.freeze &&
@@ -511,7 +511,7 @@ export class Installer {
   private tryUpgradeAllTo(
     pkg: ExactPackage,
     pkgUrl: `${string}/`,
-    installed: PackageInstall[]
+    installed: PackageConstraint[]
   ): boolean {
     const pkgVersion = new Semver(pkg.version);
 
@@ -544,7 +544,7 @@ export class Installer {
   private upgradeSupportedTo(
     pkg: ExactPackage,
     pkgUrl: `${string}/`,
-    installed: PackageInstall[]
+    installed: PackageConstraint[]
   ) {
     const pkgVersion = new Semver(pkg.version);
     for (const { alias, pkgScope, ranges } of installed) {
