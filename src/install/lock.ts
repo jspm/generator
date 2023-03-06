@@ -23,6 +23,7 @@ export interface LockResolutions {
       [pkgName: string]: InstalledResolution;
     };
   };
+
   // resolutions on non-package boundaries due to scope flattening which conflate version information
   // for example you might have separate export subpaths resolving different versions of the same package
   // FlatInstalledResolution[] captures this flattened variation of install resolutions while still
@@ -34,14 +35,14 @@ export interface LockResolutions {
   };
 }
 
-interface PackageTargetMap {
+interface PackageToTarget {
   [pkgName: string]: PackageTarget | URL;
 }
 
 export interface VersionConstraints {
-  primary: PackageTargetMap;
+  primary: PackageToTarget;
   secondary: {
-    [pkgUrl: `${string}/`]: PackageTargetMap;
+    [pkgUrl: `${string}/`]: PackageToTarget;
   };
 }
 
@@ -65,11 +66,11 @@ export function pruneResolutions(
     flattened: Object.create(null),
   };
   for (const [name, parent] of to) {
-    if (!parent) {
-      newResolutions.primary[name] = resolutions.primary[name];
-    } else {
+    if (parent) {
       newResolutions[parent] = newResolutions[parent] || {};
       newResolutions[parent][name] = resolutions.secondary[parent][name];
+    } else {
+      newResolutions.primary[name] = resolutions.primary[name];
     }
   }
   return newResolutions;
@@ -209,13 +210,13 @@ export function mergeConstraints(
   }
 }
 
-function toPackageTargetMap(
+function toPackageToTarget(
   pcfg: PackageConfig,
   pkgUrl: URL,
   defaultRegistry = "npm",
   includeDev = false
-): PackageTargetMap {
-  const constraints: PackageTargetMap = Object.create(null);
+): PackageToTarget {
+  const constraints: PackageToTarget = Object.create(null);
 
   if (pcfg.dependencies)
     for (const name of Object.keys(pcfg.dependencies)) {
@@ -266,6 +267,9 @@ function packageTargetFromExact(
   pkg: ExactPackage,
   permitDowngrades = false
 ): PackageTarget {
+  // TODO: the nodemodules provider returns ExactPackages with the version
+  // string set to a hash, rather than a valid semver range. Handle it!
+
   const { registry, name, version } = pkg;
   const v = new Semver(version);
   if (v.tag)
@@ -318,8 +322,7 @@ export function getInstallsFor(
   name: string
 ) {
   const installs: PackageInstall[] = [];
-  for (const alias of Object.keys(constraints.primary)) {
-    const target = constraints.primary[alias];
+  for (const [alias, target] of Object.entries(constraints.primary)) {
     if (
       !(target instanceof URL) &&
       target.registry === registry &&
@@ -327,8 +330,7 @@ export function getInstallsFor(
     )
       installs.push({ alias, pkgScope: null, ranges: target.ranges });
   }
-  for (const pkgScope of Object.keys(constraints.secondary) as `${string}/`[]) {
-    const scope = constraints.secondary[pkgScope];
+  for (const [pkgScope, scope] of Object.entries(constraints.secondary)) {
     for (const alias of Object.keys(scope)) {
       const target = scope[alias];
       if (
@@ -336,7 +338,7 @@ export function getInstallsFor(
         target.registry === registry &&
         target.name === name
       )
-        installs.push({ alias, pkgScope, ranges: target.ranges });
+        installs.push({ alias, pkgScope: pkgScope as `${string}/`, ranges: target.ranges });
     }
   }
   return installs;
@@ -369,7 +371,7 @@ export async function extractLockConstraintsAndMap(
   const primaryPcfg = await resolver.getPackageConfig(primaryBase);
   const constraints: VersionConstraints = {
     primary: primaryPcfg
-      ? toPackageTargetMap(
+      ? toPackageToTarget(
           primaryPcfg,
           new URL(primaryBase),
           defaultRegistry,
@@ -400,6 +402,7 @@ export async function extractLockConstraintsAndMap(
       // and there's a corresponding import/export map entry in that package,
       // then the resolution is standard and we can lock it:
       if (exportSubpath) {
+        console.log(JSON.stringify(parsedTarget));
         // Package "imports" resolutions don't constrain versions.
         if (key[0] === "#") continue;
 
@@ -419,7 +422,6 @@ export async function extractLockConstraintsAndMap(
           } else if (exportSubpath === ".") {
             installSubpath = false;
           } else if (exportSubpath.endsWith(parsedKey.subpath.slice(1))) {
-            // TODO(bubblyworld): Test this, think we're using slice wrong:
             installSubpath = exportSubpath.slice(
               0,
               parsedKey.subpath.length
@@ -490,7 +492,7 @@ export async function extractLockConstraintsAndMap(
           if (!constraints.primary[parsedKey.pkgName])
             constraints.primary[parsedKey.pkgName] = parsedTarget
               ? packageTargetFromExact(parsedTarget.pkg)
-              : new URL(pkgUrl); // TODO: resolve this?
+              : new URL(pkgUrl);
 
           // In the case of subpaths having diverging versions, we force convergence on one version
           // Only scopes permit unpacking
@@ -544,7 +546,7 @@ export async function extractLockConstraintsAndMap(
       if (!isURL(pkgUrl)) return;
       const pcfg = await getPackageConfig(pkgUrl);
       if (pcfg)
-        constraints.secondary[pkgUrl] = toPackageTargetMap(
+        constraints.secondary[pkgUrl] = toPackageToTarget(
           pcfg,
           new URL(pkgUrl),
           defaultRegistry,
