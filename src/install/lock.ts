@@ -10,6 +10,7 @@ import {
   PackageConfig,
   parsePkg,
   ExactPackage,
+  ExactModule,
 } from "./package.js";
 // @ts-ignore
 import sver from "sver";
@@ -191,7 +192,7 @@ export function mergeConstraints(
   }
 }
 
-function toPackageToTarget(
+function toPackageTargetMap(
   pcfg: PackageConfig,
   pkgUrl: URL,
   defaultRegistry = "npm",
@@ -355,7 +356,8 @@ export async function extractLockConstraintsAndMap(
   mapUrl: URL,
   rootUrl: URL | null,
   defaultRegistry: string,
-  resolver: Resolver
+  resolver: Resolver,
+  provider: PackageProvider
 ): Promise<{
   locks: LockResolutions;
   constraints: VersionConstraints;
@@ -376,7 +378,7 @@ export async function extractLockConstraintsAndMap(
   const primaryPcfg = await resolver.getPackageConfig(primaryBase);
   const constraints: VersionConstraints = {
     primary: primaryPcfg
-      ? toPackageToTarget(
+      ? toPackageTargetMap(
           primaryPcfg,
           new URL(primaryBase),
           defaultRegistry,
@@ -389,18 +391,22 @@ export async function extractLockConstraintsAndMap(
   const pkgUrls = new Set<string>();
   for (const key of Object.keys(map.imports || {})) {
     if (isPlain(key)) {
+      // Get the package name and subpath in package specifier space.
       const parsedKey = parsePkg(key);
-      const targetUrl = resolveUrl(map.imports[key], mapUrl, rootUrl);
-      const parsedTarget = await resolver.parseUrlPkg(targetUrl);
-      const pkgUrl = parsedTarget
-        ? await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
-        : await resolver.getPackageBase(targetUrl);
-      const targetSubpath = ("." + targetUrl.slice(pkgUrl.length - 1)) as
-        | "."
-        | `./{string}`;
+
+      // Get the target package details in URL space:
+      let { parsedTarget, pkgUrl, subpath } = await resolveTargetPkg(
+        map.imports[key],
+        mapUrl,
+        rootUrl,
+        primaryBase,
+        resolver,
+        provider
+      );
+
       const exportSubpath =
         parsedTarget &&
-        (await resolver.getExportResolution(pkgUrl, targetSubpath, key));
+        (await resolver.getExportResolution(pkgUrl, subpath, key));
       pkgUrls.add(pkgUrl);
 
       // If the plain specifier resolves to a package on some provider's CDN,
@@ -445,7 +451,7 @@ export async function extractLockConstraintsAndMap(
       if (primaryPcfg && primaryPcfg.name === parsedKey.pkgName) {
         const exportSubpath = await resolver.getExportResolution(
           primaryBase,
-          targetSubpath,
+          subpath,
           key
         );
 
@@ -470,14 +476,19 @@ export async function extractLockConstraintsAndMap(
     const scope = map.scopes[scopeUrl];
     for (const key of Object.keys(scope)) {
       if (isPlain(key)) {
-        const targetUrl = resolveUrl(scope[key], mapUrl, rootUrl);
-        const parsedTarget = await resolver.parseUrlPkg(targetUrl);
-        const pkgUrl = parsedTarget
-          ? await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
-          : await resolver.getPackageBase(targetUrl);
-        const subpath = ("." + targetUrl.slice(pkgUrl.length - 1)) as
-          | "."
-          | `./{string}`;
+        // Get the package name and subpath in package specifier space.
+        const parsedKey = parsePkg(key);
+
+        // Get the target package details in URL space:
+        let { parsedTarget, pkgUrl, subpath } = await resolveTargetPkg(
+          scope[key],
+          mapUrl,
+          rootUrl,
+          scopePkgUrl,
+          resolver,
+          provider
+        );
+
         pkgUrls.add(pkgUrl);
         const exportSubpath =
           parsedTarget &&
@@ -490,8 +501,6 @@ export async function extractLockConstraintsAndMap(
         if (exportSubpath) {
           // Imports resolutions that resolve as expected can be skipped
           if (key[0] === "#") continue;
-
-          const parsedKey = parsePkg(key);
 
           // If there is no constraint, we just make one as the semver major on the current version
           if (!constraints.primary[parsedKey.pkgName])
@@ -551,7 +560,7 @@ export async function extractLockConstraintsAndMap(
       if (!isURL(pkgUrl)) return;
       const pcfg = await getPackageConfig(pkgUrl);
       if (pcfg)
-        constraints.secondary[pkgUrl] = toPackageToTarget(
+        constraints.secondary[pkgUrl] = toPackageTargetMap(
           pcfg,
           new URL(pkgUrl),
           defaultRegistry,
@@ -573,24 +582,89 @@ export async function extractLockConstraintsAndMap(
 }
 
 export async function changeProvider(
-  pkg: ExactPackage,
+  mdl: ExactModule,
   { provider, layer }: PackageProvider,
   resolver: Resolver,
   parentUrl: string
-): Promise<ExactPackage | null> {
-  if (pkg.registry === "deno" || pkg.registry === "denoland") {
-    return null; // TODO: handle these
+): Promise<ExactModule | null> {
+  const pkg = mdl.pkg;
+  if (
+    pkg.registry === "deno" ||
+    pkg.registry === "denoland" ||
+    provider === "deno"
+  ) {
+    return null; // TODO: handle these cases
+  }
+
+  const fromNodeModules = pkg.registry === "node_modules";
+  const toNodeModules = provider === "nodemodules";
+  if (fromNodeModules === toNodeModules) {
+    return mdl;
   }
 
   const target = await packageTargetFromExact(pkg, resolver);
-  return resolver.resolveLatestTarget(target, { provider, layer }, parentUrl);
+  let latestPkg: ExactPackage;
+  try {
+    latestPkg = await resolver.resolveLatestTarget(
+      target,
+      { provider, layer },
+      parentUrl
+    );
+  } catch (err) {
+    return null; // best-effort translation
+  }
+
+  return {
+    pkg: latestPkg,
+    source: { provider, layer },
+    subpath: mdl.subpath,
+  };
 }
 
-export function changeRegistry(
-  pkgTarget: PackageTarget,
-  registry: string,
+async function resolveTargetPkg(
+  moduleUrl: string,
+  mapUrl: URL,
+  rootUrl: URL,
+  parentUrl: `${string}/`,
+  resolver: Resolver,
+  provider: PackageProvider
+) {
+  let targetUrl = resolveUrl(moduleUrl, mapUrl, rootUrl);
+  let parsedTarget = await resolver.parseUrlPkg(targetUrl);
+  let pkgUrl = parsedTarget
+    ? await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
+    : await resolver.getPackageBase(targetUrl);
+  const subpath = ("." + targetUrl.slice(pkgUrl.length - 1)) as
+    | "."
+    | `./${string}`;
+
+  if (parsedTarget) {
+    parsedTarget =
+      (await changeProvider(parsedTarget, provider, resolver, parentUrl)) ||
+      parsedTarget;
+    targetUrl = new URL(
+      subpath,
+      await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
+    ).href;
+    pkgUrl = parsedTarget
+      ? await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
+      : await resolver.getPackageBase(targetUrl);
+  }
+
+  return { parsedTarget, pkgUrl, subpath };
+}
+
+async function resolveScope(
+  scopeUrl: string,
+  mapUrl: URL,
+  rootUrl: URL,
   resolver: Resolver
-): PackageTarget {
-  // TODO: implement me
-  return pkgTarget;
+) {
+  const resolvedScopeUrl = resolveUrl(scopeUrl, mapUrl, rootUrl) ?? scopeUrl;
+  const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
+
+  // We automatically translate all scopes to the current provider:
+  // TODO
+
+  return { resolvedScopeUrl, scopePkgUrl };
 }

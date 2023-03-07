@@ -439,7 +439,10 @@ export class Generator {
 
     // The node_modules provider is special, because it needs to be rooted to
     // perform resolutions against the local node_modules directory:
-    const nmProvider = nodemodules.createProvider(this.baseUrl.href);
+    const nmProvider = nodemodules.createProvider(
+      this.baseUrl.href,
+      defaultProvider === "nodemodules"
+    );
     resolver.addCustomProvider("nodemodules", nmProvider);
 
     // Initialise the tracer:

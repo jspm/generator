@@ -5,7 +5,7 @@ import sver from "sver";
 const { SemverRange } = sver;
 // @ts-ignore
 import convertRange from "sver/convert-range.js";
-import { InstallTarget } from "./installer.js";
+import { InstallTarget, PackageProvider } from "./installer.js";
 import { Resolver } from "../trace/resolver.js";
 import { builtinSchemes } from "../providers/index.js";
 import { Install } from "../generator.js";
@@ -62,6 +62,16 @@ export interface ExactPackage {
   name: string;
   registry: string;
   version: string;
+}
+
+/**
+ * ExactModule pins down an exact version of a module in a package that can be
+ * served by a PackageProvider.
+ */
+export interface ExactModule {
+  pkg: ExactPackage;
+  subpath: `./${string}` | null;
+  source: PackageProvider;
 }
 
 /**

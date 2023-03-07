@@ -1,5 +1,6 @@
 import {
   ExactPackage,
+  ExactModule,
   PackageTarget,
 } from "@jspm/generator/install/package.js";
 import {
@@ -18,27 +19,32 @@ const g = new Generator({
 const r = g.traceMap.resolver;
 
 {
+  /* changeProvider tests */
   async function testForRegistry(
     registry: string,
     n: string,
     v: string,
     isNull: boolean = false
   ) {
-    const pkg: ExactPackage = {
-      name: n,
-      version: v,
-      registry,
+    const mdl: ExactModule = {
+      pkg: {
+        name: n,
+        version: v,
+        registry,
+      },
+      subpath: null,
+      source: { provider: "test", layer: "default" },
     };
 
     // Should have switched to "npm" registry, as that's what jspm.io tracks:
     const provider = { provider: "jspm.io", layer: "default" };
-    const res = await changeProvider(pkg, provider, r, rootUrl);
+    const res = await changeProvider(mdl, provider, r, rootUrl);
     if (isNull) {
       strictEqual(res, null);
     } else {
-      strictEqual(res.name, "chalk");
-      strictEqual(res.registry, "npm");
-      strictEqual(res.version, "4.1.2");
+      strictEqual(res.pkg.name, "chalk");
+      strictEqual(res.pkg.registry, "npm");
+      strictEqual(res.pkg.version, "4.1.2");
     }
   }
 
