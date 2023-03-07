@@ -916,10 +916,16 @@ export class Generator {
    * ```
    */
   async install(
-    install: string | Install | (string | Install)[]
+    install?: string | Install | (string | Install)[]
   ): Promise<void | { staticDeps: string[]; dynamicDeps: string[] }> {
-    if (arguments.length !== 1)
-      throw new Error("Install takes a single target string or object.");
+    if (arguments.length > 1)
+      throw new JspmError("Install takes no arguments, a single install target, or a list of install targets.");
+
+    // If there are no arguments, install all top-level pins.
+    if (!install) {
+      await this.traceMap.processInputMap;
+      return this.install(this.traceMap.pins);
+    }
 
     // Split the case of multiple install targets:
     if (Array.isArray(install))
@@ -995,6 +1001,12 @@ export class Generator {
     }
   }
 
+  /**
+   * Locking install, retraces all top-level pins but does not change the
+   * versions of anything (similar to "npm ci").
+   *
+   * @deprecated Use install() with the "freeze: true" generator option.
+   */
   async reinstall() {
     if (this.installCnt++ === 0) this.traceMap.startInstall();
     await this.traceMap.processInputMap;
