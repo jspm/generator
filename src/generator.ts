@@ -75,7 +75,7 @@ export interface GeneratorOptions {
   /**
    * The default provider to use for a new install, defaults to 'jspm'.
    *
-   * Supports: 'jspm' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg';
+   * Supports: 'jspm.io' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg';
    *
    * Providers are responsible for resolution from abstract package names and version ranges to exact URL locations.
    *
@@ -355,7 +355,7 @@ export class Generator {
     rootUrl = undefined,
     inputMap = undefined,
     env = ["browser", "development", "module", "import"],
-    defaultProvider = "jspm.io",
+    defaultProvider,
     defaultRegistry = "npm",
     customProviders = undefined,
     providers,
@@ -441,6 +441,11 @@ export class Generator {
     // perform resolutions against the local node_modules directory:
     const nmProvider = nodemodules.createProvider(this.baseUrl.href);
     resolver.addCustomProvider("nodemodules", nmProvider);
+
+    // We make an attempt to auto-detect the default provider from the input
+    // map, by picking the provider with the most owned URLs:
+    defaultProvider = detectDefaultProvider(
+      defaultProvider, inputMap, resolver);
 
     // Initialise the tracer:
     this.traceMap = new TraceMap(
@@ -1361,4 +1366,40 @@ async function installToTarget(
     alias: install.alias || alias,
     subpath: install.subpath || subpath,
   };
+}
+
+function detectDefaultProvider(
+  defaultProvider: string | null,
+  inputMap: IImportMap | null,
+  resolver: Resolver,
+) {
+  if (defaultProvider) return defaultProvider;
+  if (!inputMap) return "jspm.io"; // fallback
+
+  const counts: Record<string, number> = {}; 
+  for (const url of Object.values(inputMap.imports || {})) {
+    const name = resolver.providerNameForUrl(url)
+    if (name) {
+      counts[name] = (counts[name] || 0) + 1;
+    }
+  }
+  for (const scope of Object.keys(inputMap.scopes || {})) {
+    for (const url of Object.values(inputMap.scopes[scope])) {
+      const name = resolver.providerNameForUrl(url)
+      if (name) {
+        counts[name] = (counts[name] || 0) + 1;
+      }
+    }
+  }
+
+  let winner: string | null;
+  let winnerCount = 0;
+  for (const [name, count] of Object.entries(counts)) {
+    if (count > winnerCount) {
+      winner = name;
+      winnerCount = count;
+    }
+  }
+
+  return winner || "jspm.io";
 }
