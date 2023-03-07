@@ -599,7 +599,10 @@ export async function changeProvider(
   const fromNodeModules = pkg.registry === "node_modules";
   const toNodeModules = provider === "nodemodules";
   if (fromNodeModules === toNodeModules) {
-    return mdl;
+    return {
+      ...mdl,
+      source: { provider, layer },
+    };
   }
 
   const target = await packageTargetFromExact(pkg, resolver);
@@ -652,19 +655,4 @@ async function resolveTargetPkg(
   }
 
   return { parsedTarget, pkgUrl, subpath };
-}
-
-async function resolveScope(
-  scopeUrl: string,
-  mapUrl: URL,
-  rootUrl: URL,
-  resolver: Resolver
-) {
-  const resolvedScopeUrl = resolveUrl(scopeUrl, mapUrl, rootUrl) ?? scopeUrl;
-  const scopePkgUrl = await resolver.getPackageBase(resolvedScopeUrl);
-
-  // We automatically translate all scopes to the current provider:
-  // TODO
-
-  return { resolvedScopeUrl, scopePkgUrl };
 }
