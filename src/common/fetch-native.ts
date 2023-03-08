@@ -16,7 +16,7 @@ export const fetch: FetchFn = wrapWithRetry(async function fetch(url, opts) {
   const poolQueue = pushFetchPool();
   if (poolQueue) await poolQueue;
   try {
-    return await globalThis.fetch(url, opts);
+    return await globalThis.fetch(url as any, opts);
   } catch (e) {
     // CORS errors throw a fetch type error
     // Instead, treat this as an actual unauthorized response

@@ -143,5 +143,5 @@ loglevel = 'warn'
 name = 'typecheck'
 deps = ['src/**/*.ts', 'src/*.ts']
 run = '''
-    npx tsc --noEmit
+    tsc --noEmit
 '''
