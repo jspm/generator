@@ -357,13 +357,16 @@ export async function extractLockConstraintsAndMap(
   rootUrl: URL | null,
   defaultRegistry: string,
   resolver: Resolver,
+
+  // TODO: we should pass the whole providers namespace here so that we can
+  // enforce the user's URL-specific constraints on which provider to use:
   provider: PackageProvider
 ): Promise<{
   locks: LockResolutions;
   constraints: VersionConstraints;
   maps: IImportMap;
 }> {
-  const lock: LockResolutions = {
+  const locks: LockResolutions = {
     primary: Object.create(null),
     secondary: Object.create(null),
     flattened: Object.create(null),
@@ -440,7 +443,7 @@ export async function extractLockConstraintsAndMap(
           }
         }
         if (installSubpath !== false) {
-          setResolution(lock, parsedKey.pkgName, pkgUrl, null, installSubpath);
+          setResolution(locks, parsedKey.pkgName, pkgUrl, null, installSubpath);
           continue;
         }
       }
@@ -526,8 +529,8 @@ export async function extractLockConstraintsAndMap(
           }
           if (installSubpath !== false) {
             if (flattenedScope) {
-              const flattened = (lock.flattened[scopePkgUrl] =
-                lock.flattened[scopePkgUrl] || {});
+              const flattened = (locks.flattened[scopePkgUrl] =
+                locks.flattened[scopePkgUrl] || {});
               flattened[parsedKey.pkgName] = flattened[parsedKey.pkgName] || [];
               flattened[parsedKey.pkgName].push({
                 export: parsedKey.subpath,
@@ -535,7 +538,7 @@ export async function extractLockConstraintsAndMap(
               });
             } else {
               setResolution(
-                lock,
+                locks,
                 parsedKey.pkgName,
                 pkgUrl,
                 scopePkgUrl,
@@ -578,8 +581,36 @@ export async function extractLockConstraintsAndMap(
   //   }
   // }
 
-  return { locks: lock, constraints, maps };
+  return await enforceProviderConstraints(
+    locks,
+    constraints,
+    maps,
+    provider,
+    resolver,
+  );
 }
+
+/**
+ * Enforces the user's provider constraints, which map subsets of URL-space to
+ * the provider that should be used to resolve them. Constraints are enforced
+ * by re-resolving every input map lock and constraint against the provider
+ * for their parent package URL.
+ * TODO: actually support parent-scoping for provider constraints
+ */
+async function enforceProviderConstraints(
+  locks: LockResolutions,
+  constraints: VersionConstraints,
+  residual: IImportMap,
+  provider: PackageProvider,
+  resolver: Resolver,
+) {
+  return {
+    locks,
+    constraints,
+    maps: residual,
+  };
+}
+
 
 export async function changeProvider(
   mdl: ExactModule,
@@ -593,7 +624,7 @@ export async function changeProvider(
     pkg.registry === "denoland" ||
     provider === "deno"
   ) {
-    return null; // TODO: handle these cases
+    return null; // TODO: throw unless deno provider
   }
 
   const fromNodeModules = pkg.registry === "node_modules";
@@ -614,7 +645,7 @@ export async function changeProvider(
       parentUrl
     );
   } catch (err) {
-    return null; // best-effort translation
+    return null; // TODO: throw
   }
 
   return {
@@ -641,18 +672,18 @@ async function resolveTargetPkg(
     | "."
     | `./${string}`;
 
-  if (parsedTarget) {
-    parsedTarget =
-      (await changeProvider(parsedTarget, provider, resolver, parentUrl)) ||
-      parsedTarget;
-    targetUrl = new URL(
-      subpath,
-      await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
-    ).href;
-    pkgUrl = parsedTarget
-      ? await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
-      : await resolver.getPackageBase(targetUrl);
-  }
+  //if (parsedTarget) {
+  //  parsedTarget =
+  //    (await changeProvider(parsedTarget, provider, resolver, parentUrl)) ||
+  //    parsedTarget;
+  //  targetUrl = new URL(
+  //    subpath,
+  //    await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
+  //  ).href;
+  //  pkgUrl = parsedTarget
+  //    ? await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
+  //    : await resolver.getPackageBase(targetUrl);
+  //}
 
   return { parsedTarget, pkgUrl, subpath };
 }
