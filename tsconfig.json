@@ -8,11 +8,13 @@
     "sourceMap": true,
     "outDir": "lib",
     "declaration": true,
+    "declarationDir": "lib",
     "removeComments": false,
     "strictBindCallApply": true
   },
   "include": [
-    "src/**/*.ts",
+    "src/*.ts",
+    "src**/*.ts",
     "src/script-lexer.js",
     "src/api.js"
   ],

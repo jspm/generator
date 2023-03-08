@@ -5,9 +5,13 @@ extensions = ['chomp@0.1:swc', 'chomp@0.1:rollup', 'chomp@0.1:prettier']
 default-task = 'build'
 
 [[task]]
+target = 'lib'
+deps = ['lib/**/*.js']
+
+[[task]]
 name = 'build'
 target = 'dist'
-deps = ['lib', 'npm:install']
+deps = ['lib', 'npm:install', 'build:dec']
 template = 'rollup'
 [task.template-options]
 input = [
@@ -24,8 +28,20 @@ clear-dir = true
 dir = 'dist'
 
 [[task]]
-target = 'lib'
-deps = ['lib/**/*.js']
+name = 'build:ts'
+target = 'lib/##.js'
+deps = ['src/##.ts']
+template = 'swc'
+[task.template-options.config]
+inlineSourcesContent = false
+'jsc.target' = 'es2019'
+
+# TODO: We should emit declaration files with swc once they support it.
+#       See: https://github.com/swc-project/swc/issues/657
+[[task]]
+name = 'build:dec'
+deps = ['src/**/*.ts']
+run = 'tsc --emitDeclarationOnly'
 
 [[task]]
 target = 'lib/version.js'
@@ -38,25 +54,16 @@ run = '''
 '''
 
 [[task]]
-name = 'build:ts'
-target = 'lib/##.js'
-deps = ['src/##.ts']
-template = 'swc'
-[task.template-options.config]
-inlineSourcesContent = false
-'jsc.target' = 'es2019'
-
-[[task]]
-name = 'test:unit'
-dep = 'unit:'
-
-[[task]]
 name = 'test'
 serial = true
 deps = [
     'test:unit',
     'test:browser',
 ]
+
+[[task]]
+name = 'test:unit'
+dep = 'unit:'
 
 [[task]]
 name = 'unit:#'
@@ -107,10 +114,10 @@ run = '''
 [[task]]
 name = 'prettier'
 template = 'prettier'
-deps = ['src/**/*', 'src/*', 'test/**/*', 'test/*']
+deps = ['src/**/*.ts', 'test/**/*.ts']
 [task.template-options]
 ignore-path = '.prettierignore'
-files = 'src/**/*.ts src/*.ts test/**/*.ts test/*'
+files = 'src/**/*.ts test/**/*.ts'
 loglevel = 'warn'
 
 [[task]]
