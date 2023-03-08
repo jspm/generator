@@ -13,8 +13,7 @@
     "strictBindCallApply": true
   },
   "include": [
-    "src/*.ts",
-    "src**/*.ts",
+    "src/**/*.ts",
     "src/script-lexer.js",
     "src/api.js"
   ],
