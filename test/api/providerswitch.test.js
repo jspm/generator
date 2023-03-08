@@ -16,5 +16,4 @@ const generator = new Generator({
 await generator.reinstall();
 
 const json = generator.getMap();
-console.log(json);
-assert(json.imports.react.startsWith("https://jspm.io/npm:"));
+assert(json.imports.react.startsWith("https://ga.jspm.io/npm:"));

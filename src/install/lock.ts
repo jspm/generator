@@ -581,13 +581,16 @@ export async function extractLockConstraintsAndMap(
   //   }
   // }
 
-  return await enforceProviderConstraints(
-    locks,
-    constraints,
+  return {
     maps,
-    provider,
-    resolver,
-  );
+    constraints,
+    locks: await enforceProviderConstraints(
+      locks,
+      provider,
+      resolver,
+      primaryBase
+    ),
+  };
 }
 
 /**
@@ -595,24 +598,94 @@ export async function extractLockConstraintsAndMap(
  * the provider that should be used to resolve them. Constraints are enforced
  * by re-resolving every input map lock and constraint against the provider
  * for their parent package URL.
- * TODO: actually support parent-scoping for provider constraints
+ * TODO: actually handle provider constraints
  */
 async function enforceProviderConstraints(
   locks: LockResolutions,
-  constraints: VersionConstraints,
-  residual: IImportMap,
   provider: PackageProvider,
   resolver: Resolver,
+  basePkgUrl: `${string}/`
 ) {
+  const res: LockResolutions = {
+    primary: {},
+    secondary: {},
+    flattened: {},
+  };
+
+  for (const [pkgName, lock] of Object.entries(locks.primary)) {
+    const { installUrl, installSubpath } = await translateLock(
+      lock,
+      provider,
+      resolver,
+      basePkgUrl
+    );
+    setResolution(res, pkgName, installUrl, null, installSubpath);
+  }
+  for (const [pkgUrl, pkgLocks] of Object.entries(locks.secondary)) {
+    for (const [pkgName, lock] of Object.entries(pkgLocks)) {
+      const { installUrl, installSubpath } = await translateLock(
+        lock,
+        provider,
+        resolver,
+        pkgUrl as `${string}/`
+      );
+      setResolution(
+        res,
+        pkgName,
+        installUrl,
+        pkgUrl as `${string}/`,
+        installSubpath
+      );
+    }
+  }
+  for (const [scopeUrl, pkgLocks] of Object.entries(locks.flattened)) {
+    res.flattened[scopeUrl] = {};
+    for (const [pkgName, locks] of Object.entries(pkgLocks)) {
+      res.flattened[scopeUrl][pkgName] = [];
+      for (const lock of locks) {
+        const newLock = await translateLock(
+          lock.resolution,
+          provider,
+          resolver,
+          scopeUrl as `${string}/`,
+        );
+        res.flattened[scopeUrl][pkgName].push({
+          export: lock.export,
+          resolution: newLock,
+        });
+      }
+    }
+  }
+
+  return res;
+}
+
+async function translateLock(
+  lock: InstalledResolution,
+  provider: PackageProvider,
+  resolver: Resolver,
+  parentUrl: `${string}/`
+): Promise<InstalledResolution> {
+  const mdl = await resolver.parseUrlPkg(lock.installUrl);
+  if (!mdl) return lock; // no provider owns it, nothing to translate
+
+  const parentPkgUrl = await resolver.getPackageBase(parentUrl);
+  const newMdl = await translateProvider(mdl, provider, resolver, parentPkgUrl);
+  if (!newMdl) {
+    // TODO: we should throw here once parent scoping is implemented
+    // throw new JspmError(
+    //   `Failed to translate ${lock.installUrl} to provider ${provider.provider}.`
+    // );
+    return lock;
+  }
+
   return {
-    locks,
-    constraints,
-    maps: residual,
+    installUrl: await resolver.pkgToUrl(newMdl.pkg, provider),
+    installSubpath: lock.installSubpath,
   };
 }
 
-
-export async function changeProvider(
+export async function translateProvider(
   mdl: ExactModule,
   { provider, layer }: PackageProvider,
   resolver: Resolver,
@@ -620,11 +693,20 @@ export async function changeProvider(
 ): Promise<ExactModule | null> {
   const pkg = mdl.pkg;
   if (
+    (pkg.registry === "deno" || pkg.registry === "denoland") &&
+    provider === "deno"
+  ) {
+    return mdl; // nothing to do if translating deno-to-deno
+  } else if (
     pkg.registry === "deno" ||
     pkg.registry === "denoland" ||
     provider === "deno"
   ) {
-    return null; // TODO: throw unless deno provider
+    // TODO: we should throw here once parent scoping is implemented
+    // throw new JspmError(
+    //   "Cannot translate packages between the 'deno' provider and other providers."
+    // );
+    return null;
   }
 
   const fromNodeModules = pkg.registry === "node_modules";
@@ -645,7 +727,11 @@ export async function changeProvider(
       parentUrl
     );
   } catch (err) {
-    return null; // TODO: throw
+    // TODO: we should throw here once parent scoping is implemented
+    // throw new JspmError(
+    //   `Failed to translate package ${pkg.name}@${pkg.version} to provider ${provider}.`
+    // );
+    return null;
   }
 
   return {
@@ -671,19 +757,6 @@ async function resolveTargetPkg(
   const subpath = ("." + targetUrl.slice(pkgUrl.length - 1)) as
     | "."
     | `./${string}`;
-
-  //if (parsedTarget) {
-  //  parsedTarget =
-  //    (await changeProvider(parsedTarget, provider, resolver, parentUrl)) ||
-  //    parsedTarget;
-  //  targetUrl = new URL(
-  //    subpath,
-  //    await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
-  //  ).href;
-  //  pkgUrl = parsedTarget
-  //    ? await resolver.pkgToUrl(parsedTarget.pkg, parsedTarget.source)
-  //    : await resolver.getPackageBase(targetUrl);
-  //}
 
   return { parsedTarget, pkgUrl, subpath };
 }
