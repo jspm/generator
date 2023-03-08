@@ -73,9 +73,9 @@ export interface GeneratorOptions {
    */
   inputMap?: IImportMap;
   /**
-   * The default provider to use for a new install, defaults to 'jspm'.
+   * The provider to use for top-level (i.e. root package) installs if there's no context in the inputMap. This can be used to set the provider for a new import map. To use a specific provider for an install, rather than relying on context, register an override using the 'providers' option.
    *
-   * Supports: 'jspm' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg';
+   * Supports: 'jspm.io' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg';
    *
    * Providers are responsible for resolution from abstract package names and version ranges to exact URL locations.
    *
@@ -355,7 +355,7 @@ export class Generator {
     rootUrl = undefined,
     inputMap = undefined,
     env = ["browser", "development", "module", "import"],
-    defaultProvider = "jspm.io",
+    defaultProvider,
     defaultRegistry = "npm",
     customProviders = undefined,
     providers,
@@ -441,6 +441,11 @@ export class Generator {
     // perform resolutions against the local node_modules directory:
     const nmProvider = nodemodules.createProvider(this.baseUrl.href);
     resolver.addCustomProvider("nodemodules", nmProvider);
+
+    // We make an attempt to auto-detect the default provider from the input
+    // map, by picking the provider with the most owned URLs:
+    defaultProvider = detectDefaultProvider(
+      defaultProvider, inputMap, resolver);
 
     // Initialise the tracer:
     this.traceMap = new TraceMap(
@@ -1373,4 +1378,33 @@ async function installToTarget(
     alias: install.alias || alias,
     subpath: install.subpath || subpath,
   };
+}
+
+function detectDefaultProvider(
+  defaultProvider: string | null,
+  inputMap: IImportMap | null,
+  resolver: Resolver,
+) {
+  // We only use top-level install information to detect the provider:
+  const counts: Record<string, number> = {}; 
+  for (const url of Object.values(inputMap?.imports || {})) {
+    const name = resolver.providerNameForUrl(url)
+    if (name) {
+      counts[name] = (counts[name] || 0) + 1;
+    }
+  }
+
+  let winner: string | null;
+  let winnerCount = 0;
+  for (const [name, count] of Object.entries(counts)) {
+    if (count > winnerCount) {
+      winner = name;
+      winnerCount = count;
+    }
+  }
+
+  // The leading provider in the input map takes precedence as the provider of
+  // the root package. Failing that, the user-provided default is used. The
+  // 'providers' field can be used for hard-overriding this:
+  return winner || defaultProvider || "jspm.io";
 }

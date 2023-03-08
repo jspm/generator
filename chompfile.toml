@@ -61,7 +61,6 @@ deps = [
 [[task]]
 name = 'unit:#'
 deps = ['test/##.test.js', 'lib']
-display = 'dot'
 run = 'node -C source --enable-source-maps $DEP'
 
 [[task]]
