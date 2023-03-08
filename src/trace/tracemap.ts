@@ -165,7 +165,8 @@ export default class TraceMap {
         mapUrl,
         rootUrl,
         this.installer.defaultRegistry,
-        this.resolver
+        this.resolver,
+        this.installer.defaultProvider
       );
       this.inputMap.extend(maps);
       mergeLocks(this.installer.installs, locks);

@@ -3,6 +3,7 @@ import {
   PackageConfig,
   PackageTarget,
   ExportsTarget,
+  ExactModule,
 } from "../install/package.js";
 import { JspmError } from "../common/err.js";
 import { Log } from "../common/log.js";
@@ -109,11 +110,7 @@ export class Resolver {
     return name ? this.providers[name] : null;
   }
 
-  async parseUrlPkg(url: string): Promise<{
-    pkg: ExactPackage;
-    subpath: null | `./${string}`;
-    source: { layer: string; provider: string };
-  } | null> {
+  async parseUrlPkg(url: string): Promise<ExactModule | null> {
     for (const provider of Object.keys(this.providers)) {
       const providerInstance = this.providers[provider];
       const result = providerInstance.parseUrlPkg.call(this, url);

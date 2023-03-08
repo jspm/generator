@@ -1,4 +1,4 @@
-import { LatestPackageTarget } from "../install/package.js";
+import { ExactModule, LatestPackageTarget } from "../install/package.js";
 import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 import { Provider } from "./index.js";
@@ -7,8 +7,12 @@ import { fetch } from "#fetch";
 import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
 import { PackageConfig } from "../install/package.js";
+import { encodeBase64, decodeBase64 } from "../common/b64.js";
 
-export function createProvider(baseUrl: string): Provider {
+export function createProvider(
+  baseUrl: string,
+  ownsBaseUrl: boolean
+): Provider {
   return {
     ownsUrl,
     pkgToUrl,
@@ -18,9 +22,10 @@ export function createProvider(baseUrl: string): Provider {
   };
 
   function ownsUrl(this: Resolver, url: string) {
-    // The nodemodules provider owns the base URL so that it can resolve
-    // a user's local installs, which lets us support "file:" dependencies:
-    return url === baseUrl || url.includes("/node_modules/");
+    // The nodemodules provider owns the base URL when it is the default
+    // provider so that it can link against a user's local installs, letting
+    // us support "file:" dependencies:
+    return (ownsBaseUrl && url === baseUrl) || url.includes("/node_modules/");
   }
 
   async function pkgToUrl(
@@ -31,7 +36,7 @@ export function createProvider(baseUrl: string): Provider {
     // the package version, so we need to decode it to get the right copy. See
     // comments in the `resolveLatestTarget` function for details:
     if (pkg.registry === "node_modules") {
-      return `${decodeBase64(pkg.version)}/`;
+      return `${decodeBase64(pkg.version)}` as `${string}/`;
     }
 
     // If we don't have a URL in the package name, then we need to try and
@@ -42,10 +47,10 @@ export function createProvider(baseUrl: string): Provider {
         `Failed to resolve ${pkg.name} against node_modules from ${baseUrl}`
       );
 
-    return `${decodeBase64(target.version)}/`;
+    return `${decodeBase64(target.version)}` as `${string}/`;
   }
 
-  function parseUrlPkg(this: Resolver, url: string): ExactPackage | null {
+  function parseUrlPkg(this: Resolver, url: string) {
     // We can only resolve packages in node_modules folders:
     const nodeModulesIndex = url.lastIndexOf("/node_modules/");
     if (nodeModulesIndex === -1) return null;
@@ -55,13 +60,18 @@ export function createProvider(baseUrl: string): Provider {
       nameAndSubpaths[0][0] === "@"
         ? `${nameAndSubpaths[0]}/${nameAndSubpaths[1]}`
         : nameAndSubpaths[0];
-    const pkgUrl = `${url.slice(0, nodeModulesIndex + 14)}${name}`;
+    const pkgUrl = `${url.slice(0, nodeModulesIndex + 14)}${name}/`;
+    const subpath = `./${url.slice(pkgUrl.length)}`;
 
     if (name && pkgUrl) {
       return {
-        name,
-        registry: "node_modules",
-        version: encodeBase64(pkgUrl),
+        pkg: {
+          name,
+          registry: "node_modules",
+          version: encodeBase64(pkgUrl),
+        },
+        subpath: subpath === "./" ? null : (subpath as `./${string}`),
+        layer: "default",
       };
     }
   }
@@ -146,7 +156,7 @@ async function nodeResolve(
   return {
     name,
     registry: "node_modules",
-    version: encodeBase64(curUrl.href),
+    version: encodeBase64(`${curUrl.href}/`),
   };
 }
 
@@ -165,22 +175,6 @@ async function dirExists(this: Resolver, url: URL, parentUrl?: string) {
         }${importedFrom(parentUrl)}`
       );
   }
-}
-
-function encodeBase64(data: string): string {
-  if (typeof window !== "undefined") {
-    return window.btoa(data);
-  }
-
-  return Buffer.from(data).toString("base64");
-}
-
-function decodeBase64(data: string): string {
-  if (typeof window !== "undefined") {
-    return window.atob(data);
-  }
-
-  return Buffer.from(data, "base64").toString("utf8");
 }
 
 function isLocal(dep: string): boolean {

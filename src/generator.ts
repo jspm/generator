@@ -439,7 +439,10 @@ export class Generator {
 
     // The node_modules provider is special, because it needs to be rooted to
     // perform resolutions against the local node_modules directory:
-    const nmProvider = nodemodules.createProvider(this.baseUrl.href);
+    const nmProvider = nodemodules.createProvider(
+      this.baseUrl.href,
+      defaultProvider === "nodemodules"
+    );
     resolver.addCustomProvider("nodemodules", nmProvider);
 
     // We make an attempt to auto-detect the default provider from the input
@@ -1438,8 +1441,11 @@ function detectDefaultProvider(
     }
   }
 
+  // TODO: this should be the behaviour once we support full 'providers' opt
   // The leading provider in the input map takes precedence as the provider of
   // the root package. Failing that, the user-provided default is used. The
   // 'providers' field can be used for hard-overriding this:
-  return winner || defaultProvider || "jspm.io";
+  // return winner || defaultProvider || "jspm.io";
+  
+  return defaultProvider || winner || "jspm.io";
 }

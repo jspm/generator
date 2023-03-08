@@ -11,7 +11,9 @@ const exactPkgRegEx = /^((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
 export function parseUrlPkg(url: string) {
   if (!url.startsWith(cdnUrl)) return;
   const [, name, version] = url.slice(cdnUrl.length).match(exactPkgRegEx) || [];
-  return { registry: "npm", name, version };
+  if (name && version) {
+    return { registry: "npm", name, version };
+  }
 }
 
 // Use JSPM verion resolver for now

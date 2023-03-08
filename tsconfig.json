@@ -17,5 +17,8 @@
     "src/script-lexer.js",
     "src/api.js"
   ],
-  "exclude": ["src/cli.ts"]
+  "exclude": [
+    "src/cli.ts",
+    "src/**/*.test.ts"
+  ]
 }
