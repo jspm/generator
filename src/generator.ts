@@ -445,7 +445,10 @@ export class Generator {
     // We make an attempt to auto-detect the default provider from the input
     // map, by picking the provider with the most owned URLs:
     defaultProvider = detectDefaultProvider(
-      defaultProvider, inputMap, resolver);
+      defaultProvider,
+      inputMap,
+      resolver
+    );
 
     // Initialise the tracer:
     this.traceMap = new TraceMap(
@@ -552,7 +555,7 @@ export class Generator {
    * Link a module, installing all dependencies necessary into the map
    * to support its execution including static and dynamic module imports.
    *
-   * @param specifier Module to trace
+   * @param specifier Module to link
    * @param parentUrl Optional parent URL
    */
   async link(
@@ -588,6 +591,41 @@ export class Generator {
         if (!error) return { staticDeps, dynamicDeps };
       }
     }
+  }
+
+  /**
+   * Links every imported module in the given HTML file, installing all
+   * dependencies necessary to support its execution.
+   *
+   * @param html HTML to link
+   * @param htmlUrl URL of the given HTML
+   */
+  async linkHtml(
+    html: string | string[],
+    htmlUrl?: string | URL
+  ): Promise<string[]> {
+    if (Array.isArray(html)) {
+      const impts = await Promise.all(
+        html.map((h) => this.linkHtml(h, htmlUrl))
+      );
+      return [...new Set(impts)].reduce((a, b) => a.concat(b), []);
+    }
+
+    let resolvedUrl: URL;
+    if (htmlUrl) {
+      if (typeof htmlUrl === "string") {
+        resolvedUrl = new URL(resolveUrl(htmlUrl, this.mapUrl, this.rootUrl));
+      } else {
+        resolvedUrl = htmlUrl;
+      }
+    }
+
+    const analysis = analyzeHtml(html, resolvedUrl);
+    const impts = [
+      ...new Set([...analysis.staticImports, ...analysis.dynamicImports]),
+    ];
+    await Promise.all(impts.map((impt) => this.link(impt, resolvedUrl?.href)));
+    return impts;
   }
 
   /**
@@ -712,12 +750,7 @@ export class Generator {
     let modules =
       pins === true ? this.traceMap.pins : Array.isArray(pins) ? pins : [];
     if (trace) {
-      const impts = [
-        ...new Set([...analysis.staticImports, ...analysis.dynamicImports]),
-      ];
-      await Promise.all(
-        impts.map((impt) => this.link(impt, (htmlUrl as URL | undefined)?.href))
-      );
+      const impts = await this.linkHtml(html, htmlUrl);
       modules = [...new Set([...modules, ...impts])];
     }
 
@@ -924,7 +957,9 @@ export class Generator {
     install?: string | Install | (string | Install)[]
   ): Promise<void | { staticDeps: string[]; dynamicDeps: string[] }> {
     if (arguments.length > 1)
-      throw new JspmError("Install takes no arguments, a single install target, or a list of install targets.");
+      throw new JspmError(
+        "Install takes no arguments, a single install target, or a list of install targets."
+      );
 
     // If there are no arguments, install all top-level pins.
     if (!install) {
@@ -1383,12 +1418,12 @@ async function installToTarget(
 function detectDefaultProvider(
   defaultProvider: string | null,
   inputMap: IImportMap | null,
-  resolver: Resolver,
+  resolver: Resolver
 ) {
   // We only use top-level install information to detect the provider:
-  const counts: Record<string, number> = {}; 
+  const counts: Record<string, number> = {};
   for (const url of Object.values(inputMap?.imports || {})) {
-    const name = resolver.providerNameForUrl(url)
+    const name = resolver.providerNameForUrl(url);
     if (name) {
       counts[name] = (counts[name] || 0) + 1;
     }
