@@ -3,9 +3,12 @@
   <h1 style="display: inline-block">JSPM Generator</h1>
 </div>
 
-The [**JSPM Generator**](https://www.npmjs.com/package/@jspm/generator) is a library for managing and linking the dependencies of javascript modules using [**import maps**](https://github.com/WICG/import-maps), allowing you to easily run existing Node.js ESM projects in host runtimes like [Deno](https://deno.land) or the browser.
+[**JSPM Generator**](https://www.npmjs.com/package/@jspm/generator) is the core library of the [JSPM project](https://jspm.org) for managing and linking the dependencies of JavaScript modules using [**import maps**](https://github.com/WICG/import-maps), constructing the correct linkage via the import map to execute any graph of modules in a given environment, including the browser and host runtimes like Node.js or [Deno](https://deno.land).
 
-The JSPM generator can automatically create import maps for your project by tracing out the dependency graph of your code, with [well-tested heuristics](https://github.com/nodejs/cjs-module-lexer) for detecting dynamic imports and support for opt-in CommonJS tracing. The [JSPM module resolution rules](https://docs.google.com/document/d/10SuVDUYTib8gkI8eeRyXZDY-j4zKR5Nd4bS9WcOy2Hw) are an extension of the NPM module resolution rules to arbitrary URLs, featuring:
+JSPM Generator handles all aspects of managing and creating import maps by tracing out the dependency graph of your code using [JSPM module resolution rules](docs/RESOLUTION.md), based on an extension of the Node.js resolution to _all URLs_.
+
+Supports various common scenarios with import map generation including:
+
 * **Local Linking:** map packages to your local `node_modules` folder
 * [**Common CDNs:**](https://github.com/jspm/generator#defaultProvider) resolve against [jspm.io](https://jspm.io/), [UNPKG](https://unpkg.com/), [Skypack](https://www.skypack.dev/), [jsDelivr](https://jsdelivr.com) and [more](#customProviders)
 * [**Conditional Resolution:**](https://nodejs.org/dist/latest-v19.x/docs/api/packages.html#conditional-exports) map different versions of a module based on environment
@@ -18,7 +21,7 @@ For a web-based UI, see [https://generator.jspm.io](https://generator.jspm.io).
 
 ## Getting Started
 
-This is a guide to basic usage. If you prefer details, see the [API documentation](./docs/README.md) instead.
+This is a guide to basic usage. If you prefer details, see the [API documentation](docs/API.md) instead.
 
 ### Installation
 
@@ -401,7 +404,7 @@ The `"jspm.io#system"` provider can be used to generate import maps for [SystemJ
 
 ## API
 
-See the [API documentation](./docs/README.md).
+See the [API documentation](./docs/API.md).
 
 ## Contributing
 
