@@ -73,7 +73,7 @@ export interface GeneratorOptions {
    */
   inputMap?: IImportMap;
   /**
-   * The default provider to use for a new install, defaults to 'jspm'.
+   * The provider to use for top-level (i.e. root package) installs if there's no context in the inputMap. This can be used to set the provider for a new import map. To use a specific provider for an install, rather than relying on context, register an override using the 'providers' option.
    *
    * Supports: 'jspm.io' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg';
    *
@@ -1373,22 +1373,12 @@ function detectDefaultProvider(
   inputMap: IImportMap | null,
   resolver: Resolver,
 ) {
-  if (defaultProvider) return defaultProvider;
-  if (!inputMap) return "jspm.io"; // fallback
-
+  // We only use top-level install information to detect the provider:
   const counts: Record<string, number> = {}; 
-  for (const url of Object.values(inputMap.imports || {})) {
+  for (const url of Object.values(inputMap?.imports || {})) {
     const name = resolver.providerNameForUrl(url)
     if (name) {
       counts[name] = (counts[name] || 0) + 1;
-    }
-  }
-  for (const scope of Object.keys(inputMap.scopes || {})) {
-    for (const url of Object.values(inputMap.scopes[scope])) {
-      const name = resolver.providerNameForUrl(url)
-      if (name) {
-        counts[name] = (counts[name] || 0) + 1;
-      }
     }
   }
 
@@ -1401,5 +1391,8 @@ function detectDefaultProvider(
     }
   }
 
-  return winner || "jspm.io";
+  // The leading provider in the input map takes precedence as the provider of
+  // the root package. Failing that, the user-provided default is used. The
+  // 'providers' field can be used for hard-overriding this:
+  return winner || defaultProvider || "jspm.io";
 }
