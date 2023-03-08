@@ -93,7 +93,7 @@ export class Resolver {
     this.providers = Object.assign({}, this.providers, { [name]: provider });
   }
 
-  async providerNameForUrl(url: string): Promise<string | null> {
+  providerNameForUrl(url: string): string | null {
     for (const name of Object.keys(this.providers)) {
       const provider = this.providers[name];
       if (
@@ -105,8 +105,8 @@ export class Resolver {
     }
   }
 
-  async providerForUrl(url: string): Promise<Provider | null> {
-    const name = await this.providerNameForUrl(url);
+  providerForUrl(url: string): Provider | null {
+    const name = this.providerNameForUrl(url);
     return name ? this.providers[name] : null;
   }
 
@@ -192,7 +192,7 @@ export class Resolver {
     if (cached) return cached;
     if (!this.pcfgPromises[pkgUrl])
       this.pcfgPromises[pkgUrl] = (async () => {
-        const provider = await this.providerForUrl(pkgUrl);
+        const provider = this.providerForUrl(pkgUrl);
         if (provider) {
           const pcfg = await provider.getPackageConfig?.call(this, pkgUrl);
           if (pcfg !== undefined) {
