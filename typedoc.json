@@ -1,5 +1,6 @@
 {
   "out": "docs",
   "entryPoints": ["src/generator.ts"],
-  "plugin": ["typedoc-plugin-versions"]
+  "plugin": ["typedoc-plugin-versions"],
+  "readme": "./docs/API.md"
 }
