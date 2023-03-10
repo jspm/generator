@@ -1,5 +1,14 @@
 import { Analysis } from "./analysis";
 
+// See: https://nodejs.org/docs/latest/api/modules.html#the-module-scope
+const cjsGlobals: string[] = [
+  "__dirname",
+  "__filename",
+  "exports",
+  "module",
+  "require",
+];
+
 let babel;
 
 export function setBabel(_babel) {
@@ -15,6 +24,7 @@ export async function createCjsAnalysis(
 
   const requires = new Set<string>();
   const lazy = new Set<string>();
+  const unboundGlobals = new Set<string>();
 
   babel.transform(source, {
     ast: false,
@@ -59,6 +69,12 @@ export async function createCjsAnalysis(
                 if (state.functionDepth > 0) lazy.add(req);
               }
             },
+            ReferencedIdentifier(path) {
+              let identifierName = path.node.name;
+              if (!path.scope.hasBinding(identifierName)) {
+                unboundGlobals.add(identifierName);
+              }
+            },
             Scope: {
               enter(path, state) {
                 if (t.isFunction(path.scope.block)) state.functionDepth++;
@@ -76,12 +92,23 @@ export async function createCjsAnalysis(
     ],
   });
 
+  // Check if the module actually uses any CJS-specific globals, as otherwise
+  // other host runtimes like browser/deno can run this module anyway:
+  let usesCjs = false;
+  for (let g of cjsGlobals) {
+    if (unboundGlobals.has(g)) {
+      usesCjs = true;
+      break;
+    }
+  }
+
   return {
     deps: [...requires],
     dynamicDeps: imports.filter((impt) => impt.n).map((impt) => impt.n),
     cjsLazyDeps: [...lazy],
     size: source.length,
     format: "commonjs",
+    usesCjs,
   };
 }
 
