@@ -70,11 +70,16 @@ interface TraceEntry {
   size: number;
   integrity: string;
 
-  // wasCJS is true if the module is a CJS module, but also if it's an ESM
+  // wasCjs is true if the module is a CJS module, but also if it's an ESM
   // module that was transpiled from a CJS module. This is checkable on the
   // jspm.io CDN by looking for an export for the module with a '!cjs'
   // extension in its parent package:
-  wasCJS: boolean;
+  wasCjs: boolean;
+
+  // usesCjs is true iff the module is both a CJS module and actually _uses_
+  // CJS-specific globals like "require" or "module. If not, we can actually
+  // link it for browser/deno runtimes despite it being CJS:
+  usesCjs: boolean;
 
   // For cjs modules, the list of hoisted deps
   // this is needed for proper cycle handling
@@ -209,7 +214,7 @@ export default class TraceMap {
     // very likely that the user has some CommonJS dependencies, but this is
     // something that the user has to explicitly enable:
     const entry = await this.getTraceEntry(resolved, parentUrl);
-    if (entry?.format === "commonjs" && !this.opts.commonJS) {
+    if (entry?.format === "commonjs" && entry.usesCjs && !this.opts.commonJS) {
       throw new JspmError(
         `Unable to trace ${resolved}, as it is a CommonJS module. Either enable CommonJS tracing explicitly by setting "GeneratorOptions.commonJS" to true, or use a provider that performs ESM transpiling like jspm.io via defaultProvider: 'jspm.io'.`
       );
@@ -296,7 +301,7 @@ export default class TraceMap {
           const existing = map.imports[specifier];
           if (
             !existing ||
-            (existing !== resolved && this.tracedUrls?.[parentUrl]?.wasCJS)
+            (existing !== resolved && this.tracedUrls?.[parentUrl]?.wasCjs)
           ) {
             map.set(specifier, resolved);
           }
@@ -385,7 +390,7 @@ export default class TraceMap {
     mode: ResolutionMode,
     toplevel: boolean
   ): Promise<string> {
-    const cjsEnv = this.tracedUrls[parentUrl]?.wasCJS;
+    const cjsEnv = this.tracedUrls[parentUrl]?.wasCjs;
 
     const parentPkgUrl = await this.resolver.getPackageBase(parentUrl);
     if (!parentPkgUrl) throwInternalError();
@@ -617,7 +622,8 @@ export default class TraceMap {
 
     const traceEntry: TraceEntry = (this.tracedUrls[resolvedUrl] = {
       promise: null,
-      wasCJS: false,
+      wasCjs: false,
+      usesCjs: false,
       deps: null,
       dynamicDeps: null,
       cjsLazyDeps: null,
@@ -630,7 +636,7 @@ export default class TraceMap {
     traceEntry.promise = (async () => {
       const parentIsCjs = this.tracedUrls[parentUrl]?.format === "commonjs";
 
-      const { deps, dynamicDeps, cjsLazyDeps, size, format } =
+      const { deps, dynamicDeps, cjsLazyDeps, size, format, usesCjs } =
         await this.resolver.analyze(
           resolvedUrl,
           parentUrl,
@@ -647,7 +653,7 @@ export default class TraceMap {
       // from the resolver perspective
       const wasCJS =
         format === "commonjs" || (await this.resolver.wasCommonJS(resolvedUrl));
-      if (wasCJS) traceEntry.wasCJS = true;
+      if (wasCJS) traceEntry.wasCjs = true;
 
       traceEntry.promise = null;
     })();

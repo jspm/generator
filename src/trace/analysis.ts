@@ -4,6 +4,9 @@ export interface Analysis {
   cjsLazyDeps: string[] | null;
   format: "esm" | "commonjs" | "system" | "json" | "typescript";
   size: number;
+
+  // for commonjs format, true iff the module uses a CJS-only global
+  usesCjs?: boolean;
 }
 
 export { createTsAnalysis } from "./ts.js";
