@@ -4,3 +4,4 @@
 some = 0;
 unbound = 1;
 globals = 2;
+var require = NOT_REQUIRE;
