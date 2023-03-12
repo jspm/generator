@@ -1,13 +1,16 @@
 <div align="center">
-  <img style="display: inline-block; width: 100px; height: 100pz" src="./logo.png"/>
-  <h1 style="display: inline-block">JSPM Generator</h1>
-</div>
+  <img style="display: block; width: 100px; margin: 5px;" src="./logo.png"/>
+  <h1 style="display: inline-block; width: 90%">JSPM Generator</h1>
 
-[**JSPM Generator**](https://www.npmjs.com/package/@jspm/generator) is the core library of the [JSPM project](https://jspm.org) for managing and linking the dependencies of JavaScript modules using [**import maps**](https://github.com/WICG/import-maps), constructing the correct linkage via the import map to execute any graph of modules in a given environment, including the browser and host runtimes like Node.js or [Deno](https://deno.land).
+[**JSPM Generator**](https://www.npmjs.com/package/@jspm/generator) is the core library of the [JSPM project](https://jspm.org) for managing and linking the dependencies of JavaScript modules using [import maps](https://github.com/WICG/import-maps).
 
-JSPM Generator handles all aspects of managing and creating import maps by tracing out the dependency graph of your code using [JSPM module resolution rules](docs/RESOLUTION.md), based on an extension of the Node.js resolution to _all URLs_.
+[https://jspm.org](https://jspm.org) | [API Documentation](https://jspm.org/api) | [Online Generator](https://generator.jspm.io) | [VSCode plugin](https://marketplace.visualstudio.com/items?itemName=JSPM.jspm-vscode)
+<hr style="width:90%"/>
+</div><br />
 
-Supports various common scenarios with import map generation including:
+JSPM Generator implements [universal module resolution](docs/RESOLUTION.md) semantics, based on an extension of the Node.js resolution to all URLs to determine the final import map to execute any graph of modules in a given environment, including the browser and host runtimes like Node.js or Deno.
+
+Examples include:
 
 * **Local Linking:** map packages to your local `node_modules` folder
 * [**Common CDNs:**](https://github.com/jspm/generator#defaultProvider) resolve against [jspm.io](https://jspm.io/), [UNPKG](https://unpkg.com/), [Skypack](https://www.skypack.dev/), [jsDelivr](https://jsdelivr.com) and [more](#customProviders)
