@@ -342,8 +342,7 @@ export class Generator {
    */
   installCnt = 0;
 
-  // Global install options.
-  // TODO: make arguments to install(), link(), etc instead.
+  // TODO: remove these and make them options on install/link etc instead.
   private freeze: boolean | null;
   private latest: boolean | null;
 
@@ -496,7 +495,7 @@ export class Generator {
     this.map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     if (inputMap) this.addMappings(inputMap);
 
-    // Set global installation option:
+    // Set global installation options:
     this.latest = latest;
     this.freeze = freeze;
   }
@@ -1052,13 +1051,17 @@ export class Generator {
         "generator/install",
         `Adding primary constraint for ${alias}: ${JSON.stringify(target)}`
       );
-      await this.traceMap.add(alias, target, this.freeze, this.latest);
+
+      // Always install latest unless "freeze" is set or the user has set
+      // the deprecated "latest" flag explicitly:
+      const installLatest = this.latest ?? (this.freeze ? false: true);
+      await this.traceMap.add(alias, target, this.freeze, installLatest);
       await this.traceMap.visit(
         alias + subpath.slice(1),
         {
           installOpts: {
             freeze: this.freeze,
-            latest: this.latest,
+            latest: installLatest,
             mode: "new",
           },
           toplevel: true,
