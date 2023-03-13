@@ -1054,7 +1054,7 @@ export class Generator {
 
       // Always install latest unless "freeze" is set or the user has set
       // the deprecated "latest" flag explicitly:
-      const installLatest = this.latest ?? (this.freeze ? false: true);
+      const installLatest = this.latest ?? (this.freeze ? false : true);
       await this.traceMap.add(alias, target, this.freeze, installLatest);
       await this.traceMap.visit(
         alias + subpath.slice(1),

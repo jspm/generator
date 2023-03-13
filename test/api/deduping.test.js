@@ -4,6 +4,10 @@ import assert from "assert";
 const generator = new Generator({
   mapUrl: import.meta.url,
   env: ["production", "browser"],
+
+  // Test deduping in absence of install modifiers:
+  latest: false,
+  freeze: false,
 });
 
 await generator.install({ target: "./local/react1" });
