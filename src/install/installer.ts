@@ -298,8 +298,7 @@ export class Installer {
     // locks that are compatible to the latest version:
     this.log(
       "installer/installTarget",
-      `${pkgName} ${pkgScope} -> ${pkgUrl} ${
-        installSubpath ? installSubpath : "<no-subpath>"
+      `${pkgName} ${pkgScope} -> ${pkgUrl} ${installSubpath ? installSubpath : "<no-subpath>"
       } (latest)`
     );
     this.newInstalls = setResolution(
@@ -504,7 +503,7 @@ export class Installer {
         if (bestMatch)
           bestMatch =
             Semver.compare(new Semver(bestMatch.version), pkg.pkg.version) ===
-            -1
+              -1
               ? pkg.pkg
               : bestMatch;
         else bestMatch = pkg.pkg;
