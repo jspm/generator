@@ -647,7 +647,7 @@ async function enforceProviderConstraints(
           lock.resolution,
           provider,
           resolver,
-          scopeUrl as `${string}/`,
+          scopeUrl as `${string}/`
         );
         res.flattened[scopeUrl][pkgName].push({
           export: lock.export,

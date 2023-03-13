@@ -1,5 +1,6 @@
 import { baseUrl as _baseUrl, relativeUrl, resolveUrl } from "./common/url.js";
 import {
+  ExactModule,
   ExactPackage,
   PackageConfig,
   parseTarget,
@@ -8,24 +9,22 @@ import {
 import TraceMap from "./trace/tracemap.js";
 // @ts-ignore
 import { clearCache as clearFetchCache, fetch as _fetch } from "#fetch";
-import { createLogger, Log, LogStream } from "./common/log.js";
-import { Resolver } from "./trace/resolver.js";
 import { IImportMap, ImportMap } from "@jspm/import-map";
-import { type Provider } from "./providers/index.js";
-import { JspmError } from "./common/err.js";
-import { analyzeHtml } from "./html/analyze.js";
-import { SemverRange } from "sver";
-import { Replacer } from "./common/str.js";
-import { getIntegrity } from "./common/integrity.js";
-import { LockResolutions } from "./install/lock.js";
 import process from "process";
+import { SemverRange } from "sver";
+import { JspmError } from "./common/err.js";
+import { getIntegrity } from "./common/integrity.js";
+import { createLogger, Log, LogStream } from "./common/log.js";
+import { Replacer } from "./common/str.js";
+import { analyzeHtml } from "./html/analyze.js";
 import { InstallTarget } from "./install/installer.js";
+import { LockResolutions } from "./install/lock.js";
+import { type Provider } from "./providers/index.js";
 import * as nodemodules from "./providers/nodemodules.js";
-
-export { analyzeHtml };
+import { Resolver } from "./trace/resolver.js";
 
 // Type exports for users:
-export { Provider };
+export { analyzeHtml, Provider };
 
 /**
  * @interface GeneratorOptions.
@@ -380,7 +379,7 @@ export class Generator {
     }
 
     // Initialise the resource fetcher:
-    let fetchOpts = undefined;
+    let fetchOpts;
     if (cache === "offline")
       fetchOpts = {
         cache: "force-cache",
@@ -1381,6 +1380,28 @@ export async function getPackageBase(
   );
 }
 
+/**
+ * Get the package metadata for the given module or package URL.
+ *
+ * @param url URL of a module or package for a configured provider.
+ * @param lookupOptions Optional provider and cache defaults for lookup.
+ * @returns Package metadata for the given URL if one of the configured
+ *          providers owns it, else null.
+ *
+ * The returned metadata will always contain the package name, version and
+ * registry, along with the provider name and layer that handles resolution
+ * for the given URL.
+ */
+export async function parseUrlPkg(
+  url: string | URL,
+  { provider, cache }: LookupOptions = {}
+): Promise<ExactModule | null> {
+  const generator = new Generator({ cache: !cache, defaultProvider: provider });
+  return generator.traceMap.resolver.parseUrlPkg(
+    typeof url === "string" ? url : url.href
+  );
+}
+
 async function installToTarget(
   this: Generator,
   install: Install | string,
@@ -1446,6 +1467,6 @@ function detectDefaultProvider(
   // the root package. Failing that, the user-provided default is used. The
   // 'providers' field can be used for hard-overriding this:
   // return winner || defaultProvider || "jspm.io";
-  
+
   return defaultProvider || winner || "jspm.io";
 }
