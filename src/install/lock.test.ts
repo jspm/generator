@@ -1,9 +1,5 @@
-import {
-  ExactModule,
-} from "@jspm/generator/install/package.js";
-import {
-  translateProvider,
-} from "@jspm/generator/install/lock.js";
+import { ExactModule } from "@jspm/generator/install/package.js";
+import { translateProvider } from "@jspm/generator/install/lock.js";
 import { Generator } from "@jspm/generator";
 import { encodeBase64 } from "@jspm/generator/common/b64.js";
 import { strictEqual } from "assert";
