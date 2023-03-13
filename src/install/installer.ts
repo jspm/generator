@@ -1,5 +1,4 @@
-import sver from "sver";
-const { Semver } = sver;
+import { Semver } from "sver";
 import { Log } from "../common/log.js";
 import { Resolver } from "../trace/resolver.js";
 import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
@@ -24,12 +23,22 @@ export interface PackageProvider {
 
 export type ResolutionMode = "new" | "new-prefer-existing" | "existing";
 
+/**
+ * InstallOptions configures the interaction between the Installer and the
+ * existing lockfile during an install operation.
+ */
+export interface InstallOptions {
+  mode: ResolutionMode;
+  freeze?: boolean;
+  latest?: boolean;
+}
+
 export type InstallTarget = {
   pkgTarget: PackageTarget | URL;
   installSubpath: null | `./${string}`;
 };
 
-export interface InstallOptions {
+export interface InstallerOptions {
   // import map URL
   mapUrl: URL;
   // default base for relative installs
@@ -38,10 +47,6 @@ export interface InstallOptions {
   rootUrl?: URL | null;
   // create a lockfile if it does not exist
   lock?: LockResolutions;
-  // do not modify the lockfile
-  freeze?: boolean;
-  // force use latest versions for everything we touch
-  latest?: boolean;
 
   // if a resolution is not in its expected range
   // / expected URL (usually due to manual user edits),
@@ -66,7 +71,7 @@ export interface InstallOptions {
 }
 
 export class Installer {
-  opts: InstallOptions;
+  opts: InstallerOptions;
   installs: LockResolutions;
   constraints: VersionConstraints;
   installing = false;
@@ -84,7 +89,7 @@ export class Installer {
 
   constructor(
     baseUrl: `${string}/`,
-    opts: InstallOptions,
+    opts: InstallerOptions,
     log: Log,
     resolver: Resolver
   ) {
@@ -155,7 +160,7 @@ export class Installer {
    * @param {string} pkgName Name of the package being installed.
    * @param {InstallTarget} target The installation target being installed.
    * @param {`./${string}` | '.'} traceSubpath
-   * @param {ResolutionMode} mode Specifies how to interact with existing installs.
+   * @param {InstallOptions} opts Specifies how to interact with existing installs.
    * @param {`${string}/` | null} pkgScope URL of the package scope in which this install is occurring, null if it's a top-level install.
    * @param {string} parentUrl URL of the parent for this install.
    * @returns {Promise<InstalledResolution>}
@@ -164,11 +169,11 @@ export class Installer {
     pkgName: string,
     { pkgTarget, installSubpath }: InstallTarget,
     traceSubpath: `./${string}` | ".",
-    mode: ResolutionMode,
+    opts: InstallOptions,
     pkgScope: `${string}/` | null,
     parentUrl: string
   ): Promise<InstalledResolution> {
-    if (this.opts.freeze && mode === "existing")
+    if (opts.freeze && opts.mode === "existing")
       throw new JspmError(
         `"${pkgName}" is not installed in the current map to freeze install, imported from ${parentUrl}.`,
         "ERR_NOT_INSTALLED"
@@ -190,7 +195,7 @@ export class Installer {
           pkgName,
           resolutionTarget,
           traceSubpath,
-          mode,
+          opts,
           pkgScope,
           parentUrl
         );
@@ -223,8 +228,8 @@ export class Installer {
     // If this is a secondary install or we're in an existing-lock install
     // mode, then we make an attempt to find a compatible existing lock:
     if (
-      (this.opts.freeze || mode.includes("existing") || pkgScope !== null) &&
-      !this.opts.latest
+      (opts.freeze || opts.mode.includes("existing") || pkgScope !== null) &&
+      !opts.latest
     ) {
       const pkg = await this.getBestExistingMatch(pkgTarget);
       if (pkg) {
@@ -261,8 +266,8 @@ export class Installer {
     // existing locks on this package to latest and use that. If there's a
     // constraint and we can't, then we fallback to the best existing lock:
     if (
-      !this.opts.freeze &&
-      !this.opts.latest &&
+      !opts.freeze &&
+      !opts.latest &&
       pkgScope &&
       latestPkg &&
       !this.tryUpgradeAllTo(latestPkg, pkgUrl, installed)
@@ -293,7 +298,8 @@ export class Installer {
     // locks that are compatible to the latest version:
     this.log(
       "installer/installTarget",
-      `${pkgName} ${pkgScope} -> ${pkgUrl} ${installSubpath ? installSubpath : "<no-subpath>"
+      `${pkgName} ${pkgScope} -> ${pkgUrl} ${
+        installSubpath ? installSubpath : "<no-subpath>"
       } (latest)`
     );
     this.newInstalls = setResolution(
@@ -312,7 +318,7 @@ export class Installer {
    * Installs the given package specifier.
    *
    * @param {string} pkgName The package specifier being installed.
-   * @param {ResolutionMode} mode Specifies how to interact with existing installs.
+   * @param {InstallOptions} opts Specifies how to interact with existing installs.
    * @param {`${string}/` | null} pkgScope URL of the package scope in which this install is occurring, null if it's a top-level install.
    * @param {`./${string}` | '.'} traceSubpath
    * @param {string} parentUrl URL of the parent for this install.
@@ -320,7 +326,7 @@ export class Installer {
    */
   async install(
     pkgName: string,
-    mode: ResolutionMode,
+    opts: InstallOptions,
     pkgScope: `${string}/` | null = null,
     traceSubpath: `./${string}` | ".",
     parentUrl: string = this.installBaseUrl
@@ -347,7 +353,7 @@ export class Installer {
           pkgName
         ),
         traceSubpath,
-        mode,
+        opts,
         isTopLevel ? null : pkgScope,
         parentUrl
       );
@@ -369,8 +375,8 @@ export class Installer {
 
     // flattened resolution cascading for secondary
     if (
-      (!isTopLevel && mode.includes("existing") && !this.opts.latest) ||
-      (!isTopLevel && mode.includes("new") && this.opts.freeze)
+      (!isTopLevel && opts.mode.includes("existing") && !opts.latest) ||
+      (!isTopLevel && opts.mode.includes("new") && opts.freeze)
     ) {
       const flattenedResolution = getFlattenedResolution(
         this.installs,
@@ -415,7 +421,7 @@ export class Installer {
         pkgName,
         target,
         traceSubpath,
-        mode,
+        opts,
         isTopLevel ? null : pkgScope,
         parentUrl
       );
@@ -431,7 +437,7 @@ export class Installer {
         // fully qualified InstallTarget, or support string targets here.
         builtin.target as InstallTarget,
         traceSubpath,
-        mode,
+        opts,
         isTopLevel ? null : pkgScope,
         parentUrl
       );
@@ -454,7 +460,7 @@ export class Installer {
       pkgName,
       target,
       null,
-      mode,
+      opts,
       isTopLevel ? null : pkgScope,
       parentUrl
     );
@@ -498,7 +504,7 @@ export class Installer {
         if (bestMatch)
           bestMatch =
             Semver.compare(new Semver(bestMatch.version), pkg.pkg.version) ===
-              -1
+            -1
               ? pkg.pkg
               : bestMatch;
         else bestMatch = pkg.pkg;
