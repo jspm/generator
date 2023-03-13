@@ -196,6 +196,8 @@ export class Installer {
         );
     }
 
+    // URL targets are installed as locks directly, as we have no versioning
+    // information to work with:
     if (pkgTarget instanceof URL) {
       const installHref = pkgTarget.href;
       const installUrl = (installHref +
@@ -218,6 +220,8 @@ export class Installer {
 
     const provider = this.getProvider(pkgTarget);
 
+    // If this is a secondary install or we're in an existing-lock install
+    // mode, then we make an attempt to find a compatible existing lock:
     if (
       (this.opts.freeze || mode.includes("existing") || pkgScope !== null) &&
       !this.opts.latest
@@ -246,46 +250,50 @@ export class Installer {
       provider,
       parentUrl
     );
-
     const pkgUrl = await this.resolver.pkgToUrl(latestPkg, provider);
     const installed = getConstraintFor(
       latestPkg.name,
       latestPkg.registry,
       this.constraints
     );
+
+    // If this is a secondary install, then we ideally want to upgrade all
+    // existing locks on this package to latest and use that. If there's a
+    // constraint and we can't, then we fallback to the best existing lock:
     if (
       !this.opts.freeze &&
+      !this.opts.latest &&
+      pkgScope &&
       latestPkg &&
       !this.tryUpgradeAllTo(latestPkg, pkgUrl, installed)
     ) {
-      if (pkgScope && !this.opts.latest) {
-        const pkg = await this.getBestExistingMatch(pkgTarget);
-        // cannot upgrade to latest -> stick with existing resolution (if compatible)
-        if (pkg) {
-          this.log(
-            "installer/installTarget",
-            `${pkgName} ${pkgScope} -> ${JSON.stringify(
-              latestPkg
-            )} (existing match not latest)`
-          );
-          const installUrl = await this.resolver.pkgToUrl(pkg, provider);
-          this.newInstalls = setResolution(
-            this.installs,
-            pkgName,
-            installUrl,
-            pkgScope,
-            installSubpath
-          );
-          setConstraint(this.constraints, pkgName, pkgTarget, pkgScope);
-          return { installUrl, installSubpath };
-        }
+      const pkg = await this.getBestExistingMatch(pkgTarget);
+      // cannot upgrade to latest -> stick with existing resolution (if compatible)
+      if (pkg) {
+        this.log(
+          "installer/installTarget",
+          `${pkgName} ${pkgScope} -> ${JSON.stringify(
+            latestPkg
+          )} (existing match not latest)`
+        );
+        const installUrl = await this.resolver.pkgToUrl(pkg, provider);
+        this.newInstalls = setResolution(
+          this.installs,
+          pkgName,
+          installUrl,
+          pkgScope,
+          installSubpath
+        );
+        setConstraint(this.constraints, pkgName, pkgTarget, pkgScope);
+        return { installUrl, installSubpath };
       }
     }
 
+    // Otherwise we install latest and make an attempt to upgrade any existing
+    // locks that are compatible to the latest version:
     this.log(
       "installer/installTarget",
-      `${pkgName} ${pkgScope} -> ${pkgUrl} ${
-        installSubpath ? installSubpath : "<no-subpath>"
+      `${pkgName} ${pkgScope} -> ${pkgUrl} ${installSubpath ? installSubpath : "<no-subpath>"
       } (latest)`
     );
     this.newInstalls = setResolution(
@@ -490,7 +498,7 @@ export class Installer {
         if (bestMatch)
           bestMatch =
             Semver.compare(new Semver(bestMatch.version), pkg.pkg.version) ===
-            -1
+              -1
               ? pkg.pkg
               : bestMatch;
         else bestMatch = pkg.pkg;
