@@ -19,7 +19,7 @@ import { Replacer } from "./common/str.js";
 import { analyzeHtml } from "./html/analyze.js";
 import { InstallTarget } from "./install/installer.js";
 import { LockResolutions } from "./install/lock.js";
-import { type Provider } from "./providers/index.js";
+import { getDefaultProviderStrings, type Provider } from "./providers/index.js";
 import * as nodemodules from "./providers/nodemodules.js";
 import { Resolver } from "./trace/resolver.js";
 
@@ -1441,6 +1441,18 @@ export async function parseUrlPkg(
   return generator.traceMap.resolver.parseUrlPkg(
     typeof url === "string" ? url : url.href
   );
+}
+
+/**
+ * Returns a list of providers that are supported by default.
+ *
+ * @returns List of valid provider strings supported by default.
+ *
+ * To use one of these providers, pass the string to either the "defaultProvider"
+ * option or the "providers" mapping when constructing a Generator.
+ */
+export function getDefaultProviders(): string[] {
+  return getDefaultProviderStrings();
 }
 
 async function installToTarget(

@@ -46,6 +46,8 @@ export interface Provider {
     this: Resolver,
     pkgUrl: string
   ): Promise<PackageConfig | null>;
+
+  supportedLayers?: string[];
 }
 
 export const defaultProviders: Record<string, Provider> = {
@@ -62,6 +64,16 @@ export function getProvider(name: string, providers: Record<string, Provider>) {
   const provider = providers[name];
   if (provider) return provider;
   throw new JspmError(`No provider named "${name}" has been defined.`);
+}
+
+export function getDefaultProviderStrings() {
+  let res = [];
+  for (const [name, provider] of Object.entries(defaultProviders)) {
+    for (const layer of provider.supportedLayers ?? ["default"])
+      res.push(`${name}${layer === "default" ? "" : `#${layer}`}`);
+  }
+
+  return res;
 }
 
 export const registryProviders: Record<string, string> = {
