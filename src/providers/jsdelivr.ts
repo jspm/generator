@@ -16,5 +16,5 @@ export function parseUrlPkg(url: string) {
   return { registry, name, version };
 }
 
-// Use JSPM verion resolver for now
+// Use JSPM version resolver for now
 export { resolveLatestTarget } from "./jspm.js";

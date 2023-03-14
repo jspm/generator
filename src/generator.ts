@@ -19,7 +19,7 @@ import { Replacer } from "./common/str.js";
 import { analyzeHtml } from "./html/analyze.js";
 import { InstallTarget } from "./install/installer.js";
 import { LockResolutions } from "./install/lock.js";
-import { type Provider } from "./providers/index.js";
+import { getDefaultProviderStrings, type Provider } from "./providers/index.js";
 import * as nodemodules from "./providers/nodemodules.js";
 import { Resolver } from "./trace/resolver.js";
 
@@ -76,7 +76,7 @@ export interface GeneratorOptions {
   /**
    * The provider to use for top-level (i.e. root package) installs if there's no context in the inputMap. This can be used to set the provider for a new import map. To use a specific provider for an install, rather than relying on context, register an override using the 'providers' option.
    *
-   * Supports: 'jspm.io' | 'jspm.system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg';
+   * Supports: 'jspm.io' | 'jspm.io#system' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg' | 'esm.sh';
    *
    * Providers are responsible for resolution from abstract package names and version ranges to exact URL locations.
    *
@@ -1441,6 +1441,18 @@ export async function parseUrlPkg(
   return generator.traceMap.resolver.parseUrlPkg(
     typeof url === "string" ? url : url.href
   );
+}
+
+/**
+ * Returns a list of providers that are supported by default.
+ *
+ * @returns List of valid provider strings supported by default.
+ *
+ * To use one of these providers, pass the string to either the "defaultProvider"
+ * option or the "providers" mapping when constructing a Generator.
+ */
+export function getDefaultProviders(): string[] {
+  return getDefaultProviderStrings();
 }
 
 async function installToTarget(

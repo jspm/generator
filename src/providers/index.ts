@@ -4,6 +4,7 @@ import * as skypack from "./skypack.js";
 import * as jsdelivr from "./jsdelivr.js";
 import * as unpkg from "./unpkg.js";
 import * as node from "./node.js";
+import * as esmsh from "./esmsh.js";
 import {
   PackageConfig,
   ExactPackage,
@@ -47,6 +48,8 @@ export interface Provider {
     this: Resolver,
     pkgUrl: string
   ): Promise<PackageConfig | null>;
+
+  supportedLayers?: string[];
 }
 
 export const defaultProviders: Record<string, Provider> = {
@@ -55,6 +58,7 @@ export const defaultProviders: Record<string, Provider> = {
   node,
   skypack,
   unpkg,
+  "esm.sh": esmsh,
   "jspm.io": jspm,
 };
 
@@ -62,6 +66,16 @@ export function getProvider(name: string, providers: Record<string, Provider>) {
   const provider = providers[name];
   if (provider) return provider;
   throw new JspmError(`No provider named "${name}" has been defined.`);
+}
+
+export function getDefaultProviderStrings() {
+  let res = [];
+  for (const [name, provider] of Object.entries(defaultProviders)) {
+    for (const layer of provider.supportedLayers ?? ["default"])
+      res.push(`${name}${layer === "default" ? "" : `#${layer}`}`);
+  }
+
+  return res;
 }
 
 export const registryProviders: Record<string, string> = {
