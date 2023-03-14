@@ -323,7 +323,7 @@ For batch install jobs, the dependencies include all installs. When using separa
 
 ### Providers
 
-Supported providers include `"jspm.io"`, `"jspm.io#system"`, `"nodemodules"`, `"skypack"`, `"jsdelivr"`, `"unpkg"`, `"deno"`, `"denoland"`, with all except `"nodemodules"` corresponding to their respective CDNs as the package source.
+Supported providers include `"jspm.io"`, `"jspm.io#system"`, `"nodemodules"`, `"skypack"`, `"jsdelivr"`, `"unpkg"`, `"esm.sh"`, `"deno"`, `"denoland"`, with all except `"nodemodules"` corresponding to their respective CDNs as the package source.
 
 The `"nodemodules"` provider does a traditional `node_modules` path search from the current module URL (eg for a
 `file:///` URL when generating maps for local code). When running over other URL protocols such as from the browser, the
