@@ -13,6 +13,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm install
+      - run: chomp
       - run: npm publish --tag ${{ github.ref }}
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
