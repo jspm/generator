@@ -1,6 +1,9 @@
 import { ExactPackage } from "../install/package.js";
 
-const cdnUrl = "https://cdn.skypack.dev/";
+// The wildcard '*' at the end tells the esm.sh CDN to externalise all
+// dependencies instead of bundling them into the returned module file.
+//   see https://esm.sh/#docs
+const cdnUrl = "https://esm.sh/*";
 
 export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
   return `${cdnUrl}${pkg.name}@${pkg.version}/`;

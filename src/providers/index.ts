@@ -4,6 +4,7 @@ import * as skypack from "./skypack.js";
 import * as jsdelivr from "./jsdelivr.js";
 import * as unpkg from "./unpkg.js";
 import * as node from "./node.js";
+import * as esmsh from "./esmsh.js";
 import {
   PackageConfig,
   ExactPackage,
@@ -55,6 +56,7 @@ export const defaultProviders: Record<string, Provider> = {
   node,
   skypack,
   unpkg,
+  "esm.sh": esmsh,
   "jspm.io": jspm,
 };
 
