@@ -64,6 +64,7 @@ export interface GeneratorOptions {
    * will be normalized to `/local/mod.js` in the output map.
    */
   rootUrl?: URL | string | null;
+
   /**
    * An authoritative initial import map.
    *
@@ -71,6 +72,7 @@ export interface GeneratorOptions {
    * install or to provide custom mappings.
    */
   inputMap?: IImportMap;
+
   /**
    * The provider to use for top-level (i.e. root package) installs if there's no context in the inputMap. This can be used to set the provider for a new import map. To use a specific provider for an install, rather than relying on context, register an override using the 'providers' option.
    *
@@ -87,6 +89,7 @@ export interface GeneratorOptions {
    * New providers can be provided via the `customProviders` option. PRs to merge in providers are welcome as well.
    */
   defaultProvider?: string;
+
   /**
    * The default registry to use when no registry is provided to an install.
    * Defaults to 'npm:'.
@@ -97,6 +100,7 @@ export interface GeneratorOptions {
    * Internally, the default providers for registries are handled by the providers object
    */
   defaultRegistry?: string;
+
   /**
    * The conditional environment resolutions to apply.
    *
@@ -115,6 +119,7 @@ export interface GeneratorOptions {
    * Any other custom condition strings can also be provided.
    */
   env?: string[];
+
   /**
    * Whether to use a local FS cache for fetched modules. Set to 'offline' to use the offline cache.
    *
@@ -126,6 +131,7 @@ export interface GeneratorOptions {
    * making fully offline workflows possible provided the modules have been seen before.
    */
   cache?: "offline" | boolean;
+
   /**
    * Custom provider definitions.
    *
@@ -171,6 +177,7 @@ export interface GeneratorOptions {
    * ```
    */
   customProviders?: Record<string, Provider>;
+
   /**
    * A map of custom scoped providers.
    *
@@ -188,6 +195,7 @@ export interface GeneratorOptions {
    * Alternatively a custom provider can be referenced this way for eg private CDN / registry support.
    */
   providers?: Record<string, string>;
+
   /**
    * Custom dependency resolution overrides for all installs.
    *
@@ -225,6 +233,7 @@ export interface GeneratorOptions {
    * which only maps specific specifiers.
    */
   resolutions?: Record<string, string>;
+
   /**
    * Allows ignoring certain module specifiers during the tracing process.
    * It can be useful, for example, when you provide an `inputMap`
@@ -248,6 +257,7 @@ export interface GeneratorOptions {
    * ```
    */
   ignore?: string[];
+
   /**
    * When installing packages over IPFS, sets the IPFS node API HTTP interface to use,
    * or a list of API URLs to try connect to.
@@ -259,16 +269,23 @@ export interface GeneratorOptions {
    * IPFS node.
    */
   ipfsAPI?: string | string[];
+
   /**
    * Lockfile data to use for resolutions
    */
   lock?: LockResolutions;
+
   /**
-   * When using a lockfile, do not modify existing resolutions
+   * When using a lockfile, do not modify any existing resolutions, and use
+   * existing resolutions whenever possible for new locks.
    */
   freeze?: boolean;
+
   /**
-   * When using a lockfile, force update touched resolutions to latest
+   * When using a lockfile, force update touched resolutions to latest.
+   *
+   * @deprecated Defaults to 'true' for installs and updates, set to 'false'
+   * to enable old behaviour.
    */
   latest?: boolean;
 
@@ -323,6 +340,10 @@ export class Generator {
    * The number of concurrent installs the generator is busy processing.
    */
   installCnt = 0;
+
+  // TODO: remove these and make them options on install/link etc instead.
+  private freeze: boolean | null;
+  private latest: boolean | null;
 
   /**
    * Constructs a new Generator instance.
@@ -463,8 +484,6 @@ export class Generator {
         providers,
         ignore,
         resolutions,
-        freeze,
-        latest,
         commonJS,
       },
       log,
@@ -474,6 +493,10 @@ export class Generator {
     // Reconstruct constraints and locks from the input map:
     this.map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     if (inputMap) this.addMappings(inputMap);
+
+    // Set global installation options:
+    this.latest = latest;
+    this.freeze = freeze;
   }
 
   /**
@@ -574,7 +597,14 @@ export class Generator {
         specifier.map((specifier) =>
           this.traceMap.visit(
             specifier,
-            { mode: "new-prefer-existing", toplevel: true },
+            {
+              installOpts: {
+                freeze: this.freeze,
+                latest: this.latest,
+                mode: "new-prefer-existing",
+              },
+              toplevel: true,
+            },
             parentUrl || this.baseUrl.href
           )
         )
@@ -1020,10 +1050,21 @@ export class Generator {
         "generator/install",
         `Adding primary constraint for ${alias}: ${JSON.stringify(target)}`
       );
-      await this.traceMap.add(alias, target);
+
+      // Always install latest unless "freeze" is set or the user has set
+      // the deprecated "latest" flag explicitly:
+      const installLatest = this.latest ?? (this.freeze ? false : true);
+      await this.traceMap.add(alias, target, this.freeze, installLatest);
       await this.traceMap.visit(
         alias + subpath.slice(1),
-        { mode: "new", toplevel: true },
+        {
+          installOpts: {
+            freeze: this.freeze,
+            latest: installLatest,
+            mode: "new",
+          },
+          toplevel: true,
+        },
         this.mapUrl.href
       );
 
@@ -1047,7 +1088,7 @@ export class Generator {
    * Locking install, retraces all top-level pins but does not change the
    * versions of anything (similar to "npm ci").
    *
-   * @deprecated Use install() with the "freeze: true" generator option.
+   * @deprecated Use install() with the "freeze: true" option.
    */
   async reinstall() {
     if (this.installCnt++ === 0) this.traceMap.startInstall();
