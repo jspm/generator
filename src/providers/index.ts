@@ -36,6 +36,8 @@ export interface Provider {
     parentUrl: string
   ): Promise<ExactPackage | null>;
 
+  ownsUrl?(this: Resolver, url: string): boolean;
+
   resolveBuiltin?(
     this: Resolver,
     specifier: string,
