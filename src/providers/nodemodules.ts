@@ -14,19 +14,11 @@ export function createProvider(
   ownsBaseUrl: boolean
 ): Provider {
   return {
-    ownsUrl,
     pkgToUrl,
     parseUrlPkg,
     resolveLatestTarget,
     getPackageConfig,
   };
-
-  function ownsUrl(this: Resolver, url: string) {
-    // The nodemodules provider owns the base URL when it is the default
-    // provider so that it can link against a user's local installs, letting
-    // us support "file:" dependencies:
-    return (ownsBaseUrl && url === baseUrl) || url.includes("/node_modules/");
-  }
 
   async function pkgToUrl(
     this: Resolver,
@@ -89,7 +81,7 @@ export function createProvider(
     this: Resolver,
     pkgUrl: string
   ): Promise<PackageConfig | null> {
-    if (!ownsUrl.call(this, pkgUrl)) return null;
+    if (pkgUrl !== baseUrl && !pkgUrl.includes("/node_modules/")) return null;
 
     const pkgJsonUrl = new URL("package.json", pkgUrl);
     const res = await fetch(pkgJsonUrl.href, this.fetchOpts);

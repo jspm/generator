@@ -96,10 +96,7 @@ export class Resolver {
   providerNameForUrl(url: string): string | null {
     for (const name of Object.keys(this.providers)) {
       const provider = this.providers[name];
-      if (
-        (provider.ownsUrl && provider.ownsUrl.call(this, url)) ||
-        provider.parseUrlPkg.call(this, url)
-      ) {
+      if (provider.parseUrlPkg.call(this, url)) {
         return name;
       }
     }
