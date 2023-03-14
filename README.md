@@ -323,7 +323,7 @@ For batch install jobs, the dependencies include all installs. When using separa
 
 ### Providers
 
-Supported providers include `"jspm"`, `"jspm.system"`, `"nodemodules"`, `"skypack"`, `"jsdelivr"`, `"unpkg"`, `"deno"`, `"denoland"`, with all except `"nodemodules"` corresponding to their respective CDNs as the package source.
+Supported providers include `"jspm.io"`, `"jspm.io#system"`, `"nodemodules"`, `"skypack"`, `"jsdelivr"`, `"unpkg"`, `"deno"`, `"denoland"`, with all except `"nodemodules"` corresponding to their respective CDNs as the package source.
 
 The `"nodemodules"` provider does a traditional `node_modules` path search from the current module URL (eg for a
 `file:///` URL when generating maps for local code). When running over other URL protocols such as from the browser, the
@@ -331,7 +331,7 @@ only requirement is that the protocol in use does not return an error code for d
 many local dev servers support. The dependency package can then be located and the import map is constructed against these
 node_modules lookups.
 
-The `"jspm.system"` provider can be used to generate import maps for SystemJS, which behave identically to modules on `"jspm"`
+The `"jspm.io#system"` provider can be used to generate import maps for SystemJS, which behave identically to modules on `"jspm.io"`
 but fully supporting older browsers due to the semantic equivalence with ES modules of the SystemJS module format.
 
 ## API
