@@ -60,6 +60,9 @@ export const defaultProviders: Record<string, Provider> = {
   unpkg,
   "esm.sh": esmsh,
   "jspm.io": jspm,
+
+  // TODO: remove at some point, alias for backwards compatibility:
+  jspm,
 };
 
 export function getProvider(name: string, providers: Record<string, Provider>) {
