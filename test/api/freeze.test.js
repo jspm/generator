@@ -6,9 +6,10 @@ import assert from 'assert';
  *
  * When enabled, the entire input map is treated as a strict lockfile, meaning
  * no existing versions of any dependency will be changed by the generator. If
- * there's a secondary lock for "react", for instance, then even a primary
- * install will use that lock rather than latest. Freeze allows new dependencies
- * to be added, however, if they have no existing locks.
+ * there's a secondary lock for "react", for instance, then a secondary
+ * install will use that lock rather than latest, and a primary install will
+ * also use that lock unless it's out-of-range, in which case the primary
+ * diverges without touching the existing secondary lock.
  *
  * When freeze is combined with "resolutions", the custom resolutions always
  * always take precedence over any of the freeze behaviour.
@@ -20,7 +21,8 @@ import assert from 'assert';
 async function checkScenario(scenario) {
   const generator = new Generator({
     freeze: true,
-    mapUrl: import.meta.url,
+    mapUrl: new URL("./local/freeze", import.meta.url).href,
+    baseUrl: new URL("./local/freeze", import.meta.url).href,
     inputMap: scenario.map ?? {},
 
     ...(scenario.opts ?? {}),
@@ -79,8 +81,8 @@ await Promise.all([
     },
     install: ["lit", "react"],
     expect: {
-      "lit-html": "2.6.0", // primary lock is hit for a secondary install
-      "react": "18.1.0", // primary lock is hit for a primary install
+      "lit-html": "2.6.0", // lock is hit for a secondary install
+      "react": "18.1.0", // lock is hit for a primary install
       "lit": "latest",
     },
   },
@@ -90,13 +92,15 @@ await Promise.all([
     map: {
       scopes: {
         "https://ga.jspm.io/": {
-          "lit-html/is-server.js": "https://ga.jspm.io/npm:lit-html@2.6.0/development/is-server.js"
+          "lit-html/is-server.js": "https://ga.jspm.io/npm:lit-html@2.6.0/development/is-server.js",
+          "chalk": "https://ga.jspm.io/npm:chalk@2.0.0/index.js", // out-of-range
         }
       }
     },
-    install: ["lit", "lit-html", "react"],
+    install: ["lit", "lit-html", "react", "chalk"],
     expect: {
-      "lit-html": "2.6.0", // secondary lock is hit for primary install
+      "lit-html": "2.6.0", // lock is hit for primary as it's in-range
+      "chalk": "latest", // lock ignored for primary as it's out-of-range
       "react": "latest",
       "lit": "latest",
     },
