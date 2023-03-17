@@ -279,7 +279,7 @@ export interface GeneratorOptions {
    * When using a lockfile, do not modify any existing resolutions, and use
    * existing resolutions whenever possible for new locks.
    */
-  freeze?: boolean;
+  freeze?: boolean; // TODO: deprecate and move to install/link options
 
   /**
    * When using a lockfile, force update touched resolutions to latest.
@@ -287,7 +287,7 @@ export interface GeneratorOptions {
    * @deprecated Defaults to 'true' for installs and updates, set to 'false'
    * to enable old behaviour.
    */
-  latest?: boolean;
+  latest?: boolean; // TODO: deprecate and move to install/link options
 
   /**
    * Support tracing CommonJS dependencies locally. This is necessary if you

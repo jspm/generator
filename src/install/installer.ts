@@ -336,6 +336,11 @@ export class Installer {
       `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`
     );
     if (!this.installing) throwInternalError("Not installing");
+    if (opts.latest && opts.freeze) {
+      throw new JspmError(
+        "Cannot enable 'freeze' and 'latest' install options simultaneously."
+      );
+    }
 
     // Anything installed in the scope of the installer's base URL is treated
     // as top-level, and hits the primary locks. Anything else is treated as

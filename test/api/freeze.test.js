@@ -13,8 +13,8 @@ import assert from 'assert';
  * When freeze is combined with "resolutions", the custom resolutions always
  * always take precedence over any of the freeze behaviour.
  *
- * When freeze is combined with "latest", the latest flag takes precedence and
- * all locks are upgraded to the latest compatible versions.
+ * When freeze is combined with "latest", the installer throws, as their
+ * behaviour is incompatible.
  */
 
 async function checkScenario(scenario) {
@@ -27,7 +27,12 @@ async function checkScenario(scenario) {
   });
 
   // install dependencies:
-  await Promise.all(scenario.install.map(pkg => generator.install(pkg)));
+  try {
+    await Promise.all(scenario.install.map(pkg => generator.install(pkg)));
+  } catch(err) {
+    if (!scenario.expect) return; // expected to throw, all good
+    throw err;
+  }
   const map = generator.getMap();
 
   // fetch installed versions
@@ -140,11 +145,6 @@ await Promise.all([
       latest: true,
     },
     install: ["lit", "react"],
-    expect: {
-      "lit-html": "latest",
-      "react": "latest",
-      "lit": "latest",
-      "chalk": "4.1.0", // not touched by installs, so not bumped
-    },
+    expect: false, // throws
   },
 ].map(checkScenario));
