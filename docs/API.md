@@ -1,5 +1,5 @@
 <div align="center">
-  <img style="display: inline-block; width: 100px; height: 100pz" src="./media/logo.png"/>
+  <img style="display: inline-block; width: 100px; height: 100pz" src="/jspm.png"/>
   <h1 style="display: inline-block">JSPM Generator API Docs</h1>
 </div>
 
