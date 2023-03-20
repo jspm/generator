@@ -2,6 +2,6 @@
   "type": "module",
   "description": "Constraints for 'freeze.test.js'.",
   "dependencies": {
-    "chalk": "^4.0.0"
+    "chalk": "latest"
   }
 }

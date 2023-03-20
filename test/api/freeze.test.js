@@ -52,7 +52,7 @@ async function checkScenario(scenario) {
 
   // check constraints
   for (let [pkg, version] of Object.entries(scenario.expect ?? {})) {
-    if (version === "latest") version = (await lookup(pkg)).resolved.version;
+    if (version === "latest") version = (await lookup(`${pkg}@latest`)).resolved.version;
 
     assert(
       getVersions(pkg).every(v => v === version),
