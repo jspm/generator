@@ -18,6 +18,9 @@ export function resolveBuiltin(
   specifier: string,
   env: string[]
 ): string | Install | undefined {
+  // Bare npm:XXX imports are supported by Deno:
+  if (env.includes("deno") && specifier.startsWith("npm:")) return specifier;
+
   if (specifier.startsWith("deno:")) {
     let name = specifier.slice(5);
     if (name.endsWith(".ts")) name = name.slice(0, -3);
@@ -44,7 +47,6 @@ export function resolveBuiltin(
       },
     };
   }
-  if (specifier.startsWith("npm:")) return specifier;
 }
 
 export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
@@ -52,7 +54,7 @@ export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
   if (pkg.registry === "denoland")
     return `${cdnUrl}${pkg.name}@${vCache[pkg.name] ? "v" : ""}${pkg.version}/`;
   throw new Error(
-    `Deno provider does not support the ${pkg.registry} registry`
+    `Deno provider does not support the ${pkg.registry} registry for package "${pkg.name}" - perhaps you mean to install "denoland:${pkg.name}"?`
   );
 }
 
