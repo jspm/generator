@@ -1,4 +1,8 @@
-import { ExactPackage } from "../install/package.js";
+import { ExactPackage, PackageConfig } from "../install/package.js";
+import { Resolver } from "../trace/resolver.js";
+// @ts-ignore
+import { fetch } from "#fetch";
+import { JspmError } from "../common/err.js";
 
 // The wildcard '*' at the end tells the esm.sh CDN to externalise all
 // dependencies instead of bundling them into the returned module file.
@@ -16,6 +20,45 @@ export function parseUrlPkg(url: string) {
   const [, name, version] = url.slice(cdnUrl.length).match(exactPkgRegEx) || [];
   if (!name || !version) return;
   return { registry: "npm", name, version };
+}
+
+// esm.sh serves im/exports on their "exports" subpaths, whereas the generator
+// expects them to be served on their filesystem paths, so we have to rewrite
+// the package.json before doing anything with it:
+export async function getPackageConfig(
+  this: Resolver,
+  pkgUrl: string
+): Promise<PackageConfig | null> {
+  const res = await fetch(`${pkgUrl}package.json`, this.fetchOpts);
+  switch (res.status) {
+    case 200:
+    case 304:
+      break;
+    case 400:
+    case 401:
+    case 403:
+    case 404:
+    case 406:
+      this.pcfgs[pkgUrl] = null;
+      return;
+    default:
+      throw new JspmError(
+        `Invalid status code ${res.status} reading package config for ${pkgUrl}. ${res.statusText}`
+      );
+  }
+
+  const pcfg = await res.json();
+  if (pcfg.exports) {
+    for (const key of Object.keys(pcfg.exports)) {
+      pcfg.exports[key] = key;
+    }
+  }
+  if (pcfg.imports) {
+    for (const key of Object.keys(pcfg.imports)) {
+      pcfg.imports[key] = key;
+    }
+  }
+  return pcfg;
 }
 
 // Use JSPM version resolver for now:
