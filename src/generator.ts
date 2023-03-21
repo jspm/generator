@@ -707,6 +707,7 @@ export class Generator {
     {
       mapUrl,
       rootUrl,
+      htmlUrl,
       preload = false,
       integrity = false,
       whitespace = true,
@@ -715,6 +716,7 @@ export class Generator {
     }: {
       mapUrl?: string | URL;
       rootUrl?: string | URL | null;
+      htmlUrl?: string | URL | null;
       preload?: boolean | "all" | "static";
       integrity?: boolean;
       whitespace?: boolean;
@@ -726,7 +728,7 @@ export class Generator {
     const pins = await this.addMappings(html, mapUrl, rootUrl);
     return await this.htmlInject(html, {
       pins,
-      htmlUrl: mapUrl,
+      htmlUrl: htmlUrl || mapUrl, // backwards compatibility
       rootUrl,
       preload,
       integrity,
@@ -786,11 +788,18 @@ export class Generator {
       modules = [...new Set([...modules, ...impts])];
     }
 
-    const { map, staticDeps, dynamicDeps } = await this.extractMap(
-      modules,
-      htmlUrl,
-      rootUrl
-    );
+    try {
+      var { map, staticDeps, dynamicDeps } = await this.extractMap(
+        modules,
+        htmlUrl,
+        rootUrl
+      );
+    } catch (err) {
+      // Most likely cause of a generation failure:
+      throw new JspmError(
+        `${err.message}\n\nIf you are linking locally against your node_modules folder, make sure that you have all the necessary dependencies installed.`
+      );
+    }
 
     const preloadDeps =
       (preload === true && integrity) || preload === "all"
@@ -876,7 +885,7 @@ export class Generator {
             rootUrl || htmlUrl
               ? relativeUrl(
                   new URL(dep),
-                  new URL(rootUrl ?? htmlUrl),
+                  new URL(rootUrl || htmlUrl),
                   !!rootUrl
                 )
               : dep
@@ -889,7 +898,7 @@ export class Generator {
             rootUrl || htmlUrl
               ? relativeUrl(
                   new URL(dep),
-                  new URL(rootUrl ?? htmlUrl),
+                  new URL(rootUrl || htmlUrl),
                   !!rootUrl
                 )
               : dep
