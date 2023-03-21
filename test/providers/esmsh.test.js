@@ -12,7 +12,7 @@ const json = generator.getMap();
 
 assert.strictEqual(
   json.imports.lit,
-  "https://esm.sh/*lit@2.0.0-rc.1/index.js"
+  "https://esm.sh/*lit@2.0.0-rc.1"
 );
 
 const scope = json.scopes["https://esm.sh/"];

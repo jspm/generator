@@ -266,6 +266,7 @@ export class Resolver {
       case 403:
       case 404:
       case 406:
+      case 500:
         return false;
       default:
         throw new JspmError(
