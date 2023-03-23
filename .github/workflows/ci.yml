@@ -7,6 +7,24 @@ on:
     branches: main
 
 jobs:
+  test-build:
+    name: Build & Type Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Setup Chomp
+        uses: guybedford/chomp-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm install
+      - run: chomp build
+
   test-browser:
     name: Firefox Browser Tests
     runs-on: ubuntu-latest
