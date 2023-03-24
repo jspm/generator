@@ -1,4 +1,4 @@
-import { Generator } from "@jspm/generator";
+import { Generator, lookup } from "@jspm/generator";
 import assert from "assert";
 
 {
@@ -60,13 +60,14 @@ import assert from "assert";
 
   await generator.update("lit");
   const json = generator.getMap();
+  const expectedVersion = (await lookup("lit@latest")).resolved.version;
 
   assert.strictEqual(
     json.imports.lit,
-    "https://ga.jspm.io/npm:lit@2.6.1/index.js"
+    `https://ga.jspm.io/npm:lit@${expectedVersion}/index.js`
   );
   assert.strictEqual(
     json.imports["lit/directive.js"],
-    "https://ga.jspm.io/npm:lit@2.6.1/directive.js"
+    `https://ga.jspm.io/npm:lit@${expectedVersion}/directive.js`
   );
 }

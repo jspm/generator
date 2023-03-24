@@ -310,7 +310,7 @@ export class Installer {
       installSubpath
     );
     setConstraint(this.constraints, pkgName, pkgTarget, pkgScope);
-    this.upgradeSupportedTo(latestPkg, pkgUrl, installed);
+    if (!opts.freeze) this.upgradeSupportedTo(latestPkg, pkgUrl, installed);
     return { installUrl: pkgUrl, installSubpath };
   }
 
@@ -363,6 +363,8 @@ export class Installer {
         parentUrl
       );
 
+    // Find any existing locks in the current package scope - note that
+    // fallbacks to existing locks in other scopes are handled later:
     const existingResolution = getResolution(
       this.installs,
       pkgName,
