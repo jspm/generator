@@ -10,7 +10,12 @@
 
 This is the core import map generation project for the [JSPM CLI](https://github.com/jspm/jspm).
 
-JSPM Generator implements [universal CDN resolution](https://jspm.org/docs/cdn-resolution.md) semantics, based on an extension of the Node.js resolution to all URLs to determine the final import map to execute any graph of modules in a given environment, including the browser and host runtimes like Node.js or Deno.
+* **Local Linking**: map packages to your local `node_modules` folder
+* **Common CDNs**: Resolve against [jspm.io](https://jspm.io/), [UNPKG](https://unpkg.com/), [Skypack](https://www.skypack.dev/), [jsDelivr](https://jsdelivr.com) and [more](#customProviders)
+* **Universal Semantics**: Implements [universal CDN resolution](https://jspm.org/docs/cdn-resolution.md) semantics, based on an extension of the Node.js resolution
+* **Conditional Resolution**: Map different versions of a module based on environment
+* **Dependency Versioning**: Respects the version constraints in local and remote `package.json` files
+* **Package Entrypoints**: Handles node-style package exports, imports and own-name resolution
 
 See the [documentation](https://jspm.org/docs/generator) and [getting started](https://jspm.org/docs/getting-started) guide on jspm.org.
 
