@@ -12,25 +12,22 @@ For a CLI-based tool, see [jspm/jspm](https://github.com/jspm/jspm).
 <br>
 For a web-based UI, see [https://generator.jspm.io](https://generator.jspm.io).
 
-## Getting Started
+## Installation
 
-This is a guide to basic usage. If you prefer details, see the [API documentation](docs/API.md) instead.
-
-### Installation
-
-* **Node.js:**
+### Node.js
 ```
 npm install @jspm/generator
 ```
 
 Note that `@jspm/generator` only ships as [ESM](https://nodejs.org/dist/latest-v19.x/docs/api/esm.html), so to use it in Node.js you will either have to add `"type": "module"` to your `package.json`, or add a `.mjs` extension to the importing file. See the [Node.js documentation](https://nodejs.org/dist/latest-v19.x/docs/api/esm.html#enabling) for details.
 
-
-* **Deno / Browser:**
+### Deno / Browser
 
 You can get an import map for `@jspm/generator` [here](https://generator.jspm.io/#U2NhYGBkDM0rySzJSU1hcMgqLsjVT0/NSy1KLMkvcjDUM9AzBgB0jFHUJAA). Alternatively, you can generate one yourself using the [online tool](https://generator.jspm.io) or the [CLI](https://github.com/jspm/jspm).
 
-### Generating Import Maps
+# Usage
+
+## Generating Import Maps
 
 A minimal example of creating an input map from scratch is:
 
@@ -82,7 +79,7 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
 }
 ```
 
-### Tracing and Installing Dependencies
+## Tracing and Installing Dependencies
 
 The `generator.install` function can be used to install a package (along with its secondary dependencies) into an import map. By default, version constraints are taken from the `package.json` of the import map's parent package. If no constraints are found, the generator will look up the latest available version of the package:
 
@@ -134,7 +131,7 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
 }
 ```
 
-### Working with Existing Import Maps
+## Working with Existing Import Maps
 
 An import map can be passed to the generator with the `inputMap` option, which will be used as the starting point for any further operations. This allows you to add, upgrade or remove dependencies from an existing import map, enabling an iterative workflow:
 
@@ -228,7 +225,7 @@ console.log(generator.getMap());
 }
 ```
 
-### Mapping Locally Against `node_modules`
+## Mapping Locally Against `node_modules`
 
 If you have an existing Node.js ESM project, you can use the generator's `nodemodules` provider to map packages to your `node_modules` folder instead of using an external CDN. This is useful for offline development:
 
@@ -254,7 +251,7 @@ console.log(JSON.stringify(generator.getMap(), null, 2));
 }
 ```
 
-### Using an Import Map
+## Using an Import Map
 
 In order to actually _use_ an import map in an HTML page, the import map must be included as follows:
 
@@ -273,7 +270,7 @@ Dynamically injecting `<script type="importmap">` tags using JavaScript will als
 
 To target browsers without import map support, we recommend the [ES Module Shims](https://github.com/guybedford/es-module-shims) polyfill. This is a highly optimized polyfill with near-native performance - see the [performance benchmarks](https://github.com/guybedford/es-module-shims/blob/main/bench/README.md).
 
-### Working Directly with HTML
+## Working Directly with HTML
 
 Instead of manually adding import maps to your page, you can use `generator.htmlInject` to trace the inline modules in an HTML file and inject an import map back into it:
 
@@ -308,7 +305,7 @@ console.log(await generator.htmlinject(`
 <script type="module">import 'react'</script>
 ```
 
-### Module Preloading and Integrity
+## Module Preloading and Integrity
 
 The `generator.htmlInject` function supports injecting module preload tags, as well as integrity attributes for the modules. Preload tags ensure that all of your module dependencies are loaded up front, preventing additional round trips to the server, and integrity attributes prevent your modules from being tampered with in-transit:
 
@@ -378,7 +375,7 @@ console.log(await generator.htmlInject(`<!doctype html>`, {
 <link rel="modulepreload" href="https://ga.jspm.io/npm:react@18.2.0/index.js" integrity="sha384-i6bD4Fz1JxnWeeJ6W+zAMk/LgkWeHJ/B+22ykUkjaKgPupuM4UDtOU/2bSE8sEyC" />
 ```
 
-### Using a Different CDN
+## Using a Different CDN
 
 Package resolution in JSPM is handled using the concept of a [provider](./docs/interfaces/GeneratorOptions.md#defaultprovider), which is something that knows how to translate between versioned packages and URLs. The list of providers that are supported by the generator out-of-the-box is:
 
@@ -395,11 +392,11 @@ Unlike the other providers, which simply hook into their respective external CDN
 
 The `"jspm.io#system"` provider can be used to generate import maps for [SystemJS](https://github.com/systemjs/systemjs), with resolutions that behave identically to those of the `"jspm"` provider, but which fully support older browsers using the SystemJS module format.
 
-## API
+# API
 
 For details on the supported options in the [Generator](./classes/Generator.md) constructor, see [GeneratorOptions](./interfaces/GeneratorOptions.md). Documentation for the rest of the package exports can be found in the [modules page](./modules.md).
 
-### Package Configuration
+## Package Configuration
 
 Package exports configurations are taken from the package.json. When attempting to install or resolve a subpath of a package
 that does not exist in its exports, an error will be thrown.
@@ -413,7 +410,7 @@ Creating a PR to add custom exports overrides allows for fixing any package issu
 
 For more information on the package exports field see the [Node.js documentation](https://nodejs.org/dist/latest-v16.x/docs/api/packages.html#packages_package_entry_points).
 
-### Logging
+## Logging
 
 A logger is provided via `generator.logStream`:
 
