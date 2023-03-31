@@ -363,14 +363,55 @@ export class Installer {
         parentUrl
       );
 
-    // Find any existing locks in the current package scope - note that
-    // fallbacks to existing locks in other scopes are handled later:
+    // Fetch the current scope's pjson:
+    const definitelyPkgScope =
+      pkgScope || (await this.resolver.getPackageBase(parentUrl));
+    const pcfg =
+      (await this.resolver.getPackageConfig(definitelyPkgScope)) || {};
+
+    // By default, we take an install target from the current scope's pjson:
+    const pjsonTargetStr =
+      pcfg.dependencies?.[pkgName] ||
+      pcfg.peerDependencies?.[pkgName] ||
+      pcfg.optionalDependencies?.[pkgName] ||
+      (isTopLevel && pcfg.devDependencies?.[pkgName]);
+    const pjsonTarget =
+      pjsonTargetStr &&
+      newPackageTarget(
+        pjsonTargetStr,
+        new URL(definitelyPkgScope),
+        this.defaultRegistry,
+        pkgName
+      );
+    const resolutionInRange = async (resolution: InstalledResolution) => {
+      if (pjsonTarget) {
+        const resPkg = await this.resolver.parseUrlPkg(resolution.installUrl);
+        if (
+          resPkg &&
+          !(pjsonTarget.pkgTarget instanceof URL) &&
+          !pjsonTarget.pkgTarget.ranges.some((range) =>
+            range.has(resPkg.pkg.version)
+          )
+        ) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    // Find any existing locks in the current package scope, making sure
+    // secondaries are always in-range for their parent scope pjsons:
     const existingResolution = getResolution(
       this.installs,
       pkgName,
       isTopLevel ? null : pkgScope
     );
-    if (existingResolution) {
+    if (
+      existingResolution &&
+      (isTopLevel ||
+        opts.freeze ||
+        (await resolutionInRange(existingResolution)))
+    ) {
       this.log(
         "installer/install",
         `existing lock for ${pkgName} from ${parentUrl} in scope ${pkgScope} is ${JSON.stringify(
@@ -380,11 +421,10 @@ export class Installer {
       return existingResolution;
     }
 
-    // flattened resolution cascading for secondary
-    if (
-      (!isTopLevel && opts.mode.includes("existing") && !opts.latest) ||
-      (!isTopLevel && opts.mode.includes("new") && opts.freeze)
-    ) {
+    // Pick up resolutions from flattened scopes like 'https://ga.jspm.io/"
+    // for secondary installs, if they're in range for the current pjson, or
+    // if we're in a freeze install:
+    if (!isTopLevel) {
       const flattenedResolution = getFlattenedResolution(
         this.installs,
         pkgName,
@@ -392,8 +432,10 @@ export class Installer {
         traceSubpath
       );
 
-      // resolved flattened resolutions become real resolutions as they get picked up
-      if (flattenedResolution) {
+      if (
+        flattenedResolution &&
+        (opts.freeze || (await resolutionInRange(flattenedResolution)))
+      ) {
         this.newInstalls = setResolution(
           this.installs,
           pkgName,
@@ -405,28 +447,11 @@ export class Installer {
       }
     }
 
-    const definitelyPkgScope =
-      pkgScope || (await this.resolver.getPackageBase(parentUrl));
-    const pcfg =
-      (await this.resolver.getPackageConfig(definitelyPkgScope)) || {};
-
-    // package dependencies
-    const installTarget =
-      pcfg.dependencies?.[pkgName] ||
-      pcfg.peerDependencies?.[pkgName] ||
-      pcfg.optionalDependencies?.[pkgName] ||
-      (isTopLevel && pcfg.devDependencies?.[pkgName]);
-    if (installTarget) {
-      const target = newPackageTarget(
-        installTarget,
-        new URL(definitelyPkgScope),
-        this.defaultRegistry,
-        pkgName
-      );
-
+    // Use the pjson target if it exists:
+    if (pjsonTarget) {
       return this.installTarget(
         pkgName,
-        target,
+        pjsonTarget,
         traceSubpath,
         opts,
         isTopLevel ? null : pkgScope,
@@ -434,6 +459,7 @@ export class Installer {
       );
     }
 
+    // Try resolve the package as a built-in:
     const specifier = pkgName + (traceSubpath ? traceSubpath.slice(1) : "");
     const builtin = this.resolver.resolveBuiltin(specifier);
     if (builtin) {
