@@ -377,7 +377,7 @@ console.log(await generator.htmlInject(`<!doctype html>`, {
 
 ## Using a Different CDN
 
-Package resolution in JSPM is handled using the concept of a [provider](./docs/interfaces/GeneratorOptions.md#defaultprovider), which is something that knows how to translate between versioned packages and URLs. The list of providers that are supported by the generator out-of-the-box is:
+Package resolution in JSPM is handled using the concept of a [provider](./docs/interfaces/GeneratorOptions#defaultprovider), which is something that knows how to translate between versioned packages and URLs. The list of providers that are supported by the generator out-of-the-box is:
 
 * `"jspm.io"` - The **default provider**, resolves to the `jspm.io` CDN.
 * `"nodemodules"` - For **local workflows**, resolves to the local `node_modules` folder.
@@ -394,7 +394,7 @@ The `"jspm.io#system"` provider can be used to generate import maps for [SystemJ
 
 # API
 
-For details on the supported options in the [Generator](./classes/Generator.md) constructor, see [GeneratorOptions](./interfaces/GeneratorOptions.md). Documentation for the rest of the package exports can be found in the [modules page](./modules.md).
+For details on the supported options in the [Generator](./classes/Generator) constructor, see [GeneratorOptions](./interfaces/GeneratorOptions).
 
 ## Package Configuration
 
