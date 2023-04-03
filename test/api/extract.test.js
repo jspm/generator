@@ -19,6 +19,7 @@ const generator = new Generator({
   mapUrl: import.meta.url,
   defaultProvider: "jspm.io",
   env: ["production", "browser"],
+  freeze: true,
 });
 
 const { map } = await generator.extractMap("react");

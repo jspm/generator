@@ -383,21 +383,6 @@ export class Installer {
         this.defaultRegistry,
         pkgName
       );
-    const resolutionInRange = async (resolution: InstalledResolution) => {
-      if (pjsonTarget) {
-        const resPkg = await this.resolver.parseUrlPkg(resolution.installUrl);
-        if (
-          resPkg &&
-          !(pjsonTarget.pkgTarget instanceof URL) &&
-          !pjsonTarget.pkgTarget.ranges.some((range) =>
-            range.has(resPkg.pkg.version)
-          )
-        ) {
-          return false;
-        }
-      }
-      return true;
-    };
 
     // Find any existing locks in the current package scope, making sure
     // secondaries are always in-range for their parent scope pjsons:
@@ -410,7 +395,10 @@ export class Installer {
       existingResolution &&
       (isTopLevel ||
         opts.freeze ||
-        (await resolutionInRange(existingResolution)))
+        (await this.inRange(
+          existingResolution.installUrl,
+          pjsonTarget.pkgTarget
+        )))
     ) {
       this.log(
         "installer/install",
@@ -434,7 +422,11 @@ export class Installer {
 
       if (
         flattenedResolution &&
-        (opts.freeze || (await resolutionInRange(flattenedResolution)))
+        (opts.freeze ||
+          (await this.inRange(
+            flattenedResolution.installUrl,
+            pjsonTarget.pkgTarget
+          )))
       ) {
         this.newInstalls = setResolution(
           this.installs,
@@ -533,7 +525,7 @@ export class Installer {
     let bestMatch: ExactPackage | null = null;
     for (const pkgUrl of this.pkgUrls) {
       const pkg = await this.resolver.parseUrlPkg(pkgUrl);
-      if (pkg && this.inRange(pkg.pkg, matchPkg)) {
+      if (pkg && (await this.inRange(pkg.pkg, matchPkg))) {
         if (bestMatch)
           bestMatch =
             Semver.compare(new Semver(bestMatch.version), pkg.pkg.version) ===
@@ -546,11 +538,23 @@ export class Installer {
     return bestMatch;
   }
 
-  private inRange(pkg: ExactPackage, target: PackageTarget) {
+  private async inRange(
+    pkg: ExactPackage | string,
+    target: PackageTarget | URL | null
+  ) {
+    // URL|null targets don't have ranges, so nothing is in-range for them:
+    if (!target || target instanceof URL) return false;
+
+    const pkgExact =
+      typeof pkg === "string"
+        ? (await this.resolver.parseUrlPkg(pkg))?.pkg
+        : pkg;
+    if (!pkgExact) return false;
+
     return (
-      pkg.registry === target.registry &&
-      pkg.name === target.name &&
-      target.ranges.some((range) => range.has(pkg.version, true))
+      pkgExact.registry === target.registry &&
+      pkgExact.name === target.name &&
+      target.ranges.some((range) => range.has(pkgExact.version, true))
     );
   }
 
