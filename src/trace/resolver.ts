@@ -306,9 +306,15 @@ export class Resolver {
     const pkg = await resolveLatestTarget(latestTarget, layer, parentUrl);
     if (pkg) return pkg;
 
-    throw new JspmError(
-      `Unable to resolve package ${latestTarget.registry}:${latestTarget.name} in range "${latestTarget.range}" from parent ${parentUrl}`
-    );
+    if (provider === "nodemodules") {
+      throw new JspmError(
+        `${parentUrl}node_modules/${target.name} does not exist, try installing "${target.name}" with npm first via "npm install ${target.name}".`
+      );
+    } else {
+      throw new JspmError(
+        `Unable to resolve package ${latestTarget.registry}:${latestTarget.name} in range "${latestTarget.range}" from parent ${parentUrl}.`
+      );
+    }
   }
 
   async wasCommonJS(url: string): Promise<boolean> {
