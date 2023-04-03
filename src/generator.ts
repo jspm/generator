@@ -1002,9 +1002,7 @@ export class Generator {
         "Install takes no arguments, a single install target, or a list of install targets."
       );
 
-    // If there are no arguments, then we reinstall all the top-level pins
-    // that were recognised by an installed provider (i.e. not custom mappings,
-    // which could correspond to arbitrary modules):
+    // If there are no arguments, then we reinstall all the top-level locks:
     if (!install) {
       await this.traceMap.processInputMap;
       return this.install(
