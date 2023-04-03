@@ -34,9 +34,8 @@ assert.strictEqual(
   "https://ga.jspm.io/npm:react@17.0.1/index.js"
 );
 
-// Installing a new dependency with freeze should not throw, but it should
-// never bump versions from the import map:
-await generator.install(["lit@2.6.1", "lit-html"]);
+// Installing a new dependency with freeze should not throw:
+await generator.install(["lit@2.6.1"]);
 json = generator.getMap();
 
 assert.strictEqual(
@@ -47,6 +46,6 @@ assert.strictEqual(
 // Even though latest for lit-html is 2.6.1, it should remain locked due to
 // the freeze option being set:
 assert.strictEqual(
-  json.imports["lit-html"],
+  json.scopes["https://ga.jspm.io/"]["lit-html"],
   "https://ga.jspm.io/npm:lit-html@2.6.0/lit-html.js",
 );

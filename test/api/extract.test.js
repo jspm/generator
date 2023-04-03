@@ -19,6 +19,7 @@ const generator = new Generator({
   mapUrl: import.meta.url,
   defaultProvider: "jspm.io",
   env: ["production", "browser"],
+  freeze: true,
 });
 
 const { map } = await generator.extractMap("react");
@@ -29,7 +30,7 @@ assert.strictEqual(
 );
 assert.strictEqual(
   map.scopes["https://ga.jspm.io/"]["object-assign"],
-  "https://ga.jspm.io/npm:object-assign@4.1.0/index.js"
+  "https://ga.jspm.io/npm:object-assign@4.1.1/index.js"
 );
 assert.strictEqual(Object.keys(map.imports).length, 1);
 assert.strictEqual(Object.keys(map.scopes["https://ga.jspm.io/"]).length, 1);

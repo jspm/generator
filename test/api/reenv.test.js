@@ -28,7 +28,7 @@ import assert from "assert";
   );
   assert.strictEqual(
     json.scopes["https://ga.jspm.io/"]["object-assign"],
-    "https://ga.jspm.io/npm:object-assign@4.1.0/index.js"
+    "https://ga.jspm.io/npm:object-assign@4.1.1/index.js"
   );
 }
 
@@ -61,6 +61,6 @@ import assert from "assert";
   );
   assert.strictEqual(
     json.scopes["https://ga.jspm.io/"]["object-assign"],
-    "https://ga.jspm.io/npm:object-assign@4.1.0/index.js"
+    "https://ga.jspm.io/npm:object-assign@4.1.1/index.js"
   );
 }

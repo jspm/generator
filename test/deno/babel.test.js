@@ -3,6 +3,10 @@ import { denoExec } from "#test/deno";
 
 const generator = new Generator({
   env: ["node", "deno"],
+  resolutions: {
+    // hack as deno bombs on circular imports in 7.21.0 (latest)
+    "@babel/helper-create-class-features-plugin": "7.20.0"
+  },
 });
 
 await generator.install("@babel/core@7.15.0");

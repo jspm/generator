@@ -1054,7 +1054,6 @@ export class Generator {
         validatePkgName(alias);
       }
 
-      // Trace the target package and it's secondary dependencies:
       this.log(
         "generator/install",
         `Adding primary constraint for ${alias}: ${JSON.stringify(target)}`
