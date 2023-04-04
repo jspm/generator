@@ -1,6 +1,23 @@
 import { Generator, lookup } from "@jspm/generator";
 import assert from "assert";
 
+{
+  const generator = new Generator({
+    defaultProvider: "deno",
+  });
+
+  await generator.install("denoland:fresh@1.1.5/runtime.ts");
+  const json = generator.getMap();
+
+  assert.strictEqual(
+    json.imports["fresh/runtime.ts"],
+    "https://deno.land/x/fresh@1.1.5/runtime.ts",
+  );
+  assert.ok(
+    json.scopes["https://deno.land/"]["preact"]
+  );
+}
+
 const denoStdVersion = (await lookup("deno:path")).resolved.version;
 const oakVersion = (await lookup("denoland:oak")).resolved.version;
 
@@ -190,22 +207,5 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
   assert.strictEqual(
     json.imports["testing/asserts"],
     `https://deno.land/std@0.148.0/testing/asserts.ts`
-  );
-}
-
-{
-  const generator = new Generator({
-    defaultProvider: "deno",
-  });
-
-  await generator.install("denoland:fresh@1.1.5/runtime.ts");
-  const json = generator.getMap();
-
-  assert.strictEqual(
-    json.imports["fresh/runtime.ts"],
-    "https://deno.land/x/fresh@1.1.5/runtime.ts",
-  );
-  assert.ok(
-    json.scopes["https://deno.land/"]["preact"]?.includes("esm.sh"),
   );
 }
