@@ -599,7 +599,7 @@ export class Generator {
             specifier,
             {
               installOpts: {
-                freeze: this.freeze,
+                freeze: this.freeze ?? true, // link defaults to freeze
                 latest: this.latest,
                 mode: "new-prefer-existing",
               },
