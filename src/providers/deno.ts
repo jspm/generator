@@ -8,6 +8,7 @@ import { SemverRange } from "sver";
 // @ts-ignore
 import { fetch } from "#fetch";
 import { Install } from "../generator.js";
+import { IImportMap, ImportMap } from "@jspm/import-map";
 
 const cdnUrl = "https://deno.land/x/";
 const stdlibUrl = "https://deno.land/std";
@@ -148,6 +149,41 @@ export async function getPackageConfig(
       },
     };
   }
+
+  // If there's a package.json, return that:
+  const pkgJsonUrl = new URL("package.json", pkgUrl);
+  const pkgRes = await fetch(pkgJsonUrl.href, this.fetchOpts);
+  switch (pkgRes.status) {
+    case 200:
+    case 304:
+      return (await pkgRes.json()) as PackageConfig;
+  }
+
+  // If there's a deno.json, read off the top-level imports as deps:
+  const denoJsonUrl = new URL("deno.json", pkgUrl);
+  const denoRes = await fetch(denoJsonUrl.href, this.fetchOpts);
+  switch (denoRes.status) {
+    case 200:
+    case 304:
+      const json = await denoRes.json();
+
+      // If there's an "importMap" field, translate that:
+      if (json.importMap) {
+        const imRes = await fetch(
+          new URL(json.importMap, denoJsonUrl).href,
+          this.fetchOpts
+        );
+        switch (imRes.status) {
+          case 200:
+          case 304:
+            return translateMap(await imRes.json());
+        }
+      }
+
+      // Fallback to interpreting deno.json as an import map:
+      return translateMap(json);
+  }
+
   return null;
 }
 
@@ -232,4 +268,26 @@ export async function resolveLatestTarget(
   const { version } = (await parseUrlPkg(res.url)).pkg;
   if (registry === "deno") denoStdVersion = version;
   return { registry, name, version };
+}
+
+/**
+ * Translates a Deno import map into a package config with corresponding
+ * dependencies. This is a small hack to let us handle Deno dependencies that
+ * are managing their secondary dependencies with deno.json import maps.
+ *
+ * TODO:
+ * In theory we should be doing some kind of scoped merge of the dependency's
+ * import map, but for now we just translate the top-level imports:
+ */
+function translateMap(importMap: IImportMap): PackageConfig {
+  let res: PackageConfig = {
+    dependencies: {},
+  };
+
+  for (const [name, url] of Object.entries(importMap?.imports ?? {})) {
+    if (name.startsWith("$") || name.endsWith("/")) continue;
+    res.dependencies[name] = url;
+  }
+
+  return res;
 }
