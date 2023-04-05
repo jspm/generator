@@ -112,6 +112,14 @@ export class Installer {
     if (opts.defaultProvider)
       this.defaultProvider = parseProviderStr(opts.defaultProvider);
     this.providers = Object.assign({}, registryProviders);
+
+    // TODO: this is a hack, as we currently don't have proper support for
+    // providers owning particular registries. The proper way to do this would
+    // be to have each provider declare what registries it supports, and
+    // construct a providers mapping at init when we detect default provider:
+    if (opts.defaultProvider.includes("deno"))
+      this.providers["npm:"] ??= "jspm.io";
+
     if (opts.providers) Object.assign(this.providers, opts.providers);
   }
 

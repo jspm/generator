@@ -8,6 +8,7 @@ import { SemverRange } from "sver";
 // @ts-ignore
 import { fetch } from "#fetch";
 import { Install } from "../generator.js";
+import { IImportMap, ImportMap } from "@jspm/import-map";
 
 const cdnUrl = "https://deno.land/x/";
 const stdlibUrl = "https://deno.land/std";
@@ -148,6 +149,16 @@ export async function getPackageConfig(
       },
     };
   }
+
+  // If there's a package.json, return that:
+  const pkgJsonUrl = new URL("package.json", pkgUrl);
+  const pkgRes = await fetch(pkgJsonUrl.href, this.fetchOpts);
+  switch (pkgRes.status) {
+    case 200:
+    case 304:
+      return (await pkgRes.json()) as PackageConfig;
+  }
+
   return null;
 }
 
