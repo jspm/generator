@@ -118,7 +118,7 @@ export class Installer {
     // be to have each provider declare what registries it supports, and
     // construct a providers mapping at init when we detect default provider:
     if (opts.defaultProvider.includes("deno"))
-      this.providers["npm:"] = "jspm.io";
+      this.providers["npm:"] ??= "jspm.io";
 
     if (opts.providers) Object.assign(this.providers, opts.providers);
   }
