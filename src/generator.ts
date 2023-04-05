@@ -1006,15 +1006,46 @@ export class Generator {
     if (!install) {
       await this.traceMap.processInputMap;
       return this.install(
-        Object.keys(this.traceMap.installer.installs.primary)
+        Object.entries(this.traceMap.installer.installs.primary).map(
+          ([alias, target]) => {
+            const pkgTarget =
+              this.traceMap.installer.constraints.primary[alias];
+
+            // Try to reinstall lock against constraints if possible, otherwise
+            // reinstall it as a URL directly (which has the downside that it
+            // won't have NPM versioning semantics):
+            let newTarget: string | InstallTarget = target.installUrl;
+            if (pkgTarget) {
+              if (pkgTarget instanceof URL) {
+                newTarget = pkgTarget.href;
+              } else {
+                newTarget = `${pkgTarget.registry}:${pkgTarget.name}`;
+              }
+            }
+
+            return {
+              alias,
+              target: newTarget,
+              subpath: target.installSubpath ?? undefined,
+            } as Install;
+          }
+        )
       );
     }
 
     // Split the case of multiple install targets:
-    if (Array.isArray(install))
+    if (Array.isArray(install)) {
+      if (install.length === 0) {
+        const { map, staticDeps, dynamicDeps } =
+          await this.traceMap.finishInstall();
+        this.map = map;
+        return { staticDeps, dynamicDeps };
+      }
+
       return await Promise.all(
         install.map((install) => this.install(install))
       ).then((installs) => installs.find((i) => i));
+    }
 
     // Split the case of multiple install subpaths:
     if (typeof install !== "string" && install.subpaths !== undefined) {

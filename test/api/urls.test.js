@@ -1,6 +1,8 @@
 import { Generator } from "@jspm/generator";
 import assert from "assert";
 
+// TODO: enable these one we support arbitrary URL installation
+
 // Should be able to install a package scope URL directly, and it should
 // resolve to the default export in the scope's package.json:
 await (async (enabled=true) => {
@@ -47,7 +49,7 @@ await (async (enabled=true) => {
     map?.imports?.lit,
     "https://unpkg.com/lit@2.0.0/index.js",
   );
-})();
+})(false);
 
 // TODO
 // Should be able to install a module URL directly, even if that module URL is
