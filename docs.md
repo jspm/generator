@@ -21,9 +21,9 @@ JSPM Generator ships as an ES module package only.
 
 The generator package exposes a [Generator class](/docs/generator/stable/classes/Generator), which is initialized with [Generation Options](/docs/generator/stable/interfaces/GeneratorOptions).
 
-Methods on the generator class apply install operations such as [generator.install()](http://localhost:8080/docs/generator/stable/classes/Generator.html#install).
+Methods on the generator class apply install operations such as [generator.install()](/docs/generator/stable/classes/Generator.html#install).
 
-Extraction methods like [getMap()](http://localhost:8080/docs/generator/stable/classes/Generator.html#getMap) are used to retrieve the final generated import map.
+Extraction methods like [getMap()](/docs/generator/stable/classes/Generator.html#getMap) are used to retrieve the final generated import map.
 
 Static API functions are provided for stateless commands.
 
@@ -35,7 +35,7 @@ The global provider can be configured by the [defaultProvider](/docs/generator/s
 
 For multi-provider projects, scoped providers can be configured via the [providers option](/docs/generator/stable/interfaces/GeneratorOptions.html#providers).
 
-[Custom providers](http://localhost:8080/docs/generator/stable/interfaces/GeneratorOptions.html#customProviders) can be defined based on provider hooks.
+[Custom providers](/docs/generator/stable/interfaces/GeneratorOptions.html#customProviders) can be defined based on provider hooks.
 
 ## Logging
 
