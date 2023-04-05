@@ -1,6 +1,5 @@
 import { Generator, lookup, parseUrlPkg } from "@jspm/generator";
 import assert from "assert";
-import { fileURLToPath } from "url";
 
 /**
  * NPM has the following behaviour with respect to primary and secondary
@@ -83,6 +82,22 @@ const [latestReact, latestObjectAssign] = await (async () => {
   );
 }
 
+// primary in-range but not latest, installed under alias
+// should be replaced with in-range latest
+{
+  const g = generator(await getMapFor([{
+    alias: "alias",
+    target: "react@16.13.0"
+  }]));
+  await g.install();
+
+  const map = g.getMap();
+  assert.deepStrictEqual(
+    (await parseUrlPkg(map.imports["alias"])).pkg,
+    latestReact,
+  );
+}
+
 // secondary out-of-range
 // should be replaced with in-range latest
 {
@@ -113,5 +128,22 @@ const [latestReact, latestObjectAssign] = await (async () => {
   assert.deepStrictEqual(
     (await parseUrlPkg(map.scopes["https://ga.jspm.io/"]["prop-types/checkPropTypes"])).pkg,
     propTypes,
+  );
+}
+
+// primary custom mapping
+// should not be touched
+{
+  const g = generator({
+    imports: {
+      "react": "https://code.jquery.com/jquery-3.6.4.min.js",
+    },
+  });
+  await g.install();
+
+  const map = g.getMap();
+  assert.deepStrictEqual(
+    map.imports.react,
+    "https://code.jquery.com/jquery-3.6.4.min.js",
   );
 }
