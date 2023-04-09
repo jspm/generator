@@ -1,6 +1,6 @@
 _The JSPM Generator API is the low-level core library for working with import map generation._
 
-Usually, the generator is used indirectly through a wrapper project such as the [JSPM CLI](https://jspm.org/docs/jspm), [Online Generator](https://generator.jspm.io), [CDN Generation API](https://jspm.org/cdn/api#generator) or an [integration project](https://jspm.org/docs/integrations).
+Usually, the generator is used indirectly through a wrapper project such as the [JSPM CLI](https://jspm.org/docs/jspm-cli), [Online Generator](https://generator.jspm.io), [CDN Generation API](https://jspm.org/cdn/api#generator) or an [integration project](https://jspm.org/docs/integrations).
 
 * GitHub: https://github.com/jspm/generator
 * npm: https://npmjs.org/package/@jspm/generator
