@@ -38,7 +38,7 @@ for (const [name, expected] of Object.entries(expectedResults)) {
     )),
   });
 
-  await gen.install("wayfarer");
+  await gen.update();
   const map = JSON.stringify(gen.getMap(), null, 2);
   for (const [pkg, resolution] of Object.entries(expected)) {
     assert(

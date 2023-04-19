@@ -36,10 +36,16 @@ export interface ResolutionOptions {
   freeze?: boolean;
 
   /**
-   * Force update all touched resolutions to the latest version compatible
-   * with the parent's package.json.
+   * Force update all touched primary resolutions to the latest version
+   * compatible with the parent's package.json.
    */
-  latest?: boolean;
+  latestPrimaries?: boolean;
+
+  /**
+   * Force update all touched secondary resolutions to the latest version
+   * compatible with the parent's package.json.
+   */
+  latestSecondaries?: boolean;
 }
 
 export type InstallTarget = {
@@ -196,6 +202,10 @@ export class Installer {
         "ERR_NOT_INSTALLED"
       );
 
+    const useLatest =
+      (pkgScope === null && opts.latestPrimaries) ||
+      (pkgScope !== null && opts.latestSecondaries);
+
     // Resolutions are always authoritative, and override the existing target:
     if (this.resolutions[pkgName]) {
       const resolutionTarget = newPackageTarget(
@@ -245,8 +255,8 @@ export class Installer {
     // If this is a secondary install or we're in an existing-lock install
     // mode, then we make an attempt to find a compatible existing lock:
     if (
-      (opts.freeze || opts.mode.includes("existing") || pkgScope !== null) &&
-      !opts.latest
+      (opts.freeze || opts.mode?.includes("existing") || pkgScope !== null) &&
+      !useLatest
     ) {
       const pkg = await this.getBestExistingMatch(pkgTarget);
       if (pkg) {
@@ -284,7 +294,7 @@ export class Installer {
     // constraint and we can't, then we fallback to the best existing lock:
     if (
       !opts.freeze &&
-      !opts.latest &&
+      !useLatest &&
       pkgScope &&
       latestPkg &&
       !this.tryUpgradeAllTo(latestPkg, pkgUrl, installed)
@@ -353,7 +363,7 @@ export class Installer {
       `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`
     );
     if (!this.installing) throwInternalError("Not installing");
-    if (opts.latest && opts.freeze) {
+    if ((opts.latestPrimaries || opts.latestSecondaries) && opts.freeze) {
       throw new JspmError(
         "Cannot enable 'freeze' and 'latest' install options simultaneously."
       );
@@ -364,6 +374,9 @@ export class Installer {
     // a secondary dependency:
     // TODO: wire this concept through the whole codebase.
     const isTopLevel = !pkgScope || pkgScope == this.installBaseUrl;
+    const useLatest =
+      (isTopLevel && opts.latestPrimaries) ||
+      (!isTopLevel && opts.latestSecondaries);
 
     if (this.resolutions[pkgName])
       return this.installTarget(
@@ -402,13 +415,14 @@ export class Installer {
       );
 
     // Find any existing locks in the current package scope, making sure
-    // secondaries are always in-range for their parent scope pjsons:
+    // locks are always in-range for their parent scope pjsons:
     const existingResolution = getResolution(
       this.installs,
       pkgName,
       isTopLevel ? null : pkgScope
     );
     if (
+      !useLatest &&
       existingResolution &&
       (isTopLevel ||
         opts.freeze ||
@@ -438,6 +452,7 @@ export class Installer {
       );
 
       if (
+        !useLatest &&
         flattenedResolution &&
         (opts.freeze ||
           (await this.inRange(

@@ -627,7 +627,8 @@ export class Generator {
             {
               installOpts: {
                 freeze: opts?.freeze ?? this.freeze ?? true, // link defaults to freeze
-                latest: opts?.latest ?? this.latest,
+                latestPrimaries: opts?.latestPrimaries ?? this.latest,
+                latestSecondaries: opts?.latestSecondaries ?? this.latest,
                 mode: opts?.mode ?? "new-prefer-existing",
               },
               toplevel: true,
@@ -1022,6 +1023,14 @@ export class Generator {
     // If there are no arguments, then we reinstall all the top-level locks:
     if (!install) {
       await this.traceMap.processInputMap;
+
+      // To match the behaviour of an argumentless `npm install`, we use
+      // existing resolutions for everything unless it's out-of-range:
+      opts ??= {};
+      opts.latestPrimaries ??= false;
+      opts.latestSecondaries ??= false;
+      opts.mode ??= "new-prefer-existing";
+
       return this.install(
         Object.entries(this.traceMap.installer.installs.primary).map(
           ([alias, target]) => {
@@ -1046,7 +1055,8 @@ export class Generator {
               subpath: target.installSubpath ?? undefined,
             } as Install;
           }
-        )
+        ),
+        opts
       );
     }
 
@@ -1060,7 +1070,7 @@ export class Generator {
       }
 
       return await Promise.all(
-        install.map((install) => this.install(install))
+        install.map((install) => this.install(install, opts))
       ).then((installs) => installs.find((i) => i));
     }
 
@@ -1077,11 +1087,14 @@ export class Generator {
       });
       return await Promise.all(
         install.subpaths.map((subpath) =>
-          this.install({
-            target: (install as Install).target,
-            alias: (install as Install).alias,
-            subpath,
-          })
+          this.install(
+            {
+              target: (install as Install).target,
+              alias: (install as Install).alias,
+              subpath,
+            },
+            opts
+          )
         )
       ).then((installs) => installs.find((i) => i));
     }
@@ -1109,13 +1122,17 @@ export class Generator {
         `Adding primary constraint for ${alias}: ${JSON.stringify(target)}`
       );
 
-      await this.traceMap.add(alias, target, this.freeze, this.latest);
+      await this.traceMap.add(alias, target, opts);
       await this.traceMap.visit(
         alias + subpath.slice(1),
         {
           installOpts: {
             freeze: opts?.freeze ?? this.freeze,
-            latest: opts?.latest ?? this.latest,
+            latestPrimaries:
+              opts?.latestPrimaries ??
+              this.latest ??
+              (this.freeze ? false : true),
+            latestSecondaries: opts?.latestSecondaries ?? this.latest ?? false,
             mode: opts?.mode ?? "new",
           },
           toplevel: true,
@@ -1162,13 +1179,15 @@ export class Generator {
     await this.traceMap.processInputMap;
 
     // To match the behaviour of `npm update`, an argumentless update should
-    // reinstall all of the primary locks to latest:
+    // reinstall all primary locks and their secondary dependencies to the
+    // latest compatible versions:
     const primaryResolutions = this.traceMap.installer.installs.primary;
     const primaryConstraints = this.traceMap.installer.constraints.primary;
     if (!pkgNames) {
       pkgNames = Object.keys(primaryResolutions);
       opts ??= {};
-      opts.latest ??= true;
+      opts.latestPrimaries ??= true;
+      opts.latestSecondaries ??= true;
     }
 
     const installs: Install[] = [];

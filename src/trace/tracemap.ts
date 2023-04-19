@@ -379,14 +379,13 @@ export default class TraceMap {
   async add(
     name: string,
     target: InstallTarget,
-    freeze?: boolean,
-    latest?: boolean
+    opts?: ResolutionOptions
   ): Promise<void> {
     await this.installer.installTarget(
       name,
       target,
       null,
-      { mode: "new", freeze, latest },
+      opts || {},
       null,
       this.mapUrl.href
     );
