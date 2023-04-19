@@ -27,6 +27,7 @@ function test_command() {
   do
     cp "${test}/package.json" package.json.bkp
     cp "${test}/package-lock.json" package-lock.json.bkp
+    cp "${test}/importmap.json" importmap.json.bkp
 
     cd "${test}"
     primary="wayfarer"
@@ -53,6 +54,7 @@ function test_command() {
     mkdir "${test}"
     mv package.json.bkp "${test}/package.json"
     mv package-lock.json.bkp "${test}/package-lock.json"
+    mv importmap.json.bkp "${test}/importmap.json"
   done
   echo
 }
