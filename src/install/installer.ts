@@ -24,12 +24,21 @@ export interface PackageProvider {
 export type ResolutionMode = "new" | "new-prefer-existing" | "existing";
 
 /**
- * InstallOptions configures the interaction between the Installer and the
- * existing lockfile during an install operation.
+ * ResolutionOptions configures the interaction between version resolutions
+ * and the existing lockfile during operations.
  */
-export interface InstallOptions {
-  mode: ResolutionMode;
+export interface ResolutionOptions {
+  mode?: ResolutionMode;
+
+  /**
+   * Use existing locks whenever possible for all touched resolutions.
+   */
   freeze?: boolean;
+
+  /**
+   * Force update all touched resolutions to the latest version compatible
+   * with the parent's package.json.
+   */
   latest?: boolean;
 }
 
@@ -168,7 +177,7 @@ export class Installer {
    * @param {string} pkgName Name of the package being installed.
    * @param {InstallTarget} target The installation target being installed.
    * @param {`./${string}` | '.'} traceSubpath
-   * @param {InstallOptions} opts Specifies how to interact with existing installs.
+   * @param {ResolutionOptions} opts Specifies how to interact with existing installs.
    * @param {`${string}/` | null} pkgScope URL of the package scope in which this install is occurring, null if it's a top-level install.
    * @param {string} parentUrl URL of the parent for this install.
    * @returns {Promise<InstalledResolution>}
@@ -177,7 +186,7 @@ export class Installer {
     pkgName: string,
     { pkgTarget, installSubpath }: InstallTarget,
     traceSubpath: `./${string}` | ".",
-    opts: InstallOptions,
+    opts: ResolutionOptions,
     pkgScope: `${string}/` | null,
     parentUrl: string
   ): Promise<InstalledResolution> {
@@ -326,7 +335,7 @@ export class Installer {
    * Installs the given package specifier.
    *
    * @param {string} pkgName The package specifier being installed.
-   * @param {InstallOptions} opts Specifies how to interact with existing installs.
+   * @param {ResolutionOptions} opts Specifies how to interact with existing installs.
    * @param {`${string}/` | null} pkgScope URL of the package scope in which this install is occurring, null if it's a top-level install.
    * @param {`./${string}` | '.'} traceSubpath
    * @param {string} parentUrl URL of the parent for this install.
@@ -334,7 +343,7 @@ export class Installer {
    */
   async install(
     pkgName: string,
-    opts: InstallOptions,
+    opts: ResolutionOptions,
     pkgScope: `${string}/` | null = null,
     traceSubpath: `./${string}` | ".",
     parentUrl: string = this.installBaseUrl

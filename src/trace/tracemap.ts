@@ -2,7 +2,7 @@ import {
   type InstallerOptions,
   InstallTarget,
   ResolutionMode,
-  InstallOptions,
+  ResolutionOptions,
 } from "../install/installer.js";
 import {
   importedFrom,
@@ -91,7 +91,7 @@ interface TraceEntry {
 interface VisitOpts {
   static?: boolean;
   toplevel: boolean;
-  installOpts: InstallOptions;
+  installOpts: ResolutionOptions;
   visitor?: (
     specifier: string,
     parentUrl: string,
@@ -398,7 +398,7 @@ export default class TraceMap {
   async resolve(
     specifier: string,
     parentUrl: string,
-    installOpts: InstallOptions,
+    installOpts: ResolutionOptions,
     toplevel: boolean
   ): Promise<string> {
     const cjsEnv = this.tracedUrls[parentUrl]?.wasCjs;
