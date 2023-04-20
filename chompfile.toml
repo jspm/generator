@@ -133,10 +133,10 @@ run = '''
 [[task]]
 name = 'prettier'
 template = 'prettier'
-deps = ['src/**/*.ts', 'test/**/*.ts']
+deps = ['src/**/*.ts', 'test/**/*.js']
 [task.template-options]
 ignore-path = '.prettierignore'
-files = 'src/**/*.ts test/**/*.ts'
+files = 'src/**/*.ts test/**/*.js'
 loglevel = 'warn'
 
 [[task]]

@@ -6,7 +6,7 @@ const generator = new Generator({
   defaultProvider: "jspm.io",
   inputMap: {
     imports: {
-      "react": "https://cdn.skypack.dev/react@18.2.0/index.js",
+      react: "https://cdn.skypack.dev/react@18.2.0/index.js",
     },
   },
 });

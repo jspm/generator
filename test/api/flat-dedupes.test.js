@@ -22,49 +22,49 @@
 //     ethers: "5.7.2", // workaround for incorrect version pin in @wagmi/core
 //   },
 // };
-// 
+//
 // const generatorOne = new Generator({
 //   ...BASE_CONFIG,
 // });
 // await generatorOne.install("@react-three/fiber");
 // const mapOne = generatorOne.getMap();
-// 
+//
 // strictEqual(
 //   mapOne.scopes["https://ga.jspm.io/"].zustand,
 //   "https://ga.jspm.io/npm:zustand@3.7.1/esm/index.js"
 // );
-// 
+//
 // const generatorTwo = new Generator({
 //   ...BASE_CONFIG,
 //   inputMap: mapOne,
 // });
 // await generatorTwo.install("wagmi");
 // const mapTwo = generatorTwo.getMap();
-// 
+//
 // strictEqual(
 //   mapTwo.scopes["https://ga.jspm.io/"].zustand,
 //   "https://ga.jspm.io/npm:zustand@3.7.1/esm/index.js"
 // );
-// 
+//
 // const generatorThree = new Generator({
 //   ...BASE_CONFIG,
 //   inputMap: mapTwo,
 // });
 // await generatorThree.install("connectkit");
 // const mapThree = generatorThree.getMap();
-// 
+//
 // strictEqual(
 //   mapThree.scopes["https://ga.jspm.io/"].zustand,
 //   "https://ga.jspm.io/npm:zustand@3.7.1/esm/index.js"
 // );
-// 
+//
 // const generatorFour = new Generator({
 //   ...BASE_CONFIG,
 //   inputMap: mapThree,
 // });
 // await generatorFour.reinstall();
 // const mapFour = generatorFour.getMap();
-// 
+//
 // strictEqual(
 //   mapFour.scopes["https://ga.jspm.io/"].zustand,
 //   "https://ga.jspm.io/npm:zustand@3.7.1/esm/index.js"

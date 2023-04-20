@@ -11,11 +11,9 @@ import assert from "assert";
 
   assert.strictEqual(
     json.imports["fresh/runtime.ts"],
-    "https://deno.land/x/fresh@1.1.5/runtime.ts",
+    "https://deno.land/x/fresh@1.1.5/runtime.ts"
   );
-  assert.ok(
-    json.scopes["https://deno.land/"]["preact"]
-  );
+  assert.ok(json.scopes["https://deno.land/"]["preact"]);
 }
 
 const denoStdVersion = (await lookup("deno:path")).resolved.version;

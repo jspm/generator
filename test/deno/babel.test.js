@@ -15,15 +15,15 @@ await generator.install("@babel/core@7.15.0");
 await generator.install("assert");
 
 // TODO: re-enable if they support deno at some point
-// 
+//
 // const map = generator.getMap();
-// 
+//
 // await denoExec(
 //   map,
 //   `
 //   import babel from '@babel/core';
 //   import assert from 'assert';
-// 
+//
 //   const { code } = babel.transform('var p = 5');
 //   assert.strictEqual(code, 'var p = 5;');
 // `
