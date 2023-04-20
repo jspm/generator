@@ -8,7 +8,8 @@ const generator = new Generator({
 });
 
 // Install the NPM assert shim and use it to test itself!
-await generator.install('npm:assert@2.0.0');
+// The esm.sh deno build for assert@2.0.0 is broken, so we use an old version.
+await generator.install('npm:assert@1.5.0');
 await denoExec(
   generator.getMap(),
   `
