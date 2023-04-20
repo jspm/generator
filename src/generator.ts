@@ -1122,19 +1122,20 @@ export class Generator {
         `Adding primary constraint for ${alias}: ${JSON.stringify(target)}`
       );
 
-      await this.traceMap.add(alias, target, opts);
+      // Apply the default resolution options:
+      const defaultOpts: ResolutionOptions = {
+        freeze: opts?.freeze ?? this.freeze,
+        latestPrimaries:
+          opts?.latestPrimaries ?? this.latest ?? (this.freeze ? false : true),
+        latestSecondaries: opts?.latestSecondaries ?? this.latest ?? false,
+        mode: opts?.mode ?? "new",
+      };
+
+      await this.traceMap.add(alias, target, defaultOpts);
       await this.traceMap.visit(
         alias + subpath.slice(1),
         {
-          installOpts: {
-            freeze: opts?.freeze ?? this.freeze,
-            latestPrimaries:
-              opts?.latestPrimaries ??
-              this.latest ??
-              (this.freeze ? false : true),
-            latestSecondaries: opts?.latestSecondaries ?? this.latest ?? false,
-            mode: opts?.mode ?? "new",
-          },
+          installOpts: defaultOpts,
           toplevel: true,
         },
         this.mapUrl.href

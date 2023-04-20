@@ -131,16 +131,13 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
   await generator.install("deno:path");
   const json = generator.getMap();
 
-  // Install shouldn't have touched the existing lock:
   assert.strictEqual(
     json.imports["fs"],
     `https://deno.land/std@0.148.0/fs/mod.ts`
   );
-
-  // But the newly installed path should be on latest:
   assert.strictEqual(
     json.imports["path"],
-    `https://deno.land/std@${denoStdVersion}/path/mod.ts`
+    `https://deno.land/std@0.148.0/path/mod.ts`
   );
 }
 
@@ -197,19 +194,16 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
 
   const json = generator.getMap();
 
-  // Existing version should be the same:
   assert.strictEqual(
     json.imports["fs"],
     `https://deno.land/std@0.148.0/fs/mod.ts`
   );
-
-  // Installed versions should be on latest:
   assert.strictEqual(
     json.imports["async/abortable"],
-    `https://deno.land/std@${denoStdVersion}/async/abortable.ts`
+    `https://deno.land/std@0.148.0/async/abortable.ts`
   );
   assert.strictEqual(
     json.imports["testing/asserts"],
-    `https://deno.land/std@${denoStdVersion}/testing/asserts.ts`
+    `https://deno.land/std@0.148.0/testing/asserts.ts`
   );
 }
