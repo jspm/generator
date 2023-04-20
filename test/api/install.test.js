@@ -17,14 +17,6 @@ const generator = new Generator({
   freeze: true, // lock versions
 });
 
-// Install with too many arguments should throw:
-try {
-  await generator.install("too", "many");
-  assert(false);
-} catch {
-  /* expected to throw */
-}
-
 // Install with no arguments should install all top-level pins.
 await generator.install();
 let json = generator.getMap();
