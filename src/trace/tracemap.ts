@@ -2,7 +2,7 @@ import {
   type InstallerOptions,
   InstallTarget,
   ResolutionMode,
-  ResolutionOptions,
+  InstallMode,
 } from "../install/installer.js";
 import {
   importedFrom,
@@ -91,7 +91,7 @@ interface TraceEntry {
 interface VisitOpts {
   static?: boolean;
   toplevel: boolean;
-  installOpts: ResolutionOptions;
+  installMode: InstallMode;
   visitor?: (
     specifier: string,
     parentUrl: string,
@@ -202,12 +202,12 @@ export default class TraceMap {
 
     this.log(
       "tracemap/visit",
-      `Attempting to resolve ${specifier} to a module from ${parentUrl}, toplevel=${opts.toplevel}, mode=${opts.installOpts.mode}`
+      `Attempting to resolve ${specifier} to a module from ${parentUrl}, toplevel=${opts.toplevel}, mode=${opts.installMode}`
     );
     const resolved = await this.resolve(
       specifier,
       parentUrl,
-      opts.installOpts,
+      opts.installMode,
       opts.toplevel
     );
 
@@ -272,7 +272,7 @@ export default class TraceMap {
       await Promise.all(
         modules.map(async (module) => {
           await this.visit(module, {
-            installOpts: { mode: "existing" },
+            installMode: "freeze", // pruning shouldn't change versions
             static: this.opts.static,
             toplevel: true,
           });
@@ -331,7 +331,7 @@ export default class TraceMap {
           {
             static: true,
             visitor,
-            installOpts: { mode: "existing" },
+            installMode: "freeze",
             toplevel: true,
           },
           this.baseUrl.href,
@@ -345,7 +345,7 @@ export default class TraceMap {
       dynamics.map(async ([specifier, parent]) => {
         await this.visit(
           specifier,
-          { visitor, installOpts: { mode: "existing" }, toplevel: false },
+          { visitor, installMode: "freeze", toplevel: false },
           parent,
           seen
         );
@@ -379,13 +379,13 @@ export default class TraceMap {
   async add(
     name: string,
     target: InstallTarget,
-    opts?: ResolutionOptions
+    opts: InstallMode
   ): Promise<void> {
     await this.installer.installTarget(
       name,
       target,
       null,
-      opts || {},
+      opts,
       null,
       this.mapUrl.href
     );
@@ -397,7 +397,7 @@ export default class TraceMap {
   async resolve(
     specifier: string,
     parentUrl: string,
-    installOpts: ResolutionOptions,
+    installOpts: InstallMode,
     toplevel: boolean
   ): Promise<string> {
     const cjsEnv = this.tracedUrls[parentUrl]?.wasCjs;

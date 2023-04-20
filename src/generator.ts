@@ -38,7 +38,7 @@ import { getIntegrity } from "./common/integrity.js";
 import { createLogger, Log, LogStream } from "./common/log.js";
 import { Replacer } from "./common/str.js";
 import { analyzeHtml } from "./html/analyze.js";
-import { InstallTarget, type ResolutionOptions } from "./install/installer.js";
+import { InstallTarget, type InstallMode } from "./install/installer.js";
 import { LockResolutions } from "./install/lock.js";
 import { getDefaultProviderStrings, type Provider } from "./providers/index.js";
 import * as nodemodules from "./providers/nodemodules.js";
@@ -48,7 +48,7 @@ import { Resolver } from "./trace/resolver.js";
 export { analyzeHtml };
 
 // Type exports for users:
-export { Provider, ResolutionOptions };
+export { Provider };
 
 /**
  * @interface GeneratorOptions.
@@ -301,14 +301,14 @@ export interface GeneratorOptions {
    * When using a lockfile, do not modify any existing resolutions, and use
    * existing resolutions whenever possible for new locks.
    *
-   * @deprecated Pass a ResolutionOptions object to Generator functions instead.
+   * @deprecated Use install/link/update to manage dependencies.
    */
   freeze?: boolean;
 
   /**
    * When using a lockfile, force update all touched resolutions to latest.
    *
-   * @deprecated Pass a ResolutionOptions object to Generator functions instead.
+   * @deprecated
    */
   latest?: boolean;
 
@@ -364,8 +364,9 @@ export class Generator {
    */
   installCnt = 0;
 
-  // TODO: remove these and make them options on install/link etc instead.
+  // @deprecated
   private freeze: boolean | null;
+  // @deprecated
   private latest: boolean | null;
 
   /**
@@ -531,7 +532,6 @@ export class Generator {
    * @param mapUrl An optional URL for the map to handle relative resolutions, defaults to generator mapUrl.
    * @param rootUrl An optional root URL for the map to handle root resolutions, defaults to generator rootUrl.
    * @returns The list of modules pinned by this import map or HTML.
-   *
    */
   async addMappings(
     jsonOrHtml: string | IImportMap,
@@ -577,13 +577,12 @@ export class Generator {
    */
   async pin(
     specifier: string,
-    parentUrl?: string,
-    opts?: ResolutionOptions
+    parentUrl?: string
   ): Promise<{
     staticDeps: string[];
     dynamicDeps: string[];
   }> {
-    return this.link(specifier, parentUrl, opts);
+    return this.link(specifier, parentUrl);
   }
 
   /**
@@ -596,10 +595,9 @@ export class Generator {
    */
   async traceInstall(
     specifier: string | string[],
-    parentUrl?: string,
-    opts?: ResolutionOptions
+    parentUrl?: string
   ): Promise<{ staticDeps: string[]; dynamicDeps: string[] }> {
-    return this.link(specifier, parentUrl, opts);
+    return this.link(specifier, parentUrl);
   }
 
   /**
@@ -611,8 +609,7 @@ export class Generator {
    */
   async link(
     specifier: string | string[],
-    parentUrl?: string,
-    opts?: ResolutionOptions
+    parentUrl?: string
   ): Promise<{ staticDeps: string[]; dynamicDeps: string[] }> {
     if (typeof specifier === "string") specifier = [specifier];
     let error = false;
@@ -625,12 +622,7 @@ export class Generator {
           this.traceMap.visit(
             specifier,
             {
-              installOpts: {
-                freeze: opts?.freeze ?? this.freeze ?? true, // link defaults to freeze
-                latestPrimaries: opts?.latestPrimaries ?? this.latest,
-                latestSecondaries: opts?.latestSecondaries ?? this.latest,
-                mode: opts?.mode ?? "new-prefer-existing",
-              },
+              installMode: "freeze",
               toplevel: true,
             },
             parentUrl || this.baseUrl.href
@@ -1017,21 +1009,28 @@ export class Generator {
    * ```
    */
   async install(
-    install?: string | Install | (string | Install)[],
-    opts?: ResolutionOptions
+    install?: string | Install | (string | Install)[]
   ): Promise<void | { staticDeps: string[]; dynamicDeps: string[] }> {
+    return this._install(install);
+  }
+
+  private async _install(
+    install?: string | Install | (string | Install)[],
+    mode?: InstallMode
+  ): Promise<void | { staticDeps: string[]; dynamicDeps: string[] }> {
+    // Backwards-compatibility for deprecated options:
+    if (this.latest) mode ??= "latest-primaries";
+    if (this.freeze) mode ??= "freeze";
+
     // If there are no arguments, then we reinstall all the top-level locks:
-    if (!install) {
+    if (install === null || install === undefined) {
       await this.traceMap.processInputMap;
 
       // To match the behaviour of an argumentless `npm install`, we use
       // existing resolutions for everything unless it's out-of-range:
-      opts ??= {};
-      opts.latestPrimaries ??= false;
-      opts.latestSecondaries ??= false;
-      opts.mode ??= "new-prefer-existing";
+      mode ??= "default";
 
-      return this.install(
+      return this._install(
         Object.entries(this.traceMap.installer.installs.primary).map(
           ([alias, target]) => {
             const pkgTarget =
@@ -1056,7 +1055,7 @@ export class Generator {
             } as Install;
           }
         ),
-        opts
+        mode
       );
     }
 
@@ -1070,7 +1069,7 @@ export class Generator {
       }
 
       return await Promise.all(
-        install.map((install) => this.install(install, opts))
+        install.map((install) => this._install(install, mode))
       ).then((installs) => installs.find((i) => i));
     }
 
@@ -1087,13 +1086,13 @@ export class Generator {
       });
       return await Promise.all(
         install.subpaths.map((subpath) =>
-          this.install(
+          this._install(
             {
               target: (install as Install).target,
               alias: (install as Install).alias,
               subpath,
             },
-            opts
+            mode
           )
         )
       ).then((installs) => installs.find((i) => i));
@@ -1122,20 +1121,15 @@ export class Generator {
         `Adding primary constraint for ${alias}: ${JSON.stringify(target)}`
       );
 
-      // Apply the default resolution options:
-      const defaultOpts: ResolutionOptions = {
-        freeze: opts?.freeze ?? this.freeze,
-        latestPrimaries:
-          opts?.latestPrimaries ?? this.latest ?? (this.freeze ? false : true),
-        latestSecondaries: opts?.latestSecondaries ?? this.latest ?? false,
-        mode: opts?.mode ?? "new",
-      };
+      // By default, an install takes the latest compatible version for primary
+      // dependencies, and existing in-range versions for secondaries:
+      mode ??= "latest-primaries";
 
-      await this.traceMap.add(alias, target, defaultOpts);
+      await this.traceMap.add(alias, target, mode);
       await this.traceMap.visit(
         alias + subpath.slice(1),
         {
-          installOpts: defaultOpts,
+          installMode: mode,
           toplevel: true,
         },
         this.mapUrl.href
@@ -1174,21 +1168,27 @@ export class Generator {
     }
   }
 
-  async update(pkgNames?: string | string[], opts?: ResolutionOptions) {
+  /**
+   * Updates the versions of the given packages to the latest versions
+   * compatible with their parent's package.json ranges. If no packages are
+   * given then all the top-level packages in the "imports" field of the
+   * initial import map are updated.
+   *
+   * @param {string | string[]} pkgNames Package name or list of package names to update.
+   */
+  async update(pkgNames?: string | string[]) {
     if (typeof pkgNames === "string") pkgNames = [pkgNames];
     if (this.installCnt++ === 0) this.traceMap.startInstall();
     await this.traceMap.processInputMap;
 
-    // To match the behaviour of `npm update`, an argumentless update should
-    // reinstall all primary locks and their secondary dependencies to the
-    // latest compatible versions:
     const primaryResolutions = this.traceMap.installer.installs.primary;
     const primaryConstraints = this.traceMap.installer.constraints.primary;
+
+    // Matching the behaviour of "npm update":
+    let mode: InstallMode = "latest-primaries";
     if (!pkgNames) {
       pkgNames = Object.keys(primaryResolutions);
-      opts ??= {};
-      opts.latestPrimaries ??= true;
-      opts.latestSecondaries ??= true;
+      mode = "latest-all";
     }
 
     const installs: Install[] = [];
@@ -1235,7 +1235,7 @@ export class Generator {
       }
     }
 
-    await this.install(installs, opts);
+    await this._install(installs, mode);
     if (--this.installCnt === 0) {
       const { map, staticDeps, dynamicDeps } =
         await this.traceMap.finishInstall();
