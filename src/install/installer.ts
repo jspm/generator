@@ -374,9 +374,6 @@ export class Installer {
     // a secondary dependency:
     // TODO: wire this concept through the whole codebase.
     const isTopLevel = !pkgScope || pkgScope == this.installBaseUrl;
-    const useLatest =
-      (isTopLevel && opts.latestPrimaries) ||
-      (!isTopLevel && opts.latestSecondaries);
 
     if (this.resolutions[pkgName])
       return this.installTarget(
@@ -414,6 +411,13 @@ export class Installer {
         pkgName
       );
 
+    // The latestPrimaries and latestSecondaries options are used to always
+    // take latest version resolutions from the package.json:
+    const useLatestPjsonTarget =
+      !!pjsonTarget &&
+      ((isTopLevel && opts.latestPrimaries) ||
+        (!isTopLevel && opts.latestSecondaries));
+
     // Find any existing locks in the current package scope, making sure
     // locks are always in-range for their parent scope pjsons:
     const existingResolution = getResolution(
@@ -422,7 +426,7 @@ export class Installer {
       isTopLevel ? null : pkgScope
     );
     if (
-      !useLatest &&
+      !useLatestPjsonTarget &&
       existingResolution &&
       (isTopLevel ||
         opts.freeze ||
@@ -452,7 +456,7 @@ export class Installer {
       );
 
       if (
-        !useLatest &&
+        !useLatestPjsonTarget &&
         flattenedResolution &&
         (opts.freeze ||
           (await this.inRange(
