@@ -12,7 +12,8 @@ import assert from "assert";
 
   assert.strictEqual(
     json.imports["process"],
-    `https://ga.jspm.io/npm:@jspm/core@${(await lookup("@jspm/core")).resolved.version
+    `https://ga.jspm.io/npm:@jspm/core@${
+      (await lookup("@jspm/core")).resolved.version
     }/nodelibs/browser/process-production.js`
   );
 }
@@ -33,12 +34,14 @@ import assert from "assert";
 
   assert.strictEqual(
     json.imports["fs"],
-    `https://ga.jspm.io/npm:@jspm/core@${(await lookup("@jspm/core")).resolved.version
+    `https://ga.jspm.io/npm:@jspm/core@${
+      (await lookup("@jspm/core")).resolved.version
     }/nodelibs/browser/fs.js`
   );
   assert.strictEqual(
     json.imports["process"],
-    `https://ga.jspm.io/npm:@jspm/core@${(await lookup("@jspm/core")).resolved.version
+    `https://ga.jspm.io/npm:@jspm/core@${
+      (await lookup("@jspm/core")).resolved.version
     }/nodelibs/browser/process-production.js`
   );
 }
@@ -79,7 +82,8 @@ import assert from "assert";
 
   assert.strictEqual(
     json.imports["process"],
-    `https://ga.jspm.io/npm:@jspm/core@${(await lookup("@jspm/core")).resolved.version
+    `https://ga.jspm.io/npm:@jspm/core@${
+      (await lookup("@jspm/core")).resolved.version
     }/nodelibs/browser/process-production.js`
   );
 }

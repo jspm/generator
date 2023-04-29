@@ -1,11 +1,11 @@
 import { Semver } from "sver";
+import { throwInternalError } from "../common/err.js";
 import { Log } from "../common/log.js";
+import { registryProviders } from "../providers/index.js";
 import { Resolver } from "../trace/resolver.js";
-import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
-import { JspmError, throwInternalError } from "../common/err.js";
 import {
-  getFlattenedResolution,
   getConstraintFor,
+  getFlattenedResolution,
   getResolution,
   InstalledResolution,
   LockResolutions,
@@ -14,7 +14,7 @@ import {
   setResolution,
   VersionConstraints,
 } from "./lock.js";
-import { registryProviders } from "../providers/index.js";
+import { ExactPackage, newPackageTarget, PackageTarget } from "./package.js";
 
 export interface PackageProvider {
   provider: string;
@@ -24,14 +24,40 @@ export interface PackageProvider {
 export type ResolutionMode = "new" | "new-prefer-existing" | "existing";
 
 /**
- * InstallOptions configures the interaction between the Installer and the
- * existing lockfile during an install operation.
+ * InstallOptions configure the generator's behaviour for existing mappings
+ * in the import map. An existing mapping is considered "in-range" if either:
+ *   1. its parent package.json has no "dependencies" range for it
+ *   2. its semver version is within the parent's range
+ *
+ * The "latest-compatible version" of a package is the latest existing version
+ * within the parent's "dependencies range", or just the latest existing
+ * version if there is no such range.
+ *
+ * "default":
+ *   New installs always resolve to the latest compatible version. Existing
+ *   mappings are kept unless they are out-of-range, in which case they are
+ *   bumped to the latest compatible version.
+ *
+ * "latest-primaries":
+ *   Existing primary dependencies (i.e. mappings under "imports") are bumped
+ *   to latest. Existing secondary dependencies are kept unless they are
+ *   out-of-range, in which case they are bumped to the latest compatible
+ *   version. New installs behave according to "default".
+ *
+ * "latest-all":
+ *   All existing mappings are bumped to the latest compatible version. New
+ *   installs behave according to "default".
+ *
+ * "freeze":
+ *   No existing mappings are changed, and existing mappings are always used
+ *   for new installs wherever possible. Completely new installs behave
+ *   according to "default".
  */
-export interface InstallOptions {
-  mode: ResolutionMode;
-  freeze?: boolean;
-  latest?: boolean;
-}
+export type InstallMode =
+  | "default"
+  | "latest-primaries"
+  | "latest-all"
+  | "freeze";
 
 export type InstallTarget = {
   pkgTarget: PackageTarget | URL;
@@ -168,7 +194,7 @@ export class Installer {
    * @param {string} pkgName Name of the package being installed.
    * @param {InstallTarget} target The installation target being installed.
    * @param {`./${string}` | '.'} traceSubpath
-   * @param {InstallOptions} opts Specifies how to interact with existing installs.
+   * @param {InstallMode} mode Specifies how to interact with existing installs.
    * @param {`${string}/` | null} pkgScope URL of the package scope in which this install is occurring, null if it's a top-level install.
    * @param {string} parentUrl URL of the parent for this install.
    * @returns {Promise<InstalledResolution>}
@@ -177,15 +203,14 @@ export class Installer {
     pkgName: string,
     { pkgTarget, installSubpath }: InstallTarget,
     traceSubpath: `./${string}` | ".",
-    opts: InstallOptions,
+    mode: InstallMode,
     pkgScope: `${string}/` | null,
     parentUrl: string
   ): Promise<InstalledResolution> {
-    if (opts.freeze && opts.mode === "existing")
-      throw new JspmError(
-        `"${pkgName}" is not installed in the current map to freeze install, imported from ${parentUrl}.`,
-        "ERR_NOT_INSTALLED"
-      );
+    const isTopLevel = pkgScope === null;
+    const useLatest =
+      (isTopLevel && mode.includes("latest")) ||
+      (!isTopLevel && mode === "latest-all");
 
     // Resolutions are always authoritative, and override the existing target:
     if (this.resolutions[pkgName]) {
@@ -203,7 +228,7 @@ export class Installer {
           pkgName,
           resolutionTarget,
           traceSubpath,
-          opts,
+          mode,
           pkgScope,
           parentUrl
         );
@@ -233,12 +258,9 @@ export class Installer {
 
     const provider = this.getProvider(pkgTarget);
 
-    // If this is a secondary install or we're in an existing-lock install
-    // mode, then we make an attempt to find a compatible existing lock:
-    if (
-      (opts.freeze || opts.mode.includes("existing") || pkgScope !== null) &&
-      !opts.latest
-    ) {
+    // Look for an existing lock for this package if we're in an install mode
+    // that supports them:
+    if (mode === "default" || mode === "freeze" || !useLatest) {
       const pkg = await this.getBestExistingMatch(pkgTarget);
       if (pkg) {
         this.log(
@@ -274,9 +296,9 @@ export class Installer {
     // existing locks on this package to latest and use that. If there's a
     // constraint and we can't, then we fallback to the best existing lock:
     if (
-      !opts.freeze &&
-      !opts.latest &&
-      pkgScope &&
+      mode !== "freeze" &&
+      !useLatest &&
+      !isTopLevel &&
       latestPkg &&
       !this.tryUpgradeAllTo(latestPkg, pkgUrl, installed)
     ) {
@@ -318,7 +340,8 @@ export class Installer {
       installSubpath
     );
     setConstraint(this.constraints, pkgName, pkgTarget, pkgScope);
-    if (!opts.freeze) this.upgradeSupportedTo(latestPkg, pkgUrl, installed);
+    if (mode !== "freeze")
+      this.upgradeSupportedTo(latestPkg, pkgUrl, installed);
     return { installUrl: pkgUrl, installSubpath };
   }
 
@@ -326,7 +349,7 @@ export class Installer {
    * Installs the given package specifier.
    *
    * @param {string} pkgName The package specifier being installed.
-   * @param {InstallOptions} opts Specifies how to interact with existing installs.
+   * @param {InstallMode} mode Specifies how to interact with existing installs.
    * @param {`${string}/` | null} pkgScope URL of the package scope in which this install is occurring, null if it's a top-level install.
    * @param {`./${string}` | '.'} traceSubpath
    * @param {string} parentUrl URL of the parent for this install.
@@ -334,7 +357,7 @@ export class Installer {
    */
   async install(
     pkgName: string,
-    opts: InstallOptions,
+    mode: InstallMode,
     pkgScope: `${string}/` | null = null,
     traceSubpath: `./${string}` | ".",
     parentUrl: string = this.installBaseUrl
@@ -344,11 +367,6 @@ export class Installer {
       `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`
     );
     if (!this.installing) throwInternalError("Not installing");
-    if (opts.latest && opts.freeze) {
-      throw new JspmError(
-        "Cannot enable 'freeze' and 'latest' install options simultaneously."
-      );
-    }
 
     // Anything installed in the scope of the installer's base URL is treated
     // as top-level, and hits the primary locks. Anything else is treated as
@@ -366,7 +384,7 @@ export class Installer {
           pkgName
         ),
         traceSubpath,
-        opts,
+        mode,
         isTopLevel ? null : pkgScope,
         parentUrl
       );
@@ -392,17 +410,23 @@ export class Installer {
         pkgName
       );
 
+    const useLatestPjsonTarget =
+      !!pjsonTarget &&
+      ((isTopLevel && mode.includes("latest")) ||
+        (!isTopLevel && mode === "latest-all"));
+
     // Find any existing locks in the current package scope, making sure
-    // secondaries are always in-range for their parent scope pjsons:
+    // locks are always in-range for their parent scope pjsons:
     const existingResolution = getResolution(
       this.installs,
       pkgName,
       isTopLevel ? null : pkgScope
     );
     if (
+      !useLatestPjsonTarget &&
       existingResolution &&
       (isTopLevel ||
-        opts.freeze ||
+        mode === "freeze" ||
         (await this.inRange(
           existingResolution.installUrl,
           pjsonTarget.pkgTarget
@@ -429,8 +453,9 @@ export class Installer {
       );
 
       if (
+        !useLatestPjsonTarget &&
         flattenedResolution &&
-        (opts.freeze ||
+        (mode === "freeze" ||
           (await this.inRange(
             flattenedResolution.installUrl,
             pjsonTarget.pkgTarget
@@ -453,7 +478,7 @@ export class Installer {
         pkgName,
         pjsonTarget,
         traceSubpath,
-        opts,
+        mode,
         isTopLevel ? null : pkgScope,
         parentUrl
       );
@@ -470,7 +495,7 @@ export class Installer {
         // fully qualified InstallTarget, or support string targets here.
         builtin.target as InstallTarget,
         traceSubpath,
-        opts,
+        mode,
         isTopLevel ? null : pkgScope,
         parentUrl
       );
@@ -493,7 +518,7 @@ export class Installer {
       pkgName,
       target,
       null,
-      opts,
+      mode,
       isTopLevel ? null : pkgScope,
       parentUrl
     );

@@ -11,11 +11,9 @@ import assert from "assert";
 
   assert.strictEqual(
     json.imports["fresh/runtime.ts"],
-    "https://deno.land/x/fresh@1.1.5/runtime.ts",
+    "https://deno.land/x/fresh@1.1.5/runtime.ts"
   );
-  assert.ok(
-    json.scopes["https://deno.land/"]["preact"]
-  );
+  assert.ok(json.scopes["https://deno.land/"]["preact"]);
 }
 
 const denoStdVersion = (await lookup("deno:path")).resolved.version;
@@ -129,7 +127,6 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
   });
 
   await generator.install("deno:path");
-
   const json = generator.getMap();
 
   assert.strictEqual(
@@ -191,7 +188,6 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
   });
 
   await generator.install("deno:testing/asserts");
-
   await generator.install("deno:async/abortable.ts");
 
   const json = generator.getMap();

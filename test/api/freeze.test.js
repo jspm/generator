@@ -1,5 +1,5 @@
 import { Generator, lookup, parseUrlPkg } from "@jspm/generator";
-import assert from 'assert';
+import assert from "assert";
 
 /**
  * This test pins down the semantics of the "freeze" option on the generator.
@@ -30,8 +30,8 @@ async function checkScenario(scenario) {
 
   // install dependencies:
   try {
-    await Promise.all(scenario.install.map(pkg => generator.install(pkg)));
-  } catch(err) {
+    await Promise.all(scenario.install.map((pkg) => generator.install(pkg)));
+  } catch (err) {
     if (!scenario.expect) return; // expected to throw, all good
     throw err;
   }
@@ -43,109 +43,118 @@ async function checkScenario(scenario) {
     mdls.push(await parseUrlPkg(url));
   function getVersions(pkg) {
     return mdls
-      .filter(mdl => mdl.pkg.name === pkg)
-      .map(mdl => mdl.pkg.version);
+      .filter((mdl) => mdl.pkg.name === pkg)
+      .map((mdl) => mdl.pkg.version);
   }
 
   // check constraints
   for (let [pkg, version] of Object.entries(scenario.expect ?? {})) {
-    if (version === "latest") version = (await lookup(`${pkg}@latest`)).resolved.version;
+    if (version === "latest")
+      version = (await lookup(`${pkg}@latest`)).resolved.version;
 
     assert(
-      getVersions(pkg).every(v => v === version),
-      `freeze scenario "${scenario.name}" expected ${pkg}@${version}, but got [ ${getVersions(pkg).join(", ")} ]`,
+      getVersions(pkg).every((v) => v === version),
+      `freeze scenario "${
+        scenario.name
+      }" expected ${pkg}@${version}, but got [ ${getVersions(pkg).join(", ")} ]`
     );
   }
 }
 
-await Promise.all([
-  {
-    name: "no existing locks",
-    install: ["lit", "react"],
-    expect: {
-      lit: "latest",
-      react: "latest",
-    },
-  },
-
-  {
-    name: "existing primary locks",
-    map: {
-      imports: {
-        "lit-html": "https://ga.jspm.io/npm:lit-html@2.6.0/development/lit-html.js",
-        "react": "https://ga.jspm.io/npm:react@18.1.0/dev.index.js",
-      }
-    },
-    install: ["lit", "react"],
-    expect: {
-      "lit-html": "2.6.0", // lock is hit for a secondary install
-      "react": "18.1.0", // lock is hit for a primary install
-      "lit": "latest",
-    },
-  },
-
-  {
-    name: "existing secondary locks",
-    map: {
-      scopes: {
-        "https://ga.jspm.io/": {
-          "lit-html/is-server.js": "https://ga.jspm.io/npm:lit-html@2.6.0/development/is-server.js",
-          "chalk": "https://ga.jspm.io/npm:chalk@2.0.0/index.js", // out-of-range
-        }
-      }
-    },
-    install: ["lit", "lit-html", "react", "chalk"],
-    expect: {
-      "lit-html": "2.6.0", // lock is hit for primary as it's in-range
-      "chalk": "4.1.0", // lock ignored for primary as it's out-of-range
-      "react": "latest",
-      "lit": "latest",
-    },
-  },
-
-  {
-    name: "combined with resolutions",
-    map: {
-      imports: {
-        "react": "https://ga.jspm.io/npm:react@18.1.0/dev.index.js",
-      },
-      scopes: {
-        "https://ga.jspm.io/": {
-          "lit-html/is-server.js": "https://ga.jspm.io/npm:lit-html@2.6.0/development/is-server.js"
-        }
-      }
-    },
-    opts: {
-      resolutions: {
-        "react": "18.2.0",
-        "lit-html": "2.6.1",
+await Promise.all(
+  [
+    {
+      name: "no existing locks",
+      install: ["lit", "react"],
+      expect: {
+        lit: "latest",
+        react: "latest",
       },
     },
-    install: ["lit", "react"],
-    expect: {
-      "lit-html": "2.6.1", // resolution takes precedence
-      "react": "18.2.0", // resolution takes precedence
-      "lit": "latest",
-    },
-  },
 
-  {
-    name: "combined with latest",
-    map: {
-      imports: {
-        "react": "https://ga.jspm.io/npm:react@18.1.0/dev.index.js",
-        "chalk": "https://ga.jspm.io/npm:chalk@4.1.0/source/index.js",
+    {
+      name: "existing primary locks",
+      map: {
+        imports: {
+          "lit-html":
+            "https://ga.jspm.io/npm:lit-html@2.6.0/development/lit-html.js",
+          react: "https://ga.jspm.io/npm:react@18.1.0/dev.index.js",
+        },
       },
-      scopes: {
-        "https://ga.jspm.io/": {
-          "lit-html/is-server.js": "https://ga.jspm.io/npm:lit-html@2.6.0/development/is-server.js"
-        }
-      }
+      install: ["lit", "react"],
+      expect: {
+        "lit-html": "2.6.0", // lock is hit for a secondary install
+        react: "18.1.0", // lock is hit for a primary install
+        lit: "latest",
+      },
     },
-    opts: {
-      latest: true,
+
+    {
+      name: "existing secondary locks",
+      map: {
+        scopes: {
+          "https://ga.jspm.io/": {
+            "lit-html/is-server.js":
+              "https://ga.jspm.io/npm:lit-html@2.6.0/development/is-server.js",
+            chalk: "https://ga.jspm.io/npm:chalk@2.0.0/index.js", // out-of-range
+          },
+        },
+      },
+      install: ["lit", "lit-html", "react", "chalk"],
+      expect: {
+        "lit-html": "2.6.0", // lock is hit for primary as it's in-range
+        chalk: "4.1.0", // lock ignored for primary as it's out-of-range
+        react: "latest",
+        lit: "latest",
+      },
     },
-    install: ["lit", "react"],
-    expect: false, // throws
-  },
-].map(checkScenario));
+
+    {
+      name: "combined with resolutions",
+      map: {
+        imports: {
+          react: "https://ga.jspm.io/npm:react@18.1.0/dev.index.js",
+        },
+        scopes: {
+          "https://ga.jspm.io/": {
+            "lit-html/is-server.js":
+              "https://ga.jspm.io/npm:lit-html@2.6.0/development/is-server.js",
+          },
+        },
+      },
+      opts: {
+        resolutions: {
+          react: "18.2.0",
+          "lit-html": "2.6.1",
+        },
+      },
+      install: ["lit", "react"],
+      expect: {
+        "lit-html": "2.6.1", // resolution takes precedence
+        react: "18.2.0", // resolution takes precedence
+        lit: "latest",
+      },
+    },
+
+    {
+      name: "combined with latest",
+      map: {
+        imports: {
+          react: "https://ga.jspm.io/npm:react@18.1.0/dev.index.js",
+          chalk: "https://ga.jspm.io/npm:chalk@4.1.0/source/index.js",
+        },
+        scopes: {
+          "https://ga.jspm.io/": {
+            "lit-html/is-server.js":
+              "https://ga.jspm.io/npm:lit-html@2.6.0/development/is-server.js",
+          },
+        },
+      },
+      opts: {
+        latest: true,
+      },
+      install: ["lit", "react"],
+      expect: false, // throws
+    },
+  ].map(checkScenario)
+);
