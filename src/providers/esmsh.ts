@@ -4,16 +4,16 @@ import { Resolver } from "../trace/resolver.js";
 import { fetch } from "#fetch";
 import { JspmError } from "../common/err.js";
 
-// The wildcard '*' at the end tells the esm.sh CDN to externalise all
-// dependencies instead of bundling them into the returned module file.
-//   see https://esm.sh/#docs
-const cdnUrl = "https://esm.sh/*";
+const cdnUrl = "https://esm.sh/";
 
 export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
-  return `${cdnUrl}${pkg.name}@${pkg.version}/`;
+  // The wildcard '*' at the end tells the esm.sh CDN to externalise all
+  // dependencies instead of bundling them into the returned module file.
+  //   see https://esm.sh/#docs
+  return `${cdnUrl}*${pkg.name}@${pkg.version}/`;
 }
 
-const exactPkgRegEx = /^((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
+const exactPkgRegEx = /^(v\d+\/)?\*?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
 
 export function parseUrlPkg(url: string) {
   if (!url.startsWith(cdnUrl)) return;
