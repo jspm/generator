@@ -13,7 +13,7 @@ export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
   return `${cdnUrl}*${pkg.name}@${pkg.version}/`;
 }
 
-const exactPkgRegEx = /^(v\d+\/)?\*?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
+const exactPkgRegEx = /^(?:v\d+\/)?\*?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
 
 export function parseUrlPkg(url: string) {
   if (!url.startsWith(cdnUrl)) return;
