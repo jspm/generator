@@ -263,6 +263,7 @@ async function lookupRange(
   unstable: boolean,
   parentUrl?: string
 ): Promise<ExactPackage | null> {
+  const url = pkgToLookupUrl({ registry, name, version: range }, unstable);
   const res = await fetch(
     pkgToLookupUrl({ registry, name, version: range }, unstable),
     this.fetchOpts
@@ -286,7 +287,7 @@ async function lookupRange(
       );
     default:
       throw new JspmError(
-        `Invalid status code ${res.status} looking up "${registry}:${name}" - ${
+        `Invalid status code ${res.status} looking up "${registry}:${name} from ${url}" - ${
           res.statusText
         }${importedFrom(parentUrl)}`
       );
