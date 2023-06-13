@@ -264,10 +264,7 @@ async function lookupRange(
   parentUrl?: string
 ): Promise<ExactPackage | null> {
   const url = pkgToLookupUrl({ registry, name, version: range }, unstable);
-  const res = await fetch(
-    pkgToLookupUrl({ registry, name, version: range }, unstable),
-    this.fetchOpts
-  );
+  const res = await fetch(url, this.fetchOpts);
   switch (res.status) {
     case 304:
     case 200:
