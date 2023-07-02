@@ -320,7 +320,7 @@ export interface GeneratorOptions {
 }
 
 export interface ModuleAnalysis {
-  format: "commonjs" | "esm" | "system" | "json" | "typescript";
+  format: "commonjs" | "esm" | "system" | "json" | "typescript" | "wasm";
   staticDeps: string[];
   dynamicDeps: string[];
   cjsLazyDeps: string[] | null;

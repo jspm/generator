@@ -853,6 +853,16 @@ export class Resolver {
       )
         return await createTsAnalysis(source, resolvedUrl);
 
+      if (resolvedUrl.endsWith(".wasm")) {
+          return {
+              deps: [],
+              dynamicDeps: [],
+              cjsLazyDeps: null,
+              size: source.length,
+              format: "wasm"
+          }
+      }
+
       if (resolvedUrl.endsWith(".json")) {
         try {
           JSON.parse(source);
