@@ -2,7 +2,7 @@
   <img style="display: inline-block; width: 100px; vertical-align: middle; margin-top: -1em;" src="https://jspm.org/jspm.png"/>
   <h1 style="display: inline-block">JSPM Generator</h1>
 <p><strong>JSPM Generator is the core import map generation project used by JSPM, supporting import map package management.</strong></p>
-<a href="https://jspm.org/docs/getting-started">Getting Started</a> | <a href="https://jspm.org/docs/generator">Documentation</a> | <a href="https://jspm.org/faq">FAQ</a>
+<a href="https://jspm.org/getting-started">Getting Started</a> | <a href="https://jspm.org/docs/generator">Documentation</a> | <a href="https://jspm.org/faq">FAQ</a>
 <br />
 <hr style="width:50%"/>
 </div>
