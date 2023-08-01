@@ -157,6 +157,11 @@ export interface GeneratorOptions {
   cache?: "offline" | boolean;
 
   /**
+   * User-provided fetch options for fetching modules, check https://github.com/npm/make-fetch-happen#extra-options
+   */
+  fetchOptions?: Record<string, any>;
+
+  /**
    * Custom provider definitions.
    *
    * When installing from a custom CDN it can be advisable to define a custom provider in order to be able to get version deduping against that CDN.
@@ -406,6 +411,7 @@ export class Generator {
     providers,
     resolutions = {},
     cache = true,
+    fetchOptions,
     ignore = [],
     freeze,
     latest,
@@ -425,18 +431,15 @@ export class Generator {
     }
 
     // Initialise the resource fetcher:
-    let fetchOpts;
+    let fetchOpts: Record<string, any> = {
+      ...fetchOptions,
+      headers: { "Accept-Encoding": "gzip, br" },
+    }
     if (cache === "offline")
-      fetchOpts = {
-        cache: "force-cache",
-        headers: { "Accept-Encoding": "gzip, br" },
-      };
+      fetchOpts.cache = "force-cache"
     else if (!cache)
-      fetchOpts = {
-        cache: "no-store",
-        headers: { "Accept-Encoding": "gzip, br" },
-      };
-    else fetchOpts = { headers: { "Accept-Encoding": "gzip, br" } };
+      fetchOpts.cache = "no-store";
+
     if (ipfsAPI) fetchOpts.ipfsAPI = ipfsAPI;
 
     // Default logic for the mapUrl, baseUrl and rootUrl:
@@ -824,8 +827,8 @@ export class Generator {
     const newlineTab = !whitespace
       ? analysis.newlineTab
       : analysis.newlineTab.includes("\n")
-      ? analysis.newlineTab
-      : "\n" + analysis.newlineTab;
+        ? analysis.newlineTab
+        : "\n" + analysis.newlineTab;
 
     const replacer = new Replacer(html);
 
@@ -868,14 +871,13 @@ export class Generator {
           !!rootUrl
         );
 
-      esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${
-        integrity
-          ? ` integrity="${await getIntegrity(
-              esmsUrl,
-              this.traceMap.resolver.fetchOpts
-            )}"`
-          : ""
-      }></script>${newlineTab}`;
+      esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${integrity
+        ? ` integrity="${await getIntegrity(
+          esmsUrl,
+          this.traceMap.resolver.fetchOpts
+        )}"`
+        : ""
+        }></script>${newlineTab}`;
 
       if (analysis.esModuleShims)
         replacer.remove(
@@ -896,28 +898,26 @@ export class Generator {
         if (first || whitespace) preloads += newlineTab;
         if (first) first = false;
         if (integrity) {
-          preloads += `<link rel="modulepreload" href="${
-            rootUrl || htmlUrl
-              ? relativeUrl(
-                  new URL(dep),
-                  new URL(rootUrl || htmlUrl),
-                  !!rootUrl
-                )
-              : dep
-          }" integrity="${await getIntegrity(
-            dep,
-            this.traceMap.resolver.fetchOpts
-          )}" />`;
+          preloads += `<link rel="modulepreload" href="${rootUrl || htmlUrl
+            ? relativeUrl(
+              new URL(dep),
+              new URL(rootUrl || htmlUrl),
+              !!rootUrl
+            )
+            : dep
+            }" integrity="${await getIntegrity(
+              dep,
+              this.traceMap.resolver.fetchOpts
+            )}" />`;
         } else {
-          preloads += `<link rel="modulepreload" href="${
-            rootUrl || htmlUrl
-              ? relativeUrl(
-                  new URL(dep),
-                  new URL(rootUrl || htmlUrl),
-                  !!rootUrl
-                )
-              : dep
-          }" />`;
+          preloads += `<link rel="modulepreload" href="${rootUrl || htmlUrl
+            ? relativeUrl(
+              new URL(dep),
+              new URL(rootUrl || htmlUrl),
+              !!rootUrl
+            )
+            : dep
+            }" />`;
         }
       }
     }
@@ -929,11 +929,11 @@ export class Generator {
         if (module.attrs.integrity) {
           replacer.remove(
             module.attrs.integrity.start -
-              (replacer.source[
-                replacer.idx(module.attrs.integrity.start - 1)
-              ] === " "
-                ? 1
-                : 0),
+            (replacer.source[
+              replacer.idx(module.attrs.integrity.start - 1)
+            ] === " "
+              ? 1
+              : 0),
             module.attrs.integrity.end + 1
           );
         }
@@ -968,17 +968,17 @@ export class Generator {
       analysis.map.start,
       analysis.map.end,
       (comment ? "<!--" + comment + "-->" + newlineTab : "") +
-        esms +
-        '<script type="importmap">' +
-        (whitespace ? newlineTab : "") +
-        JSON.stringify(map, null, whitespace ? 2 : 0).replace(
-          /\n/g,
-          newlineTab
-        ) +
-        (whitespace ? newlineTab : "") +
-        "</script>" +
-        preloads +
-        (analysis.map.newScript ? newlineTab : "")
+      esms +
+      '<script type="importmap">' +
+      (whitespace ? newlineTab : "") +
+      JSON.stringify(map, null, whitespace ? 2 : 0).replace(
+        /\n/g,
+        newlineTab
+      ) +
+      (whitespace ? newlineTab : "") +
+      "</script>" +
+      preloads +
+      (analysis.map.newScript ? newlineTab : "")
     );
 
     return replacer.source;
@@ -1543,12 +1543,10 @@ async function installToTarget(
       (install.subpath !== "." && !install.subpath.startsWith("./")))
   )
     throw new Error(
-      `Install subpath "${
-        install.subpath
-      }" must be a string equal to "." or starting with "./".${
-        typeof install.subpath === "string"
-          ? `\nTry setting the subpath to "./${install.subpath}"`
-          : ""
+      `Install subpath "${install.subpath
+      }" must be a string equal to "." or starting with "./".${typeof install.subpath === "string"
+        ? `\nTry setting the subpath to "./${install.subpath}"`
+        : ""
       }`
     );
 
