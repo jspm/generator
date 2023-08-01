@@ -411,7 +411,7 @@ export class Generator {
     providers,
     resolutions = {},
     cache = true,
-    fetchOptions,
+    fetchOptions = {},
     ignore = [],
     freeze,
     latest,
