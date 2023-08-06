@@ -28,5 +28,5 @@ assert.strictEqual(
 );
 assert.strictEqual(
   json.scopes["https://ga.jspm.io/"]["semver"],
-  "https://ga.jspm.io/npm:semver@6.3.0/semver.js"
+  "https://ga.jspm.io/npm:semver@6.3.1/semver.js"
 );
