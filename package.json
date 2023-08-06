@@ -58,6 +58,7 @@
     "@types/vscode": "^1.75.1",
     "@vscode/test-electron": "^2.2.3",
     "chalk": "^4.1.2",
+    "chomp": "^0.2.17",
     "cross-env": "^7.0.3",
     "kleur": "^4.1.5",
     "lit-element": "^2.5.1",
