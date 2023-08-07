@@ -432,6 +432,8 @@ export class Generator {
 
     // Initialise the resource fetcher:
     let fetchOpts: Record<string, any> = {
+      retry: 1,
+      timeout: 10000,
       ...fetchOptions,
       headers: { "Accept-Encoding": "gzip, br" },
     }
