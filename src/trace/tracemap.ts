@@ -102,10 +102,12 @@ interface VisitOpts {
 }
 
 function combineSubpaths(
-  installSubpath: `./${string}` | null,
+  installSubpath: "." | `./${string}` | null,
   traceSubpath: "." | `./${string}`
 ): `./${string}` | "." {
-  return installSubpath === null || traceSubpath === "."
+  return installSubpath === null ||
+    installSubpath === "." ||
+    traceSubpath === "."
     ? installSubpath || traceSubpath
     : `${installSubpath}${traceSubpath.slice(1)}`;
 }
