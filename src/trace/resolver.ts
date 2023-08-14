@@ -438,6 +438,8 @@ export class Resolver {
     subpath: "." | `./${string}`,
     originalSpecifier: string
   ): Promise<"." | `./${string}` | null> {
+    const resolvedUrl =
+      subpath === "." ? pkgUrl.slice(0, -1) : pkgUrl + subpath.slice(2);
     const pcfg = (await this.getPackageConfig(pkgUrl)) || {};
     if (originalSpecifier[0] === "#") {
       if (pcfg.imports === undefined || pcfg.imports === null) return null;
@@ -451,7 +453,7 @@ export class Resolver {
         try {
           if (
             (await this.finalizeResolve(curTarget, false, pkgUrl)) ===
-            pkgUrl + subpath.slice(2)
+            resolvedUrl
           ) {
             return ".";
           }
@@ -464,10 +466,7 @@ export class Resolver {
         if (subpath !== ".") return null;
         const url = new URL(pcfg.exports, pkgUrl).href;
         try {
-          if (
-            (await this.finalizeResolve(url, false, pkgUrl)) ===
-            pkgUrl + subpath.slice(2)
-          )
+          if ((await this.finalizeResolve(url, false, pkgUrl)) === resolvedUrl)
             return ".";
         } catch {}
         return null;
@@ -481,8 +480,7 @@ export class Resolver {
                 new URL(curTarget, pkgUrl).href,
                 false,
                 pkgUrl
-              )) ===
-              pkgUrl + subpath.slice(2)
+              )) === resolvedUrl
             )
               return ".";
           } catch {}
@@ -502,8 +500,7 @@ export class Resolver {
                   new URL(curTarget, pkgUrl).href,
                   false,
                   pkgUrl
-                )) ===
-                pkgUrl + subpath.slice(2)
+                )) === resolvedUrl
               ) {
                 if (bestMatch) {
                   if (originalSpecifier.endsWith(bestMatch.slice(2))) {
@@ -562,8 +559,7 @@ export class Resolver {
               new URL(subpath, new URL(pkgUrl)).href,
               false,
               pkgUrl
-            )) ===
-            pkgUrl + subpath.slice(2)
+            )) === resolvedUrl
           )
             return ".";
         } catch {}
@@ -582,8 +578,7 @@ export class Resolver {
             ),
             false,
             pkgUrl
-          )) ===
-            pkgUrl + subpath.slice(2)
+          )) === resolvedUrl
         )
           return ".";
       } catch {}
@@ -599,8 +594,7 @@ export class Resolver {
             ),
             false,
             pkgUrl
-          )) ===
-          pkgUrl + subpath.slice(2)
+          )) === resolvedUrl
         )
           return ".";
       } catch {}
@@ -617,8 +611,7 @@ export class Resolver {
             ),
             false,
             pkgUrl
-          )) ===
-            pkgUrl + subpath.slice(2)
+          )) === resolvedUrl
         )
           return ".";
       } catch {}
@@ -635,8 +628,7 @@ export class Resolver {
             ),
             false,
             pkgUrl
-          )) ===
-            pkgUrl + subpath.slice(2)
+          )) === resolvedUrl
         )
           return ".";
         return null;
@@ -854,13 +846,13 @@ export class Resolver {
         return await createTsAnalysis(source, resolvedUrl);
 
       if (resolvedUrl.endsWith(".wasm")) {
-          return {
-              deps: [],
-              dynamicDeps: [],
-              cjsLazyDeps: null,
-              size: source.length,
-              format: "wasm"
-          }
+        return {
+          deps: [],
+          dynamicDeps: [],
+          cjsLazyDeps: null,
+          size: source.length,
+          format: "wasm",
+        };
       }
 
       if (resolvedUrl.endsWith(".json")) {

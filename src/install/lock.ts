@@ -52,7 +52,7 @@ export interface VersionConstraints {
 
 export interface InstalledResolution {
   installUrl: `${string}/`;
-  installSubpath: `./${string}` | null;
+  installSubpath: '.' | `./${string}` | null;
 }
 
 export interface FlatInstalledResolution {
@@ -126,7 +126,7 @@ export function setResolution(
   name: string,
   installUrl: `${string}/`,
   pkgScope: `${string}/` | null = null,
-  installSubpath: `./${string}` | null = null
+  installSubpath: '.' | `./${string}` | null = null
 ) {
   if (pkgScope && !pkgScope.endsWith("/")) throwInternalError(pkgScope);
   if (pkgScope === null) {
@@ -513,7 +513,7 @@ export async function extractLockConstraintsAndMap(
 
           // In the case of subpaths having diverging versions, we force convergence on one version
           // Only scopes permit unpacking
-          let installSubpath: null | `./${string}/` | false = null;
+          let installSubpath: null | '.' | './' | `./${string}/` | false = null;
           if (parsedKey.subpath !== exportSubpath) {
             if (parsedKey.subpath === ".") {
               installSubpath = exportSubpath as `./${string}/`;
