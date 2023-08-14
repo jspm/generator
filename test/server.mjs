@@ -29,7 +29,7 @@ const testBase = resolve(fileURLToPath(import.meta.url) + "/../");
 const tests = glob
   .sync(testBase + "/**/*.test.js")
   .map((test) => test.slice(testBase.length + 1, -3))
-  .filter((test) => !test.startsWith("deno/"));
+  .filter((test) => !test.startsWith("deno/") && !test.includes('skipbrowser'));
 
 let failTimeout, browserTimeout;
 
