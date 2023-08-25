@@ -286,6 +286,8 @@ export interface GeneratorOptions {
   ignore?: string[];
 
   /**
+   * @deprecated IPFS support in JSPM Generator will be removed in the next major
+   * 
    * When installing packages over IPFS, sets the IPFS node API HTTP interface to use,
    * or a list of API URLs to try connect to.
    *
