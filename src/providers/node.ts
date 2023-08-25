@@ -89,7 +89,7 @@ export function resolveBuiltin(
   specifier: string,
   env: string[]
 ): string | Install | undefined {
-  const builtin = specifier.startsWith("node:")
+  let builtin = specifier.startsWith("node:")
     ? specifier.slice(5)
     : nodeBuiltinSet.has(specifier)
     ? specifier
@@ -103,6 +103,10 @@ export function resolveBuiltin(
   if (env.includes("deno") || env.includes("node")) {
     return `node:${builtin}`;
   }
+
+  // Strip the subpath for subpathed builtins
+  if (builtin.includes('/'))
+    builtin = builtin.split('/')[0];
 
   return {
     target: {
