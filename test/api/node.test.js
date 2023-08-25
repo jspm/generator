@@ -2,6 +2,19 @@ import { Generator, lookup } from "@jspm/generator";
 import assert from "assert";
 
 {
+  const generator = new Generator();
+
+  await generator.link('fs/promises');
+
+  const json = generator.getMap();
+
+  assert.strictEqual(
+    json.imports["fs/promises"].split('/').slice(-4).join('/'),
+    `nodelibs/browser/fs/promises.js`
+  );
+}
+
+{
   const generator = new Generator({
     env: ["production", "browser"],
   });
