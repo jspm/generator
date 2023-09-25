@@ -424,7 +424,7 @@ export class Generator {
     const { log, logStream } = createLogger();
     this.log = log;
     this.logStream = logStream;
-    if (process.env.JSPM_GENERATOR_LOG) {
+    if (process?.env?.JSPM_GENERATOR_LOG) {
       (async () => {
         for await (const { type, message } of this.logStream()) {
           console.log(`\x1b[1m${type}:\x1b[0m ${message}`);
