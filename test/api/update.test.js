@@ -60,7 +60,7 @@ import assert from "assert";
 
   await generator.update("lit");
   const json = generator.getMap();
-  const expectedVersion = (await lookup("lit@latest")).resolved.version;
+  const expectedVersion = (await lookup("lit@2")).resolved.version;
 
   assert.strictEqual(
     json.imports.lit,

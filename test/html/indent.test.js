@@ -66,6 +66,7 @@ await checkIndent(
   }
   </script>
   <link rel="modulepreload" href="/react.js" />
+  <link rel="modulepreload" href="https://ga.jspm.io/npm:react@17.0.2/cjs/react.production.min.js" />
   <link rel="modulepreload" href="https://ga.jspm.io/npm:react@17.0.2/index.js" />
 <script type="module">
   import 'react';
@@ -110,6 +111,7 @@ await checkIndent(
     }
     </script>
     <link rel="modulepreload" href="https://ga.jspm.io/npm:object-assign@4.1.1/index.js" />
+    <link rel="modulepreload" href="https://ga.jspm.io/npm:react@17.0.2/cjs/react.production.min.js" />
     <link rel="modulepreload" href="https://ga.jspm.io/npm:react@17.0.2/index.js" />
   </head>
   <body>
@@ -159,6 +161,7 @@ await checkIndent(
     }
     </script>
     <link rel="modulepreload" href="https://ga.jspm.io/npm:object-assign@4.1.1/index.js" />
+    <link rel="modulepreload" href="https://ga.jspm.io/npm:react@17.0.2/cjs/react.production.min.js" />
     <link rel="modulepreload" href="https://ga.jspm.io/npm:react@17.0.2/index.js" />
     <script type="module">
       import 'react';

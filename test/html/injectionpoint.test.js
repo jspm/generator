@@ -52,6 +52,7 @@ assert.strictEqual(
     "}\n" +
     "</script>\n" +
     '<link rel="modulepreload" href="https://ga.jspm.io/npm:object-assign@4.1.1/index.js" />\n' +
+    '<link rel="modulepreload" href="https://ga.jspm.io/npm:react@17.0.2/cjs/react.production.min.js" />\n' +
     '<link rel="modulepreload" href="https://ga.jspm.io/npm:react@17.0.2/index.js" />\n' +
     '<script type="module">\n' +
     '    import "react";\n' +

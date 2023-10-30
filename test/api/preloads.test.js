@@ -11,7 +11,7 @@ assert.strictEqual(staticDeps.length, 5);
     alias: "react17",
     target: "react@17",
   });
-  assert.strictEqual(staticDeps.length, 6);
+  assert.strictEqual(staticDeps.length, 7);
 }
 
 const json = generator.getMap();
