@@ -1,4 +1,4 @@
-import { Generator, lookup } from "@jspm/generator";
+import { Generator, lookup, fetch } from "@jspm/generator";
 import assert from "assert";
 
 const myorgUrl = "https://unpkg.com/";
