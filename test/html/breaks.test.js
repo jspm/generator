@@ -20,9 +20,8 @@ const esmsUrl =
     generator.traceMap.installer.defaultProvider
   )) + "dist/es-module-shims.js";
 
-assert.strictEqual(
-  await generator.htmlGenerate(
-    `<!DOCTYPE html>
+const html = 
+`<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -62,9 +61,12 @@ assert.strictEqual(
   <div id="root"></div>
 </body>
 
-</html>`,
-    { preload: true }
-  ),
+</html>`;
+
+const pins = await generator.addMappings(html);
+const res = await generator.htmlInject(html, { pins, preload: true });
+
+assert.strictEqual(res,
   "<!DOCTYPE html>\n" +
     '<html lang="en">\n' +
     "\n" +

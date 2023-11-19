@@ -123,10 +123,9 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
         fs: "https://deno.land/std@0.148.0/fs/mod.ts",
       },
     },
-    freeze: true,
   });
 
-  await generator.install("deno:path");
+  await generator.link("deno:path");
   const json = generator.getMap();
 
   assert.strictEqual(
@@ -134,7 +133,7 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
     `https://deno.land/std@0.148.0/fs/mod.ts`
   );
   assert.strictEqual(
-    json.imports["path"],
+    json.imports["deno:path"],
     `https://deno.land/std@0.148.0/path/mod.ts`
   );
 }
@@ -183,12 +182,11 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
       imports: {
         fs: "https://deno.land/std@0.148.0/fs/mod.ts",
       },
-    },
-    freeze: true,
+    }
   });
 
-  await generator.install("deno:testing/asserts");
-  await generator.install("deno:async/abortable.ts");
+  await generator.link("deno:testing/asserts");
+  await generator.link("deno:async/abortable.ts");
 
   const json = generator.getMap();
 
@@ -197,11 +195,11 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
     `https://deno.land/std@0.148.0/fs/mod.ts`
   );
   assert.strictEqual(
-    json.imports["async/abortable"],
+    json.imports["deno:async/abortable.ts"],
     `https://deno.land/std@0.148.0/async/abortable.ts`
   );
   assert.strictEqual(
-    json.imports["testing/asserts"],
+    json.imports["deno:testing/asserts"],
     `https://deno.land/std@0.148.0/testing/asserts.ts`
   );
 }

@@ -14,7 +14,9 @@ const generator = new Generator({
   },
   mapUrl: import.meta.url,
   env: ["production", "browser"],
-  freeze: true, // lock versions
+  resolutions: {
+    'lit': '2.6.1'
+  }
 });
 
 // Install with no arguments should install all top-level pins.
@@ -27,7 +29,7 @@ assert.strictEqual(
 );
 
 // Installing a new dependency with freeze should not throw:
-await generator.install(["lit@2.6.1"]);
+await generator.link(["lit"]);
 json = generator.getMap();
 
 assert.strictEqual(
