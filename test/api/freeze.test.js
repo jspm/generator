@@ -20,7 +20,6 @@ import assert from "assert";
 
 async function checkScenario(scenario) {
   const generator = new Generator({
-    freeze: true,
     mapUrl: new URL("./local/freeze", import.meta.url).href,
     baseUrl: new URL("./local/freeze", import.meta.url).href,
     inputMap: scenario.map ?? {},
@@ -30,7 +29,7 @@ async function checkScenario(scenario) {
 
   // install dependencies:
   try {
-    await Promise.all(scenario.install.map((pkg) => generator.install(pkg)));
+    await Promise.all(scenario.install.map((pkg) => generator.link(pkg)));
   } catch (err) {
     if (!scenario.expect) return; // expected to throw, all good
     throw err;

@@ -15,7 +15,7 @@ assert.strictEqual(
   "./node_modules/chalk/source/index.js"
 );
 
-// Check that we can reinstall using the jspm.io provider, and then go back to
+// Check that we can install using the jspm.io provider, and then go back to
 // the nodemodules provider, without affecting the resolutions:
 
 generator = new Generator({
@@ -24,7 +24,7 @@ generator = new Generator({
   inputMap: json,
   commonJS: true,
 });
-await generator.reinstall();
+await generator.install();
 json = generator.getMap();
 
 generator = new Generator({
@@ -33,7 +33,7 @@ generator = new Generator({
   inputMap: json,
   commonJS: true,
 });
-await generator.reinstall();
+await generator.install();
 json = generator.getMap();
 assert.strictEqual(
   json.imports["chalk"],
