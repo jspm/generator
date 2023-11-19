@@ -6,7 +6,6 @@ const exactPkgRegEx = /^((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
 
 const generator = new Generator({
   defaultProvider: "myorg",
-  defaultRegistry: "myorg",
   customProviders: {
     myorg: {
       ownsUrl(url) {
@@ -16,12 +15,19 @@ const generator = new Generator({
         return `${myorgUrl}${name}@${version}/`;
       },
       async getPackageConfig(pkgUrl) {
-        const pcfg = await (await fetch(pkgUrl)).json();
+        // hook package.json lookup to insert explicit registry identifiers in package.json dependencies
+        // the alternative to this approach is to set a global "defaultRegistry" generator option
+        // but that option is limited in that the defaultRegistry is global instead of being per-provider /
+        // per-service.
+        // This is thus the recommended way to support multi-registry workflows, keeping npm as the default
+        // (per ecosystem semantics), and instead overriding package.json dependency schemas to point to
+        // any new registries.
+        const pcfg = await (await fetch(`${pkgUrl}package.json`)).json();
         if (pcfg.dependencies) {
           let dependencies = {};
-          for (let [name, target] in pcfg.dependencies) {
+          for (let [name, target] of Object.entries(pcfg.dependencies)) {
             if (target.indexOf(':') === -1)
-              target = 'myorg:' + target;
+              target = 'myorg:' + name + '@' + target;
             dependencies[name] = target;
           }
           pcfg.dependencies = dependencies;
@@ -34,7 +40,6 @@ const generator = new Generator({
           return { registry: "myorg", name, version };
         }
       },
-      
       async resolveLatestTarget(
         { registry, name, range, unstable },
         layer,

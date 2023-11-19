@@ -94,7 +94,7 @@ export class Resolver {
   }
 
   providerNameForUrl(url: string): string | null {
-    for (const name of Object.keys(this.providers)) {
+    for (const name of Object.keys(this.providers).reverse()) {
       const provider = this.providers[name];
       if (
         (provider.ownsUrl && provider.ownsUrl.call(this, url)) ||
@@ -111,7 +111,7 @@ export class Resolver {
   }
 
   async parseUrlPkg(url: string): Promise<ExactModule | null> {
-    for (const provider of Object.keys(this.providers)) {
+    for (const provider of Object.keys(this.providers).reverse()) {
       const providerInstance = this.providers[provider];
       const result = providerInstance.parseUrlPkg.call(this, url);
       if (result)
@@ -139,7 +139,7 @@ export class Resolver {
   }
 
   resolveBuiltin(specifier: string): string | Install | undefined {
-    for (const provider of Object.values(this.providers)) {
+    for (const provider of Object.values(this.providers).reverse()) {
       if (!provider.resolveBuiltin) continue;
       const builtin = provider.resolveBuiltin.call(this, specifier, this.env);
       if (builtin) return builtin;
