@@ -59,10 +59,7 @@ export const defaultProviders: Record<string, Provider> = {
   skypack,
   unpkg,
   "esm.sh": esmsh,
-  "jspm.io": jspm,
-
-  // TODO: remove at some point, alias for backwards compatibility:
-  jspm,
+  "jspm.io": jspm
 };
 
 export function getProvider(name: string, providers: Record<string, Provider>) {
@@ -74,9 +71,6 @@ export function getProvider(name: string, providers: Record<string, Provider>) {
 export function getDefaultProviderStrings() {
   let res = [];
   for (const [name, provider] of Object.entries(defaultProviders)) {
-    // TODO: remove the jspm alias at some point along with this hack:
-    if (name === "jspm") continue;
-
     for (const layer of provider.supportedLayers ?? ["default"])
       res.push(`${name}${layer === "default" ? "" : `#${layer}`}`);
   }
