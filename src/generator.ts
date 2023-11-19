@@ -286,20 +286,6 @@ export interface GeneratorOptions {
   ignore?: string[];
 
   /**
-   * @deprecated IPFS support in JSPM Generator will be removed in the next major
-   * 
-   * When installing packages over IPFS, sets the IPFS node API HTTP interface to use,
-   * or a list of API URLs to try connect to.
-   *
-   * Default: ['/ip4/127.0.0.1/tcp/45005', '/ip4/127.0.0.1/tcp/5001']
-   *
-   * Defaults to the Brave Browser interface at /ip4/127.0.0.1/tcp/45005, when IPFS is
-   * enabled in Brave Browser via brave://ipfs-internals/, followed by trying the local
-   * IPFS node.
-   */
-  ipfsAPI?: string | string[];
-
-  /**
    * Lockfile data to use for resolutions
    */
   lock?: LockResolutions;
@@ -417,7 +403,6 @@ export class Generator {
     ignore = [],
     freeze,
     latest,
-    ipfsAPI,
     commonJS = false,
   }: GeneratorOptions = {}) {
     // Initialise the debug logger:
@@ -443,8 +428,6 @@ export class Generator {
       fetchOpts.cache = "force-cache"
     else if (!cache)
       fetchOpts.cache = "no-store";
-
-    if (ipfsAPI) fetchOpts.ipfsAPI = ipfsAPI;
 
     // Default logic for the mapUrl, baseUrl and rootUrl:
     if (mapUrl && !baseUrl) {

@@ -180,7 +180,6 @@ export class Resolver {
       !pkgUrl.startsWith("file:") &&
       !pkgUrl.startsWith("http:") &&
       !pkgUrl.startsWith("https:") &&
-      !pkgUrl.startsWith("ipfs:") &&
       !pkgUrl.startsWith("node:")
     )
       return null;

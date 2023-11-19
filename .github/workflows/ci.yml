@@ -75,16 +75,5 @@ jobs:
       uses: guybedford/chomp-action@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Install IPFS
-      run: |
-        wget https://dist.ipfs.io/go-ipfs/v0.10.0/go-ipfs_v0.10.0_linux-amd64.tar.gz
-        tar -xvzf go-ipfs_v0.10.0_linux-amd64.tar.gz
-        cd go-ipfs
-        sudo bash install.sh
-        ipfs init
-        ipfs daemon &
     - run: npm install
     - run: chomp test
-      env:
-        IPFS_API: /ip4/127.0.0.1/tcp/5001
-

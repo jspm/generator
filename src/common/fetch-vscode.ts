@@ -41,8 +41,6 @@ export const fetch: FetchFn = wrapWithRetry(async function (
   const urlString = url.toString();
   const protocol = urlString.slice(0, urlString.indexOf(":") + 1);
   switch (protocol) {
-    case "ipfs:":
-      throw new Error("IPFS Support for VSCode not yet implemented");
     case "file:":
       if (urlString.endsWith("/")) {
         try {

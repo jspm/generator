@@ -70,12 +70,6 @@ export const fetch: FetchFn = wrapWithRetry(async function (
   const protocol = urlString.slice(0, urlString.indexOf(":") + 1);
   let source: string | Buffer;
   switch (protocol) {
-    case "ipfs:":
-      const { get } = await import("./ipfs.js");
-      source = await get(urlString.slice(7), opts.ipfsAPI);
-      if (source === null) return dirResponse;
-      if (source === undefined) return { status: 404 };
-      return sourceResponse(source);
     case "file:":
       if (urlString.endsWith("/")) {
         try {
