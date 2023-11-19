@@ -23,6 +23,7 @@ const generator = new Generator({
         // (per ecosystem semantics), and instead overriding package.json dependency schemas to point to
         // any new registries.
         const pcfg = await (await fetch(`${pkgUrl}package.json`)).json();
+        // strictly, this should also be for optionalDependencies + peerDependencies
         if (pcfg.dependencies) {
           let dependencies = {};
           for (let [name, target] of Object.entries(pcfg.dependencies)) {
