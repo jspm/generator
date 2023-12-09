@@ -537,22 +537,17 @@ export class Generator {
    * Link a module, installing all dependencies necessary into the map
    * to support its execution including static and dynamic module imports.
    *
-   * @param specifier Module to link
+   * @param specifier Module or list of modules to link
    * @param parentUrl Optional parent URL
    */
   async link(
-    specifier?: string | string[],
+    specifier: string | string[],
     parentUrl?: string
   ): Promise<{ staticDeps: string[]; dynamicDeps: string[] }> {
     if (typeof specifier === "string") specifier = [specifier];
     let error = false;
     if (this.installCnt++ === 0) this.traceMap.startInstall();
     await this.traceMap.processInputMap;
-    if (!specifier || specifier.length === 0) {
-      const { map, staticDeps, dynamicDeps } = await this.traceMap.finishInstall();
-      this.map = map;
-      return { staticDeps, dynamicDeps };
-    }
     specifier = specifier.map((specifier) => specifier.replace(/\\/g, "/"));
     try {
       await Promise.all(
@@ -1007,6 +1002,21 @@ export class Generator {
         this.map = map;
         if (!error) return { staticDeps, dynamicDeps };
       }
+    }
+  }
+
+  /**
+   * Locking install, retraces all top-level pins but does not change the
+   * versions of anything (similar to "npm ci").
+   */
+  async reinstall() {
+    if (this.installCnt++ === 0) this.traceMap.startInstall();
+    await this.traceMap.processInputMap;
+    if (--this.installCnt === 0) {
+      const { map, staticDeps, dynamicDeps } =
+        await this.traceMap.finishInstall();
+      this.map = map;
+      return { staticDeps, dynamicDeps };
     }
   }
 

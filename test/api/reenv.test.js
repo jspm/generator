@@ -19,7 +19,7 @@ import assert from "assert";
     env: ["production", "browser"],
   });
 
-  await generator.link();
+  await generator.reinstall();
   const json = generator.getMap();
 
   assert.strictEqual(
@@ -50,7 +50,7 @@ import assert from "assert";
     },
   });
 
-  await generator.link();
+  await generator.reinstall();
 
   const json = generator.getMap();
 
