@@ -55,16 +55,27 @@ export class Resolver {
   pcfgPromises: Record<string, Promise<void>> = Object.create(null);
   pcfgs: Record<string, PackageConfig | null> = Object.create(null);
   fetchOpts: any;
-  preserveSymlinks = false;
+  preserveSymlinks;
   providers = defaultProviders;
   env: string[];
   cjsEnv: string[];
-  constructor(
-    env: string[],
-    log: Log,
-    fetchOpts?: any,
-    preserveSymlinks = false
-  ) {
+  traceCjs;
+  traceTs;
+  constructor({
+    env,
+    log,
+    fetchOpts,
+    preserveSymlinks = false,
+    traceCjs = true,
+    traceTs = true,
+  }: {
+    env: string[];
+    log: Log;
+    fetchOpts?: any;
+    preserveSymlinks?: boolean;
+    traceCjs?: boolean;
+    traceTs?: boolean;
+  }) {
     if (env.includes("require"))
       throw new Error("Cannot manually pass require condition");
     if (!env.includes("import")) env.push("import");
@@ -73,6 +84,8 @@ export class Resolver {
     this.log = log;
     this.fetchOpts = fetchOpts;
     this.preserveSymlinks = preserveSymlinks;
+    this.traceCjs = traceCjs;
+    this.traceTs = traceTs;
   }
 
   addCustomProvider(name: string, provider: Provider) {
@@ -838,9 +851,10 @@ export class Resolver {
     // TODO: headers over extensions for non-file URLs
     try {
       if (
-        resolvedUrl.endsWith(".ts") ||
-        resolvedUrl.endsWith(".tsx") ||
-        resolvedUrl.endsWith(".jsx")
+        this.traceTs &&
+        (resolvedUrl.endsWith(".ts") ||
+          resolvedUrl.endsWith(".tsx") ||
+          resolvedUrl.endsWith(".jsx"))
       )
         return await createTsAnalysis(source, resolvedUrl);
 
@@ -876,6 +890,7 @@ export class Resolver {
         // Support CommonJS package boundary checks for non-ESM on file: protocol only
         if (isRequire) {
           if (
+            this.traceCjs &&
             !(
               resolvedUrl.endsWith(".mjs") ||
               (resolvedUrl.endsWith(".js") &&
@@ -885,16 +900,18 @@ export class Resolver {
                   )
                 )?.type === "module")
             )
-          )
+          ) {
             return createCjsAnalysis(imports, source, resolvedUrl);
+          }
         } else if (
-          resolvedUrl.endsWith(".cjs") ||
-          (resolvedUrl.endsWith(".js") &&
-            (
-              await this.getPackageConfig(
-                await this.getPackageBase(resolvedUrl)
-              )
-            )?.type !== "module")
+          this.traceCjs &&
+          (resolvedUrl.endsWith(".cjs") ||
+            (resolvedUrl.endsWith(".js") &&
+              (
+                await this.getPackageConfig(
+                  await this.getPackageBase(resolvedUrl)
+                )
+              )?.type !== "module"))
         ) {
           return createCjsAnalysis(imports, source, resolvedUrl);
         }

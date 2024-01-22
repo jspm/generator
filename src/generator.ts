@@ -293,8 +293,15 @@ export interface GeneratorOptions {
   /**
    * Support tracing CommonJS dependencies locally. This is necessary if you
    * are using the "nodemodules" provider and have CommonJS dependencies.
+   * Disabled by default.
    */
   commonJS?: boolean;
+  
+  /**
+   * Support tracing TypeScript dependencies when generating the import map.
+   * Disabled by default.
+   */
+  typeScript?: boolean;
 }
 
 export interface ModuleAnalysis {
@@ -382,6 +389,7 @@ export class Generator {
     fetchOptions = {},
     ignore = [],
     commonJS = false,
+    typeScript = false,
   }: GeneratorOptions = {}) {
     // Initialise the debug logger:
     const { log, logStream } = createLogger();
@@ -443,7 +451,7 @@ export class Generator {
     }
 
     // Initialise the resolver:
-    const resolver = new Resolver(env, log, fetchOpts, true);
+    const resolver = new Resolver({ env, log, fetchOpts, preserveSymlinks: true, traceCjs: commonJS, traceTs: typeScript });
     if (customProviders) {
       for (const provider of Object.keys(customProviders)) {
         resolver.addCustomProvider(provider, customProviders[provider]);
