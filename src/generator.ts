@@ -1130,8 +1130,9 @@ export class Generator {
     }
     this.traceMap.pins = pins;
     if (--this.installCnt === 0) {
-      const { map } = await this.traceMap.finishInstall();
+      const { staticDeps, dynamicDeps, map } = await this.traceMap.finishInstall();
       this.map = map;
+      return { staticDeps, dynamicDeps };
     }
   }
 
