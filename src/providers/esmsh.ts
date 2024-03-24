@@ -49,16 +49,6 @@ export async function getPackageConfig(
   }
 
   const pcfg = await res.json();
-  if (pcfg.exports) {
-    for (const key of Object.keys(pcfg.exports)) {
-      pcfg.exports[key] = key;
-    }
-  }
-  if (pcfg.imports) {
-    for (const key of Object.keys(pcfg.imports)) {
-      pcfg.imports[key] = key;
-    }
-  }
   return pcfg;
 }
 
