@@ -22,9 +22,6 @@ export function parseUrlPkg(url: string) {
   return { registry: "npm", name, version };
 }
 
-// esm.sh serves im/exports on their "exports" subpaths, whereas the generator
-// expects them to be served on their filesystem paths, so we have to rewrite
-// the package.json before doing anything with it:
 export async function getPackageConfig(
   this: Resolver,
   pkgUrl: string
@@ -49,6 +46,16 @@ export async function getPackageConfig(
   }
 
   const pcfg = await res.json();
+  if (pcfg.exports && Object.keys(pcfg.exports).some(key => key.startsWith('./'))) {
+    for (const key of Object.keys(pcfg.exports)) {
+      pcfg.exports[key] = key;
+    }
+  }
+  if (pcfg.imports) {
+    for (const key of Object.keys(pcfg.imports)) {
+      pcfg.imports[key] = key;
+    }
+  }
   return pcfg;
 }
 
