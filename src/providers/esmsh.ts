@@ -46,10 +46,14 @@ export async function getPackageConfig(
   }
 
   const pcfg = await res.json();
-  if (pcfg.exports && Object.keys(pcfg.exports).some(key => key.startsWith('./'))) {
-    for (const key of Object.keys(pcfg.exports)) {
-      pcfg.exports[key] = key;
-    }
+
+  if (pcfg.exports) {
+    if (Object.keys(pcfg.exports).some(key => key.startsWith('./')))
+      for (const key of Object.keys(pcfg.exports)) {
+        pcfg.exports[key] = key;
+      }
+    // wildcard key for esmsh to do its own thing
+    pcfg.exports['./*'] = './*';
   }
   if (pcfg.imports) {
     for (const key of Object.keys(pcfg.imports)) {

@@ -16,3 +16,10 @@ const scope = json.scopes["https://esm.sh/"];
 assert.ok(scope["@lit/reactive-element"]);
 assert.ok(scope["lit-element/lit-element.js"]);
 assert.ok(scope["lit-html"]);
+
+await generator.install("twind");
+
+{
+  const json = generator.getMap();
+  assert.ok(json.imports.twind);
+}
