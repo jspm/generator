@@ -275,7 +275,7 @@ async function lookupRange(
       const version = semverRange.bestMatch(versions, unstable);
 
       if (version) {
-        return { registry, name, version };
+        return { registry, name, version: version.toString() };
       }
       throw new JspmError(
         `Unable to resolve ${registry}:${name}@${range} to a valid version${importedFrom(
