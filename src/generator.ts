@@ -43,6 +43,7 @@ import { LockResolutions } from "./install/lock.js";
 import { getDefaultProviderStrings, type Provider } from "./providers/index.js";
 import * as nodemodules from "./providers/nodemodules.js";
 import { Resolver } from "./trace/resolver.js";
+import { getMaybeWrapperUrl } from './common/wrapper.js';
 
 // Utility exports for users:
 export { analyzeHtml };
@@ -729,6 +730,10 @@ export class Generator {
           esmsPkg,
           this.traceMap.installer.defaultProvider
         )) + "dist/es-module-shims.js";
+
+      // detect esmsUrl as a wrapper URL
+      esmsUrl = await getMaybeWrapperUrl(esmsUrl, this.traceMap.resolver.fetchOpts);
+
       if (htmlUrl || rootUrl)
         esmsUrl = relativeUrl(
           new URL(esmsUrl),
