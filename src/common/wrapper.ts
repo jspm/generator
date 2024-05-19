@@ -1,3 +1,4 @@
+//@ts-ignore
 import { fetch } from '#fetch';
 import { parse, init } from 'es-module-lexer';
 
