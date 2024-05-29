@@ -716,12 +716,12 @@ export class Resolver {
           );
         else throwExportNotDefined();
       } else if (!allDotKeys(pcfg.exports)) {
-        if (subpath === ".")
-          return this.finalizeResolve(
-            this.resolvePackageTarget(pcfg.exports, pkgUrl, cjsEnv, "", false),
-            parentIsCjs,
-            pkgUrl
-          );
+        if (subpath === ".") {
+          const url = this.resolvePackageTarget(pcfg.exports, pkgUrl, cjsEnv, "", false);
+          if (url === null)
+              throwExportNotDefined();
+          return this.finalizeResolve(url, parentIsCjs, pkgUrl);
+        }
         else throwExportNotDefined();
       } else {
         const match = getMapMatch(
