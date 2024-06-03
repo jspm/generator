@@ -837,7 +837,7 @@ export class Resolver {
         );
     }
     try {
-      var source = await res.text();
+      var source = await res.arrayBuffer();
     } catch (e) {
       if (
         retry &&
@@ -850,6 +850,23 @@ export class Resolver {
     }
     // TODO: headers over extensions for non-file URLs
     try {
+      if (resolvedUrl.endsWith(".wasm")) {
+        try {
+          var compiled = await WebAssembly.compile(source);
+        } catch (e) {
+          throw e;
+        }
+        return {
+          deps: WebAssembly.Module.imports(compiled).map(({ module }) => module),
+          dynamicDeps: [],
+          cjsLazyDeps: null,
+          size: source.byteLength,
+          format: "wasm",
+        };
+      }
+
+      source = new TextDecoder().decode(source);
+
       if (
         this.traceTs &&
         (resolvedUrl.endsWith(".ts") ||
@@ -857,16 +874,6 @@ export class Resolver {
           resolvedUrl.endsWith(".jsx"))
       )
         return await createTsAnalysis(source, resolvedUrl);
-
-      if (resolvedUrl.endsWith(".wasm")) {
-        return {
-          deps: [],
-          dynamicDeps: [],
-          cjsLazyDeps: null,
-          size: source.length,
-          format: "wasm",
-        };
-      }
 
       if (resolvedUrl.endsWith(".json")) {
         try {
@@ -877,6 +884,18 @@ export class Resolver {
             cjsLazyDeps: null,
             size: source.length,
             format: "json",
+          };
+        } catch {}
+      }
+
+      if (resolvedUrl.endsWith(".css")) {
+        try {
+          return {
+            deps: [],
+            dynamicDeps: [],
+            cjsLazyDeps: null,
+            size: source.length,
+            format: "css",
           };
         } catch {}
       }
