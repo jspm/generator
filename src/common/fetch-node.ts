@@ -42,8 +42,9 @@ function sourceResponse(buffer: string | Buffer) {
       return JSON.parse(buffer.toString());
     },
     arrayBuffer() {
-      if (buffer instanceof Buffer) return buffer.buffer;
-      return new TextEncoder().encode(buffer.toString()).buffer;
+      if (typeof buffer === 'string')
+        return new TextEncoder().encode(buffer.toString()).buffer;
+      return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     },
   };
 }

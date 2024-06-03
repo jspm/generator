@@ -2,7 +2,7 @@ export interface Analysis {
   deps: string[];
   dynamicDeps: string[];
   cjsLazyDeps: string[] | null;
-  format: "esm" | "commonjs" | "system" | "json" | "typescript" | "wasm";
+  format: "esm" | "commonjs" | "system" | "json" | "typescript" | "wasm" | "css";
   size: number;
 
   // for commonjs format, true iff the module uses a CJS-only global
