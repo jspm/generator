@@ -367,6 +367,7 @@ export class Resolver {
   async finalizeResolve(
     url: string,
     parentIsCjs: boolean,
+    exportsResolution: boolean,
     pkgUrl: `${string}/`
   ): Promise<string> {
     if (parentIsCjs && url.endsWith("/")) url = url.slice(0, -1);
@@ -380,23 +381,27 @@ export class Resolver {
             return this.finalizeResolve(
               await legacyMainResolve.call(this, pcfg.browser, new URL(url)),
               parentIsCjs,
+              exportsResolution,
               pkgUrl
             );
           if (this.env.includes("module") && typeof pcfg.module === "string")
             return this.finalizeResolve(
               await legacyMainResolve.call(this, pcfg.module, new URL(url)),
               parentIsCjs,
+              exportsResolution,
               pkgUrl
             );
           if (typeof pcfg.main === "string")
             return this.finalizeResolve(
               await legacyMainResolve.call(this, pcfg.main, new URL(url)),
               parentIsCjs,
+              exportsResolution,
               pkgUrl
             );
           return this.finalizeResolve(
             await legacyMainResolve.call(this, null, new URL(url)),
             parentIsCjs,
+            exportsResolution,
             pkgUrl
           );
         }
@@ -432,11 +437,17 @@ export class Resolver {
             return await this.finalizeResolve(
               pkgUrl + target.slice(2),
               parentIsCjs,
+              exportsResolution,
               pkgUrl
             );
           }
         }
       }
+    }
+
+    // give some compatibility for packages without "exports" field
+    if (!exportsResolution) {
+      if (!(await this.exists(url)) && await this.exists(url + ".js")) return url + ".js";
     }
 
     return url;
@@ -464,7 +475,7 @@ export class Resolver {
       for (const curTarget of targets) {
         try {
           if (
-            (await this.finalizeResolve(curTarget, false, pkgUrl)) ===
+            (await this.finalizeResolve(curTarget, false, true, pkgUrl)) ===
             resolvedUrl
           ) {
             return ".";
@@ -478,7 +489,7 @@ export class Resolver {
         if (subpath !== ".") return null;
         const url = new URL(pcfg.exports, pkgUrl).href;
         try {
-          if ((await this.finalizeResolve(url, false, pkgUrl)) === resolvedUrl)
+          if ((await this.finalizeResolve(url, false, true, pkgUrl)) === resolvedUrl)
             return ".";
         } catch {}
         return null;
@@ -491,6 +502,7 @@ export class Resolver {
               (await this.finalizeResolve(
                 new URL(curTarget, pkgUrl).href,
                 false,
+                true,
                 pkgUrl
               )) === resolvedUrl
             )
@@ -511,6 +523,7 @@ export class Resolver {
                 (await this.finalizeResolve(
                   new URL(curTarget, pkgUrl).href,
                   false,
+                  true,
                   pkgUrl
                 )) === resolvedUrl
               ) {
@@ -570,6 +583,7 @@ export class Resolver {
             (await this.finalizeResolve(
               new URL(subpath, new URL(pkgUrl)).href,
               false,
+              false,
               pkgUrl
             )) === resolvedUrl
           )
@@ -589,6 +603,7 @@ export class Resolver {
               pkgUrl
             ),
             false,
+            false,
             pkgUrl
           )) === resolvedUrl
         )
@@ -604,6 +619,7 @@ export class Resolver {
               originalSpecifier,
               pkgUrl
             ),
+            false,
             false,
             pkgUrl
           )) === resolvedUrl
@@ -622,6 +638,7 @@ export class Resolver {
               pkgUrl
             ),
             false,
+            false,
             pkgUrl
           )) === resolvedUrl
         )
@@ -638,6 +655,7 @@ export class Resolver {
               originalSpecifier,
               pkgUrl
             ),
+            false,
             false,
             pkgUrl
           )) === resolvedUrl
@@ -712,6 +730,7 @@ export class Resolver {
           return this.finalizeResolve(
             new URL(pcfg.exports, pkgUrl).href,
             parentIsCjs,
+            true,
             pkgUrl
           );
         else throwExportNotDefined();
@@ -720,7 +739,7 @@ export class Resolver {
           const url = this.resolvePackageTarget(pcfg.exports, pkgUrl, cjsEnv, "", false);
           if (url === null)
               throwExportNotDefined();
-          return this.finalizeResolve(url, parentIsCjs, pkgUrl);
+          return this.finalizeResolve(url, parentIsCjs, true, pkgUrl);
         }
         else throwExportNotDefined();
       } else {
@@ -747,7 +766,7 @@ export class Resolver {
             false
           );
           if (resolved === null) throwExportNotDefined();
-          return this.finalizeResolve(resolved, parentIsCjs, pkgUrl);
+          return this.finalizeResolve(resolved, parentIsCjs, true, pkgUrl);
         }
         throwExportNotDefined();
       }
@@ -763,6 +782,7 @@ export class Resolver {
               pkgUrl
             ),
             parentIsCjs,
+            false,
             pkgUrl
           );
         if (env.includes("module") && typeof pcfg.module === "string")
@@ -775,6 +795,7 @@ export class Resolver {
               pkgUrl
             ),
             parentIsCjs,
+            false,
             pkgUrl
           );
         if (typeof pcfg.main === "string")
@@ -787,6 +808,7 @@ export class Resolver {
               pkgUrl
             ),
             parentIsCjs,
+            false,
             pkgUrl
           );
         return this.finalizeResolve(
@@ -798,12 +820,14 @@ export class Resolver {
             pkgUrl
           ),
           parentIsCjs,
+          false,
           pkgUrl
         );
       } else {
         return this.finalizeResolve(
           new URL(subpath, new URL(pkgUrl)).href,
           parentIsCjs,
+          false,
           pkgUrl
         );
       }
@@ -953,7 +977,7 @@ export class Resolver {
     packageUrl: string,
     cjsEnv: boolean,
     subpath: string,
-    isImport: boolean
+    isImport: boolean,
   ): string | null {
     if (typeof target === "string") {
       if (target === ".") {

@@ -422,11 +422,7 @@ export default class TraceMap {
         );
       const resolvedHref = resolvedUrl.href;
       let finalized = await this.resolver.realPath(
-        await this.resolver.finalizeResolve(
-          resolvedHref,
-          parentIsCjs,
-          parentPkgUrl
-        )
+        await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, false, parentPkgUrl)
       );
 
       // handle URL mappings
