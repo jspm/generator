@@ -447,7 +447,10 @@ export class Resolver {
 
     // give some compatibility for packages without "exports" field
     if (!exportsResolution) {
-      if (!(await this.exists(url)) && await this.exists(url + ".js")) return url + ".js";
+      if (await this.exists(url)) void 0;
+      else if (await this.exists(url + ".js")) return url + ".js";
+      else if (await this.exists(url + ".json")) return url + ".json";
+      else if (await this.exists(url + ".node")) return url + ".node";
     }
 
     return url;
