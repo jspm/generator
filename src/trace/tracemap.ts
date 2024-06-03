@@ -85,7 +85,7 @@ interface TraceEntry {
   // For cjs modules, the list of hoisted deps
   // this is needed for proper cycle handling
   cjsLazyDeps: string[];
-  format: "esm" | "commonjs" | "system" | "json" | "typescript" | "wasm";
+  format: "esm" | "commonjs" | "system" | "json" | "css" | "typescript" | "wasm";
 }
 
 interface VisitOpts {
