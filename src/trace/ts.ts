@@ -49,8 +49,7 @@ export async function createTsAnalysis(
     ] = await Promise.all([
       import("@babel/core"),
       import("@babel/preset-typescript"),
-      // @ts-ignore
-      import("@babel/plugin-syntax-import-assertions"),
+      import("@babel/plugin-syntax-import-attributes"),
     ]);
 
   const imports = new Set<string>();
