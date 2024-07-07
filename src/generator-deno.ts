@@ -1,6 +1,6 @@
 import babel from "@babel/core";
 import babelPresetTs from "@babel/preset-typescript";
-import babelPluginSyntaxImportAssertions from "@babel/plugin-syntax-import-assertions";
+import babelPluginSyntaxImportAttributes from "@babel/plugin-syntax-import-attributes";
 import { createHash } from "crypto";
 import { realpath } from "fs";
 import { pathToFileURL } from "url";
@@ -11,7 +11,7 @@ import { setPathFns } from "./trace/resolver.js";
 import { setCreateHash } from "./common/integrity.js";
 
 setBabelCjs(babel);
-setBabelTs(babel, babelPresetTs, babelPluginSyntaxImportAssertions);
+setBabelTs(babel, babelPresetTs, babelPluginSyntaxImportAttributes);
 setCreateHash(createHash);
 setPathFns(realpath, pathToFileURL);
 
