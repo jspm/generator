@@ -1,12 +1,12 @@
 import { getIntegrity } from "../common/integrity.js";
 import { Analysis } from "./analysis";
 
-let babel, babelPresetTs, babelPluginImportAssertions;
+let babel, babelPresetTs, babelPluginImportAttributes;
 
-export function setBabel(_babel, _babelPresetTs, _babelPluginImportAssertions) {
+export function setBabel(_babel, _babelPresetTs, _babelPluginImportAttributes) {
   (babel = _babel),
     (babelPresetTs = _babelPresetTs),
-    (babelPluginImportAssertions = _babelPluginImportAssertions);
+    (babelPluginImportAttributes = _babelPluginImportAttributes);
 }
 
 const globalConsole = globalThis.console;
@@ -45,10 +45,11 @@ export async function createTsAnalysis(
       {
         default: { default: babelPresetTs },
       },
-      { default: babelPluginImportAssertions },
+      { default: babelPluginImportAttributes },
     ] = await Promise.all([
       import("@babel/core"),
       import("@babel/preset-typescript"),
+      // @ts-ignore
       import("@babel/plugin-syntax-import-assertions"),
     ]);
 
@@ -83,7 +84,7 @@ export async function createTsAnalysis(
         ],
       ],
       plugins: [
-        babelPluginImportAssertions,
+        babelPluginImportAttributes,
         ({ types: t }) => {
           return {
             visitor: {
