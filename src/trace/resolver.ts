@@ -29,6 +29,7 @@ import {
 } from "./analysis.js";
 import { Installer, PackageProvider } from "../install/installer.js";
 import { SemverRange } from "sver";
+import { getIntegrity } from "../common/integrity.js";
 
 let realpath, pathToFileURL;
 
@@ -889,6 +890,7 @@ export class Resolver {
           cjsLazyDeps: null,
           size: source.byteLength,
           format: "wasm",
+          integrity: getIntegrity(new Uint8Array(source))
         };
       }
 
@@ -911,6 +913,7 @@ export class Resolver {
             cjsLazyDeps: null,
             size: source.length,
             format: "json",
+            integrity: getIntegrity(source)
           };
         } catch {}
       }
@@ -923,6 +926,7 @@ export class Resolver {
             cjsLazyDeps: null,
             size: source.length,
             format: "css",
+            integrity: getIntegrity(source)
           };
         } catch {}
       }

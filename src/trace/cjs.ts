@@ -1,4 +1,5 @@
-import { Analysis } from "./analysis";
+import { getIntegrity } from "../common/integrity.js";
+import { Analysis } from "./analysis.js";
 
 // See: https://nodejs.org/docs/latest/api/modules.html#the-module-scope
 const cjsGlobals: string[] = [
@@ -109,6 +110,7 @@ export async function createCjsAnalysis(
     size: source.length,
     format: "commonjs",
     usesCjs,
+    integrity: getIntegrity(source)
   };
 }
 

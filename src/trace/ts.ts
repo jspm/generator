@@ -1,3 +1,4 @@
+import { getIntegrity } from "../common/integrity.js";
 import { Analysis } from "./analysis";
 
 let babel, babelPresetTs, babelPluginImportAssertions;
@@ -127,6 +128,7 @@ export async function createTsAnalysis(
     cjsLazyDeps: null,
     size: source.length,
     format: "typescript",
+    integrity: getIntegrity(source)
   };
 }
 

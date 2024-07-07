@@ -1,16 +1,13 @@
-// @ts-ignore
-import { fetch } from "#fetch";
+import { createHash as _createHash } from "crypto";
 
-let createHash;
+let createHash = _createHash;
+
 export function setCreateHash(_createHash) {
   createHash = _createHash;
 }
 
-export async function getIntegrity(url, fetchOpts) {
-  if (!createHash) ({ createHash } = await import("crypto"));
-  const res = await fetch(url, fetchOpts);
-  const buf = await res.text();
+export function getIntegrity(buf: Uint8Array | string): `sha384-${string}` {
   const hash = createHash("sha384");
   hash.update(buf);
-  return "sha384-" + hash.digest("base64");
+  return `sha384-${hash.digest("base64")}`;
 }
