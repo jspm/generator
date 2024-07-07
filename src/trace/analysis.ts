@@ -1,3 +1,5 @@
+import { getIntegrity } from "../common/integrity.js";
+
 export interface Analysis {
   deps: string[];
   dynamicDeps: string[];
@@ -7,6 +9,7 @@ export interface Analysis {
 
   // for commonjs format, true iff the module uses a CJS-only global
   usesCjs?: boolean;
+  integrity: `sha384-${string}`;
 }
 
 export { createTsAnalysis } from "./ts.js";
@@ -43,7 +46,7 @@ export function createEsmAnalysis(
     }
   }
   const size = source.length;
-  return { deps, dynamicDeps, cjsLazyDeps: null, size, format: "esm" };
+  return { deps, dynamicDeps, cjsLazyDeps: null, size, format: "esm", integrity: getIntegrity(source) };
 }
 
 const registerRegEx =
@@ -78,5 +81,5 @@ export function createSystemAnalysis(
     }
   }
   const size = source.length;
-  return { deps, dynamicDeps, cjsLazyDeps: null, size, format: "system" };
+  return { deps, dynamicDeps, cjsLazyDeps: null, size, format: "system", integrity: getIntegrity(source) };
 }

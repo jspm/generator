@@ -158,6 +158,8 @@ export default class TraceMap {
     rootUrl: URL | null = this.rootUrl,
     preloads?: string[]
   ): Promise<void> {
+    // Note: integrity is currently ignored for inputMaps, instead integrity
+    // is always trusted at generation time.
     return (this.processInputMap = this.processInputMap.then(async () => {
       const inMap = new ImportMap({ map, mapUrl, rootUrl }).rebase(
         this.mapUrl,
@@ -263,7 +265,7 @@ export default class TraceMap {
     );
   }
 
-  async extractMap(modules: string[]) {
+  async extractMap(modules: string[], integrity: boolean) {
     const map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     // note this plucks custom top-level custom imports
     // we may want better control over this
@@ -294,11 +296,16 @@ export default class TraceMap {
       toplevel: boolean,
       entry
     ) => {
-      if (!staticList.has(resolved)) list.add(resolved);
-      if (entry)
+      if (!list.has(resolved))
+        list.add(resolved);
+      // no entry applies to builtins
+      if (entry) {
+        if (integrity)
+          map.setIntegrity(resolved, entry.integrity);
         for (const dep of entry.dynamicDeps) {
           dynamics.push([dep, resolved]);
         }
+      }
       if (toplevel) {
         if (isPlain(specifier) || isMappableScheme(specifier)) {
           const existing = map.imports[specifier];
@@ -371,9 +378,10 @@ export default class TraceMap {
   }
 
   async finishInstall(
-    modules = this.pins
+    modules: string[],
+    integrity: boolean
   ): Promise<{ map: ImportMap; staticDeps: string[]; dynamicDeps: string[] }> {
-    const result = await this.extractMap(modules);
+    const result = await this.extractMap(modules, integrity);
     this.installer.finishInstall();
     return result;
   }
@@ -644,13 +652,14 @@ export default class TraceMap {
     traceEntry.promise = (async () => {
       const parentIsCjs = this.tracedUrls[parentUrl]?.format === "commonjs";
 
-      const { deps, dynamicDeps, cjsLazyDeps, size, format, usesCjs } =
+      const { deps, dynamicDeps, cjsLazyDeps, size, format, integrity } =
         await this.resolver.analyze(
           resolvedUrl,
           parentUrl,
           this.opts.system,
           parentIsCjs
         );
+      traceEntry.integrity = integrity;
       traceEntry.format = format;
       traceEntry.size = size;
       traceEntry.deps = deps.sort();

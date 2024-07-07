@@ -4,9 +4,8 @@ import { wrapWithRetry, FetchFn } from "./fetch-common.js";
 import path from "path";
 import { homedir } from "os";
 import process from "process";
-import rimraf from "rimraf";
 import makeFetchHappen from "make-fetch-happen";
-import { readFileSync } from "fs";
+import { readFileSync, rmdirSync } from "fs";
 import { Buffer } from "buffer";
 
 let cacheDir: string;
@@ -24,7 +23,7 @@ else
   );
 
 export function clearCache() {
-  rimraf.sync(path.join(cacheDir, "fetch-cache"));
+  rmdirSync(path.join(cacheDir, "fetch-cache"), { recursive: true });
 }
 
 const _fetch = makeFetchHappen.defaults({

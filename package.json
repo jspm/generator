@@ -41,14 +41,12 @@
     }
   },
   "dependencies": {
-    "@babel/core": "^7.20.12",
-    "@babel/plugin-syntax-import-assertions": "^7.20.0",
-    "@babel/preset-typescript": "^7.18.6",
-    "@jspm/import-map": "^1.0.7",
-    "abort-controller": "^3.0.0",
-    "es-module-lexer": "^1.1.1",
+    "@babel/core": "^7.24.7",
+    "@babel/plugin-syntax-import-assertions": "^7.24.7",
+    "@babel/preset-typescript": "^7.24.7",
+    "@jspm/import-map": "^1.1.0",
+    "es-module-lexer": "^1.5.4",
     "make-fetch-happen": "^8.0.14",
-    "rimraf": "^4.1.2",
     "sver": "^1.8.4"
   },
   "devDependencies": {
@@ -58,7 +56,6 @@
     "@types/vscode": "^1.75.1",
     "@vscode/test-electron": "^2.2.3",
     "chalk": "^4.1.2",
-    "chomp": "^0.2.17",
     "cross-env": "^7.0.3",
     "kleur": "^4.1.5",
     "lit-element": "^2.5.1",
