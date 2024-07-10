@@ -41,10 +41,8 @@ export async function createTsAnalysis(
 ): Promise<Analysis> {
   if (!babel)
     [
-      { default: babel },
-      {
-        default: { default: babelPresetTs },
-      },
+      babel,
+      { default: babelPresetTs },
       { default: babelPluginImportAttributes },
     ] = await Promise.all([
       import("@babel/core"),
@@ -54,7 +52,6 @@ export async function createTsAnalysis(
 
   const imports = new Set<string>();
   const dynamicImports = new Set<string>();
-  let importMeta = false;
 
   // @ts-ignore
   globalThis.console = dummyConsole;
@@ -84,7 +81,7 @@ export async function createTsAnalysis(
       ],
       plugins: [
         babelPluginImportAttributes,
-        ({ types: t }) => {
+        () => {
           return {
             visitor: {
               ExportAllDeclaration(path) {
@@ -105,14 +102,6 @@ export async function createTsAnalysis(
                   )
                 );
               },
-              MetaProperty(path) {
-                if (
-                  t.isIdentifier(path.node.meta, { name: "import" }) &&
-                  t.isIdentifier(path.node.property, { name: "meta" })
-                ) {
-                  importMeta = true;
-                }
-              },
             },
           };
         },
@@ -128,7 +117,7 @@ export async function createTsAnalysis(
     cjsLazyDeps: null,
     size: source.length,
     format: "typescript",
-    integrity: getIntegrity(source)
+    integrity: getIntegrity(source),
   };
 }
 
