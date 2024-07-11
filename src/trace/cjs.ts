@@ -21,7 +21,7 @@ export async function createCjsAnalysis(
   source: string,
   url: string
 ): Promise<Analysis> {
-  if (!babel) ({ default: babel } = await import("@babel/core"));
+  if (!babel) babel = await import("@babel/core");
 
   const requires = new Set<string>();
   const lazy = new Set<string>();
@@ -110,7 +110,7 @@ export async function createCjsAnalysis(
     size: source.length,
     format: "commonjs",
     usesCjs,
-    integrity: getIntegrity(source)
+    integrity: getIntegrity(source),
   };
 }
 
