@@ -15,8 +15,8 @@ const generator = new Generator({
   mapUrl: import.meta.url,
   env: ["production", "browser"],
   resolutions: {
-    'lit': '2.6.1'
-  }
+    lit: "2.6.1",
+  },
 });
 
 // Install with no arguments should install all top-level pins.

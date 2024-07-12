@@ -27,8 +27,8 @@ const generator = new Generator({
         if (pcfg.dependencies) {
           let dependencies = {};
           for (let [name, target] of Object.entries(pcfg.dependencies)) {
-            if (target.indexOf(':') === -1)
-              target = 'myorg:' + name + '@' + target;
+            if (target.indexOf(":") === -1)
+              target = "myorg:" + name + "@" + target;
             dependencies[name] = target;
           }
           pcfg.dependencies = dependencies;
@@ -37,7 +37,8 @@ const generator = new Generator({
       },
       parseUrlPkg(url) {
         if (url.startsWith(myorgUrl)) {
-          const [, name, version] = url.slice(myorgUrl.length).match(exactPkgRegEx) || [];
+          const [, name, version] =
+            url.slice(myorgUrl.length).match(exactPkgRegEx) || [];
           return { registry: "myorg", name, version };
         }
       },
@@ -46,9 +47,15 @@ const generator = new Generator({
         layer,
         parentUrl
       ) {
-        assert.ok(registry === 'myorg');
-        const { resolved: { name: resolvedName, version: resolvedVersion } } = await lookup(`${name}@${range.toString()}`);
-        return { registry: 'myorg', name: resolvedName, version: resolvedVersion };
+        assert.ok(registry === "myorg");
+        const {
+          resolved: { name: resolvedName, version: resolvedVersion },
+        } = await lookup(`${name}@${range.toString()}`);
+        return {
+          registry: "myorg",
+          name: resolvedName,
+          version: resolvedVersion,
+        };
       },
     },
   },
@@ -58,6 +65,4 @@ await generator.install("myorg:lit");
 
 const json = generator.getMap();
 
-assert.ok(
-  json.imports.lit.startsWith('https://unpkg.com/lit@')
-);
+assert.ok(json.imports.lit.startsWith("https://unpkg.com/lit@"));

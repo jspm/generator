@@ -493,7 +493,10 @@ export class Resolver {
         if (subpath !== ".") return null;
         const url = new URL(pcfg.exports, pkgUrl).href;
         try {
-          if ((await this.finalizeResolve(url, false, true, pkgUrl)) === resolvedUrl)
+          if (
+            (await this.finalizeResolve(url, false, true, pkgUrl)) ===
+            resolvedUrl
+          )
             return ".";
         } catch {}
         return null;
@@ -740,12 +743,16 @@ export class Resolver {
         else throwExportNotDefined();
       } else if (!allDotKeys(pcfg.exports)) {
         if (subpath === ".") {
-          const url = this.resolvePackageTarget(pcfg.exports, pkgUrl, cjsEnv, "", false);
-          if (url === null)
-              throwExportNotDefined();
+          const url = this.resolvePackageTarget(
+            pcfg.exports,
+            pkgUrl,
+            cjsEnv,
+            "",
+            false
+          );
+          if (url === null) throwExportNotDefined();
           return this.finalizeResolve(url, parentIsCjs, true, pkgUrl);
-        }
-        else throwExportNotDefined();
+        } else throwExportNotDefined();
       } else {
         const match = getMapMatch(
           subpath,
@@ -885,12 +892,14 @@ export class Resolver {
           throw e;
         }
         return {
-          deps: WebAssembly.Module.imports(compiled).map(({ module }) => module),
+          deps: WebAssembly.Module.imports(compiled).map(
+            ({ module }) => module
+          ),
           dynamicDeps: [],
           cjsLazyDeps: null,
           size: source.byteLength,
           format: "wasm",
-          integrity: getIntegrity(new Uint8Array(source))
+          integrity: getIntegrity(new Uint8Array(source)),
         };
       }
 
@@ -913,7 +922,7 @@ export class Resolver {
             cjsLazyDeps: null,
             size: source.length,
             format: "json",
-            integrity: getIntegrity(source)
+            integrity: getIntegrity(source),
           };
         } catch {}
       }
@@ -926,7 +935,7 @@ export class Resolver {
             cjsLazyDeps: null,
             size: source.length,
             format: "css",
-            integrity: getIntegrity(source)
+            integrity: getIntegrity(source),
           };
         } catch {}
       }
@@ -1003,7 +1012,7 @@ export class Resolver {
     packageUrl: string,
     cjsEnv: boolean,
     subpath: string,
-    isImport: boolean,
+    isImport: boolean
   ): string | null {
     if (typeof target === "string") {
       if (target === ".") {

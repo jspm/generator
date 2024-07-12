@@ -10,7 +10,7 @@ const generator = new Generator({
   resolutions: {
     "@babel/core": "~7.20.0",
     "@babel/generator": "7.20.0",
-    "@babel/helper-member-expression-to-functions": "7.20.7"
+    "@babel/helper-member-expression-to-functions": "7.20.7",
   },
 });
 

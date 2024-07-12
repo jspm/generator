@@ -85,7 +85,14 @@ interface TraceEntry {
   // For cjs modules, the list of hoisted deps
   // this is needed for proper cycle handling
   cjsLazyDeps: string[];
-  format: "esm" | "commonjs" | "system" | "json" | "css" | "typescript" | "wasm";
+  format:
+    | "esm"
+    | "commonjs"
+    | "system"
+    | "json"
+    | "css"
+    | "typescript"
+    | "wasm";
 }
 
 interface VisitOpts {
@@ -296,12 +303,10 @@ export default class TraceMap {
       toplevel: boolean,
       entry
     ) => {
-      if (!list.has(resolved))
-        list.add(resolved);
+      if (!list.has(resolved)) list.add(resolved);
       // no entry applies to builtins
       if (entry) {
-        if (integrity)
-          map.setIntegrity(resolved, entry.integrity);
+        if (integrity) map.setIntegrity(resolved, entry.integrity);
         for (const dep of entry.dynamicDeps) {
           dynamics.push([dep, resolved]);
         }
@@ -430,7 +435,12 @@ export default class TraceMap {
         );
       const resolvedHref = resolvedUrl.href;
       let finalized = await this.resolver.realPath(
-        await this.resolver.finalizeResolve(resolvedHref, parentIsCjs, false, parentPkgUrl)
+        await this.resolver.finalizeResolve(
+          resolvedHref,
+          parentIsCjs,
+          false,
+          parentPkgUrl
+        )
       );
 
       // handle URL mappings

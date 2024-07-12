@@ -4,7 +4,14 @@ export interface Analysis {
   deps: string[];
   dynamicDeps: string[];
   cjsLazyDeps: string[] | null;
-  format: "esm" | "commonjs" | "system" | "json" | "typescript" | "wasm" | "css";
+  format:
+    | "esm"
+    | "commonjs"
+    | "system"
+    | "json"
+    | "typescript"
+    | "wasm"
+    | "css";
   size: number;
 
   // for commonjs format, true iff the module uses a CJS-only global
@@ -46,7 +53,14 @@ export function createEsmAnalysis(
     }
   }
   const size = source.length;
-  return { deps, dynamicDeps, cjsLazyDeps: null, size, format: "esm", integrity: getIntegrity(source) };
+  return {
+    deps,
+    dynamicDeps,
+    cjsLazyDeps: null,
+    size,
+    format: "esm",
+    integrity: getIntegrity(source),
+  };
 }
 
 const registerRegEx =
@@ -81,5 +95,12 @@ export function createSystemAnalysis(
     }
   }
   const size = source.length;
-  return { deps, dynamicDeps, cjsLazyDeps: null, size, format: "system", integrity: getIntegrity(source) };
+  return {
+    deps,
+    dynamicDeps,
+    cjsLazyDeps: null,
+    size,
+    format: "system",
+    integrity: getIntegrity(source),
+  };
 }

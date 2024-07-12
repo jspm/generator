@@ -11,7 +11,7 @@ if (typeof document === "undefined") {
   await generator.link("./tspkg/main.ts");
 
   const map = generator.getMap();
-  strictEqual(typeof map.imports['node:fs'], 'string');
+  strictEqual(typeof map.imports["node:fs"], "string");
 
   strictEqual(
     generator.getAnalysis(new URL("./tspkg/dep.ts", import.meta.url)).format,
