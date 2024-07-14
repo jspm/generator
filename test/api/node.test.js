@@ -4,12 +4,12 @@ import assert from "assert";
 {
   const generator = new Generator();
 
-  await generator.link('fs/promises');
+  await generator.link("fs/promises");
 
   const json = generator.getMap();
 
   assert.strictEqual(
-    json.imports["fs/promises"].split('/').slice(-4).join('/'),
+    json.imports["fs/promises"].split("/").slice(-4).join("/"),
     `nodelibs/browser/fs/promises.js`
   );
 }

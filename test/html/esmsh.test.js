@@ -5,14 +5,14 @@ import { SemverRange } from "sver";
 const generator = new Generator({
   mapUrl: new URL("./local/page.html", import.meta.url),
   env: ["production", "browser"],
-  defaultProvider: 'esm.sh'
+  defaultProvider: "esm.sh",
 });
 
 const esmsPkg = await generator.traceMap.resolver.resolveLatestTarget(
   { name: "es-module-shims", registry: "npm", ranges: [new SemverRange("*")] },
   generator.traceMap.installer.defaultProvider
 );
-let pins, html
+let pins, html;
 
 html = `
 <!doctype html>
@@ -22,4 +22,6 @@ html = `
 `;
 pins = await generator.addMappings(html);
 
-assert((await generator.htmlInject(html, { pins })).includes('https://esm.sh/v'));
+assert(
+  (await generator.htmlInject(html, { pins })).includes("https://esm.sh/v")
+);

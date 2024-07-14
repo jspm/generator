@@ -59,7 +59,7 @@ export const defaultProviders: Record<string, Provider> = {
   skypack,
   unpkg,
   "esm.sh": esmsh,
-  "jspm.io": jspm
+  "jspm.io": jspm,
 };
 
 export function getProvider(name: string, providers: Record<string, Provider>) {

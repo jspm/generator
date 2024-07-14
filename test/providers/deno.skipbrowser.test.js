@@ -183,7 +183,7 @@ const oakVersion = (await lookup("denoland:oak")).resolved.version;
       imports: {
         fs: "https://deno.land/std@0.148.0/fs/mod.ts",
       },
-    }
+    },
   });
 
   await generator.link("deno:testing/asserts");
