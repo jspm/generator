@@ -34,7 +34,8 @@
         "default": "./lib/generator.js"
       },
       "deno": "./dist/generator-deno.js",
-      "default": "./dist/generator.js"
+      "default": "./dist/generator.js",
+      "types": "./lib/generator.d.ts"
     },
     "./*.js": {
       "source": "./lib/*.js"
