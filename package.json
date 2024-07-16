@@ -29,13 +29,13 @@
   },
   "exports": {
     ".": {
+      "types": "./lib/generator.d.ts",
       "source": {
         "deno": "./lib/generator-deno.js",
         "default": "./lib/generator.js"
       },
       "deno": "./dist/generator-deno.js",
-      "default": "./dist/generator.js",
-      "types": "./lib/generator.d.ts"
+      "default": "./dist/generator.js"
     },
     "./*.js": {
       "source": "./lib/*.js"
