@@ -29,6 +29,7 @@
   },
   "exports": {
     ".": {
+      "types": "./lib/generator.d.ts",
       "source": {
         "deno": "./lib/generator-deno.js",
         "default": "./lib/generator.js"
