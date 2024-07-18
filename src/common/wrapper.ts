@@ -1,11 +1,11 @@
 //@ts-ignore
-import { fetch } from '#fetch';
-import { parse, init } from 'es-module-lexer';
+import { fetch } from "#fetch";
+import { parse, init } from "es-module-lexer";
 
-export async function getMaybeWrapperUrl (moduleUrl, fetchOpts) {
+export async function getMaybeWrapperUrl(moduleUrl, fetchOpts) {
   await init;
   const source = await (await fetch(moduleUrl, fetchOpts)).text();
-  const [imports,, facade] = parse(source);
+  const [imports, , facade] = parse(source);
   if (facade && imports.length) {
     try {
       return new URL(imports[0].n, moduleUrl).href;

@@ -13,7 +13,8 @@ export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
   return `${cdnUrl}*${pkg.name}@${pkg.version}/`;
 }
 
-const exactPkgRegEx = /^(?:v\d+\/)?\*?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
+const exactPkgRegEx =
+  /^(?:v\d+\/)?\*?((?:@[^/\\%@]+\/)?[^./\\%@][^/\\%@]*)@([^\/]+)(\/.*)?$/;
 
 export function parseUrlPkg(url: string) {
   if (!url.startsWith(cdnUrl)) return;
@@ -54,17 +55,16 @@ export async function getPackageConfig(
   if (pcfg.exports) {
     // in the conditional expoort case, paths seem to work?
     // so go with that
-    if (Object.keys(pcfg.exports).every(key => !key.startsWith('./'))) {
-      pcfg.exports['.'] = pcfg.exports;
-    }
-    else {
+    if (Object.keys(pcfg.exports).every((key) => !key.startsWith("./"))) {
+      pcfg.exports["."] = pcfg.exports;
+    } else {
       // let esm.sh resolve conditions
       for (const key of Object.keys(pcfg.exports)) {
         pcfg.exports[key] = key;
       }
     }
     // wildcard key for esmsh to do its own fallback resolution too
-    pcfg.exports['./*'] = './*';
+    pcfg.exports["./*"] = "./*";
   }
   if (pcfg.imports) {
     for (const key of Object.keys(pcfg.imports)) {

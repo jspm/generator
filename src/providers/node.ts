@@ -105,8 +105,7 @@ export function resolveBuiltin(
   }
 
   // Strip the subpath for subpathed builtins
-  if (builtin.includes('/'))
-    builtin = builtin.split('/')[0];
+  if (builtin.includes("/")) builtin = builtin.split("/")[0];
 
   return {
     target: {

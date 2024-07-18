@@ -284,7 +284,9 @@ async function lookupRange(
       );
     default:
       throw new JspmError(
-        `Invalid status code ${res.status} looking up "${registry}:${name}" from ${url} - ${
+        `Invalid status code ${
+          res.status
+        } looking up "${registry}:${name}" from ${url} - ${
           res.statusText
         }${importedFrom(parentUrl)}`
       );

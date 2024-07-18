@@ -61,7 +61,7 @@ export type InstallMode =
 
 export type InstallTarget = {
   pkgTarget: PackageTarget | URL;
-  installSubpath: null | '.' | `./${string}`;
+  installSubpath: null | "." | `./${string}`;
 };
 
 export interface InstallerOptions {
