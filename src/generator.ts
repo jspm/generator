@@ -101,7 +101,7 @@ export interface GeneratorOptions {
   /**
    * The provider to use for top-level (i.e. root package) installs if there's no context in the inputMap. This can be used to set the provider for a new import map. To use a specific provider for an install, rather than relying on context, register an override using the 'providers' option.
    *
-   * Supports: 'jspm.io' | 'deno' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg' | 'esm.sh';
+   * Supports: 'jspm.io' | 'denoland' | 'nodemodules' | 'skypack' | 'jsdelivr' | 'unpkg' | 'esm.sh';
    *
    * Providers are responsible for resolution from abstract package names and version ranges to exact URL locations.
    *
