@@ -81,6 +81,7 @@ export function getDefaultProviderStrings() {
 export const registryProviders: Record<string, string> = {
   "denoland:": "deno",
   "deno:": "deno",
+  "jsr:": "deno",
 };
 
 export const mappableSchemes = new Set<String>(["npm", "deno", "node"]);

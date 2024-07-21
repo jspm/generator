@@ -9,8 +9,10 @@ import { SemverRange } from "sver";
 import { fetch } from "#fetch";
 import { Install } from "../generator.js";
 import { IImportMap, ImportMap } from "@jspm/import-map";
+import { createNpmLookupFunction } from "./shared.js";
 
-const cdnUrl = "https://deno.land/x/";
+const jsrCdnUrl = "https://jsr.io/";
+const denoLandCdnUrl = "https://deno.land/x/";
 const stdlibUrl = "https://deno.land/std";
 
 let denoStdVersion;
@@ -53,7 +55,9 @@ export function resolveBuiltin(
 export async function pkgToUrl(pkg: ExactPackage): Promise<`${string}/`> {
   if (pkg.registry === "deno") return `${stdlibUrl}@${pkg.version}/`;
   if (pkg.registry === "denoland")
-    return `${cdnUrl}${pkg.name}@${vCache[pkg.name] ? "v" : ""}${pkg.version}/`;
+    return `${denoLandCdnUrl}${pkg.name}@${vCache[pkg.name] ? "v" : ""}${pkg.version}/`;
+  if (pkg.registry === "jsr")
+    return `${jsrCdnUrl}${pkg.name}@${pkg.version}/`;
   throw new Error(
     `Deno provider does not support the ${pkg.registry} registry for package "${pkg.name}" - perhaps you mean to install "denoland:${pkg.name}"?`
   );
@@ -189,8 +193,8 @@ export function parseUrlPkg(
         subpath ? (`./${subpath}/mod.ts` as `./${string}`) : ""
       }`,
     };
-  } else if (url.startsWith(cdnUrl)) {
-    const path = url.slice(cdnUrl.length);
+  } else if (url.startsWith(denoLandCdnUrl)) {
+    const path = url.slice(denoLandCdnUrl.length);
     const versionIndex = path.indexOf("@");
     if (versionIndex === -1) return;
     const sepIndex = path.indexOf("/", versionIndex);
@@ -204,8 +208,22 @@ export function parseUrlPkg(
       subpath: null,
       layer: "default",
     };
+  } else if (url.startsWith(jsrCdnUrl)) {
+    const path = url.slice(jsrCdnUrl.length);
+    const versionIndex = path.indexOf("@");
+    if (versionIndex === -1) return;
+    const sepIndex = path.indexOf("/", versionIndex);
+    const name = path.slice(0, versionIndex);
+    const version = path.slice(versionIndex + 1, sepIndex === -1 ? path.length : sepIndex);
+    return {
+      pkg: { registry: "jsr", name, version },
+      subpath: sepIndex === -1 ? null : `./${path.slice(sepIndex + 1)}`,
+      layer: "default",
+    };
   }
 }
+
+const resolveLatestTargetJsr = createNpmLookupFunction('https://npm.jsr.io/');
 
 export async function resolveLatestTarget(
   this: Resolver,
@@ -214,6 +232,9 @@ export async function resolveLatestTarget(
   parentUrl: string
 ): Promise<ExactPackage | null> {
   let { registry, name, range } = target;
+
+  if (target.registry === 'jsr')
+    return resolveLatestTargetJsr.call(this, target, _layer, parentUrl);
 
   if (denoStdVersion && registry === "deno")
     return { registry, name, version: denoStdVersion };
@@ -236,7 +257,7 @@ export async function resolveLatestTarget(
   // "mod.ts" addition is necessary for the browser otherwise not resolving an exact module gives a CORS error
   const fetchUrl =
     registry === "denoland"
-      ? cdnUrl + name + "/mod.ts"
+      ? denoLandCdnUrl + name + "/mod.ts"
       : stdlibUrl + "/version.ts";
   const res = await fetch(fetchUrl, fetchOpts);
   if (!res.ok) throw new Error(`Deno: Unable to lookup ${fetchUrl}`);
