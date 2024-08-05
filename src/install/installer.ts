@@ -100,11 +100,9 @@ export class Installer {
   opts: InstallerOptions;
   installs: LockResolutions;
   constraints: VersionConstraints;
-  installing = false;
   newInstalls = false;
   // @ts-ignore
   installBaseUrl: `${string}/`;
-  added = new Map<string, InstallTarget>();
   hasLock = false;
   defaultProvider = { provider: "jspm.io", layer: "default" };
   defaultRegistry = "npm";
@@ -159,17 +157,6 @@ export class Installer {
     for (const scopeUrl of Object.keys(this.installs.secondary)) {
       if (visitor(this.installs.secondary[scopeUrl], scopeUrl)) return;
     }
-  }
-
-  startInstall() {
-    if (this.installing) throw new Error("Internal error: already installing");
-    this.installing = true;
-    this.newInstalls = false;
-    this.added = new Map<string, InstallTarget>();
-  }
-
-  finishInstall() {
-    this.installing = false;
   }
 
   getProvider(target: PackageTarget) {
@@ -366,7 +353,6 @@ export class Installer {
       "installer/install",
       `installing ${pkgName} from ${parentUrl} in scope ${pkgScope}`
     );
-    if (!this.installing) throwInternalError("Not installing");
 
     // Anything installed in the scope of the installer's base URL is treated
     // as top-level, and hits the primary locks. Anything else is treated as

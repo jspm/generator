@@ -378,19 +378,6 @@ export default class TraceMap {
     };
   }
 
-  startInstall() {
-    this.installer.startInstall();
-  }
-
-  async finishInstall(
-    modules: string[],
-    integrity: boolean
-  ): Promise<{ map: ImportMap; staticDeps: string[]; dynamicDeps: string[] }> {
-    const result = await this.extractMap(modules, integrity);
-    this.installer.finishInstall();
-    return result;
-  }
-
   async add(
     name: string,
     target: InstallTarget,
