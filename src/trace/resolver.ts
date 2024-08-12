@@ -378,29 +378,30 @@ export class Resolver {
         // subfolder checks before file checks because of fetch
         if (await this.exists(url + "/package.json")) {
           const pcfg = (await this.getPackageConfig(url)) || {};
+          const urlUrl = new URL(url + '/');
           if (this.env.includes("browser") && typeof pcfg.browser === "string")
             return this.finalizeResolve(
-              await legacyMainResolve.call(this, pcfg.browser, new URL(url)),
+              await legacyMainResolve.call(this, pcfg.browser, urlUrl),
               parentIsCjs,
               exportsResolution,
               pkgUrl
             );
           if (this.env.includes("module") && typeof pcfg.module === "string")
             return this.finalizeResolve(
-              await legacyMainResolve.call(this, pcfg.module, new URL(url)),
+              await legacyMainResolve.call(this, pcfg.module, urlUrl),
               parentIsCjs,
               exportsResolution,
               pkgUrl
             );
           if (typeof pcfg.main === "string")
             return this.finalizeResolve(
-              await legacyMainResolve.call(this, pcfg.main, new URL(url)),
+              await legacyMainResolve.call(this, pcfg.main, urlUrl),
               parentIsCjs,
               exportsResolution,
               pkgUrl
             );
           return this.finalizeResolve(
-            await legacyMainResolve.call(this, null, new URL(url)),
+            await legacyMainResolve.call(this, null, urlUrl),
             parentIsCjs,
             exportsResolution,
             pkgUrl
