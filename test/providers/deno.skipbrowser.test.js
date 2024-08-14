@@ -6,7 +6,7 @@ import assert from "assert";
     defaultProvider: "deno",
   });
 
-  await generator.install("denoland:fresh@1.1.5/runtime.ts");
+  await generator.install("jsr:@fresh/core");
   const json = generator.getMap();
 
   assert.strictEqual(
