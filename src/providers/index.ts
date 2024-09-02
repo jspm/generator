@@ -50,6 +50,8 @@ export interface Provider {
   ): Promise<PackageConfig | null>;
 
   supportedLayers?: string[];
+
+  configure?(config: any): void;
 }
 
 export const defaultProviders: Record<string, Provider> = {
