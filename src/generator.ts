@@ -40,12 +40,11 @@ import { Replacer } from "./common/str.js";
 import { analyzeHtml } from "./html/analyze.js";
 import { InstallTarget, type InstallMode } from "./install/installer.js";
 import { LockResolutions } from "./install/lock.js";
-import { getDefaultProviderStrings, type Provider } from "./providers/index.js";
+import { configureProviders, getDefaultProviderStrings, type Provider } from "./providers/index.js";
 import * as nodemodules from "./providers/nodemodules.js";
 import { Resolver } from "./trace/resolver.js";
 import { getMaybeWrapperUrl } from "./common/wrapper.js";
 import { setRetryCount } from "./common/fetch-common.js";
-import { getProvider } from "./providers/index.js";
 
 // Utility exports for users:
 export { analyzeHtml };
@@ -545,13 +544,7 @@ export class Generator {
     if (typeof fetchRetries === 'number')
       setRetryCount(fetchRetries);
 
-    // Apply provider configurations
-    for (const [providerName, config] of Object.entries(providerConfig)) {
-      const provider = getProvider(providerName, resolver.providers);
-      if (provider && provider.configure) {
-        provider.configure(config);
-      }
-    }
+    configureProviders(providerConfig, resolver.providers);
   }
 
   /**

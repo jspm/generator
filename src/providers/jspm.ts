@@ -26,9 +26,7 @@ export async function pkgToUrl(
 }
 
 export function configure(config: any) {
-  if (config.cdnUrl) {
-    cdnUrl = config.cdnUrl;
-  }
+  cdnUrl = config.cdnUrl || "https://ga.jspm.io/";
 }
 
 const exactPkgRegEx =
