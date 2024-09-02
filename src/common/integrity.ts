@@ -1,7 +1,7 @@
-let crypto;
+let _nodeCrypto;
 
 export async function getIntegrityNodeLegacy(buf: Uint8Array | string): Promise<`sha384-${string}`> {
-  const hash = (crypto || (crypto = (await (0, eval)('import("node:crypto")')))).createHash("sha384");
+  const hash = (_nodeCrypto || (_nodeCrypto = (await (0, eval)('import("node:crypto")')))).createHash("sha384");
   hash.update(buf);
   return `sha384-${hash.digest("base64")}`;
 }
