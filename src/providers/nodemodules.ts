@@ -1,4 +1,4 @@
-import { ExactModule, LatestPackageTarget } from "../install/package.js";
+import { LatestPackageTarget } from "../install/package.js";
 import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 import { Provider } from "./index.js";

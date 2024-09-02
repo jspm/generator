@@ -11,6 +11,12 @@ export type FetchFn = (
   ...args: any[]
 ) => Promise<Response | globalThis.Response>;
 
+let retryCount = 3;
+
+export function setRetryCount(count: number) {
+  retryCount = count;
+}
+
 /**
  * Wraps a fetch request with retry logic on exceptions, which is useful for
  * spotty connections that may fail intermittently.
@@ -22,7 +28,7 @@ export function wrapWithRetry(fetch: FetchFn): FetchFn {
       try {
         return await fetch(url, ...args);
       } catch (e) {
-        if (retries++ > 3) throw e;
+        if (retries++ >= retryCount) throw e;
       }
     }
   };

@@ -8,7 +8,6 @@ import { SemverRange } from "sver";
 // @ts-ignore
 import { fetch } from "#fetch";
 import { Install } from "../generator.js";
-import { IImportMap, ImportMap } from "@jspm/import-map";
 
 const cdnUrl = "https://deno.land/x/";
 const stdlibUrl = "https://deno.land/std";
