@@ -44,6 +44,7 @@ import { getDefaultProviderStrings, type Provider } from "./providers/index.js";
 import * as nodemodules from "./providers/nodemodules.js";
 import { Resolver } from "./trace/resolver.js";
 import { getMaybeWrapperUrl } from "./common/wrapper.js";
+import { setRetryCount } from "./common/fetch-common.js";
 
 // Utility exports for users:
 export { analyzeHtml };
@@ -308,6 +309,12 @@ export interface GeneratorOptions {
    * Whether to include "integrity" field in the import map
    */
   integrity?: boolean;
+
+  /**
+   * The number of fetch retries to attempt for request failures.
+   * Defaults to 3.
+   */
+  fetchRetries?: number;
 }
 
 export interface ModuleAnalysis {
@@ -400,6 +407,7 @@ export class Generator {
     commonJS = false,
     typeScript = false,
     integrity = false,
+    fetchRetries,
   }: GeneratorOptions = {}) {
     // Initialise the debug logger:
     const { log, logStream } = createLogger();
@@ -512,6 +520,10 @@ export class Generator {
     this.map = new ImportMap({ mapUrl: this.mapUrl, rootUrl: this.rootUrl });
     if (!integrity) this.map.integrity = {};
     if (inputMap) this.addMappings(inputMap);
+
+    // Set the fetch retry count
+    if (typeof fetchRetries === 'number')
+      setRetryCount(fetchRetries);
   }
 
   /**
@@ -1411,3 +1423,4 @@ function detectDefaultProvider(
 
   return defaultProvider || winner || "jspm.io";
 }
+
