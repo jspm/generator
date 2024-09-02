@@ -22,11 +22,11 @@ export interface Analysis {
 export { createTsAnalysis } from "./ts.js";
 export { createCjsAnalysis } from "./cjs.js";
 
-export function createEsmAnalysis(
+export async function createEsmAnalysis(
   imports: any[],
   source: string,
   url: string
-): Analysis {
+): Promise<Analysis> { // Change the return type to Promise<Analysis>
   if (!imports.length && registerRegEx.test(source))
     return createSystemAnalysis(source, imports, url);
   const deps: string[] = [];
@@ -59,17 +59,17 @@ export function createEsmAnalysis(
     cjsLazyDeps: null,
     size,
     format: "esm",
-    integrity: getIntegrity(source),
+    integrity: await getIntegrity(source),
   };
 }
 
 const registerRegEx =
   /^\s*(\/\*[^\*]*(\*(?!\/)[^\*]*)*\*\/|\s*\/\/[^\n]*)*\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
-export function createSystemAnalysis(
+export async function createSystemAnalysis(
   source: string,
   imports: string[],
   url: string
-): Analysis {
+): Promise<Analysis> {
   const [, , , rawDeps, , , contextId] = source.match(registerRegEx) || [];
   if (!rawDeps) return createEsmAnalysis(imports, source, url);
   const deps = JSON.parse(rawDeps.replace(/'/g, '"'));
@@ -101,6 +101,6 @@ export function createSystemAnalysis(
     cjsLazyDeps: null,
     size,
     format: "system",
-    integrity: getIntegrity(source),
+    integrity: await getIntegrity(source),
   };
 }

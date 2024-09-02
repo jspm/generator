@@ -110,7 +110,7 @@ export async function createCjsAnalysis(
     size: source.length,
     format: "commonjs",
     usesCjs,
-    integrity: getIntegrity(source),
+    integrity: await getIntegrity(source),
   };
 }
 

@@ -117,7 +117,7 @@ export async function createTsAnalysis(
     cjsLazyDeps: null,
     size: source.length,
     format: "typescript",
-    integrity: getIntegrity(source),
+    integrity: await getIntegrity(source),
   };
 }
 
