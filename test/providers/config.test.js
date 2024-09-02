@@ -1,7 +1,8 @@
 import { Generator } from "@jspm/generator";
 import assert from "assert";
 
-const name = Buffer.from("7169746b616f2e636f6d", "hex").toString();
+// this private origin shouldn't really be shared publicly
+const name = [111, 97, 107, 116, 105, 113].map(x => String.fromCharCode(x)).reverse().join('');
 
 // Test with custom CDN URL
 {
@@ -10,7 +11,7 @@ const name = Buffer.from("7169746b616f2e636f6d", "hex").toString();
     defaultProvider: "jspm.io",
     providerConfig: {
       "jspm.io": {
-        cdnUrl: `https://${name}/`
+        cdnUrl: `https://${name}.com/`
       }
     }
   });
@@ -20,6 +21,6 @@ const name = Buffer.from("7169746b616f2e636f6d", "hex").toString();
 
   assert.strictEqual(
     json.imports.react,
-    `https://${name}/npm:react@17.0.1/dev.index.js`
+    `https://${name}.com/npm:react@17.0.1/dev.index.js`
   );
 }
