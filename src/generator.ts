@@ -755,7 +755,7 @@ export class Generator {
 
       esms = `<script async src="${esmsUrl}" crossorigin="anonymous"${
         integrity
-          ? ` integrity="${getIntegrity(
+          ? ` integrity="${await getIntegrity(
               new Uint8Array(
                 await (
                   await fetch(esmsUrl, this.traceMap.resolver.fetchOpts)

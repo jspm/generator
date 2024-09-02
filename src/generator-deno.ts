@@ -8,11 +8,9 @@ import { pathToFileURL } from "url";
 import { setBabel as setBabelCjs } from "./trace/cjs.js";
 import { setBabel as setBabelTs } from "./trace/ts.js";
 import { setPathFns } from "./trace/resolver.js";
-import { setCreateHash } from "./common/integrity.js";
 
 setBabelCjs(babel);
 setBabelTs(babel, babelPresetTs, babelPluginSyntaxImportAttributes);
-setCreateHash(createHash);
 setPathFns(realpath, pathToFileURL);
 
 export * from "./generator.js";

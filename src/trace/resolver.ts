@@ -900,7 +900,7 @@ export class Resolver {
           cjsLazyDeps: null,
           size: source.byteLength,
           format: "wasm",
-          integrity: getIntegrity(new Uint8Array(source)),
+          integrity: await getIntegrity(new Uint8Array(source)),
         };
       }
 
@@ -923,7 +923,7 @@ export class Resolver {
             cjsLazyDeps: null,
             size: source.length,
             format: "json",
-            integrity: getIntegrity(source),
+            integrity: await getIntegrity(source),
           };
         } catch {}
       }
@@ -936,7 +936,7 @@ export class Resolver {
             cjsLazyDeps: null,
             size: source.length,
             format: "css",
-            integrity: getIntegrity(source),
+            integrity: await getIntegrity(source),
           };
         } catch {}
       }
