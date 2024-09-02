@@ -13,8 +13,8 @@ let cdnUrl = "https://ga.jspm.io/";
 const systemCdnUrl = "https://ga.system.jspm.io/";
 const apiUrl = "https://api.jspm.io/";
 
-const BUILD_POLL_INTERVAL = 1000;
-const BUILD_POLL_TIME = 120000;
+const BUILD_POLL_TIME = 5 * 60 * 1000;
+const BUILD_POLL_INTERVAL = 5 * 1000;
 
 export const supportedLayers = ["default", "system"];
 
