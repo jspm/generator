@@ -50,6 +50,8 @@ export interface Provider {
   ): Promise<PackageConfig | null>;
 
   supportedLayers?: string[];
+
+  configure?(config: any): void;
 }
 
 export const defaultProviders: Record<string, Provider> = {
@@ -66,6 +68,15 @@ export function getProvider(name: string, providers: Record<string, Provider>) {
   const provider = providers[name];
   if (provider) return provider;
   throw new JspmError(`No provider named "${name}" has been defined.`);
+}
+
+// Apply provider configurations
+export function configureProviders(providerConfig: Record<string, any>, providers: Record<string, Provider>) {
+  for (const [providerName, provider] of Object.entries(providers)) {
+    if (provider.configure) {
+      provider.configure(providerConfig[providerName] || {});
+    }
+  }
 }
 
 export function getDefaultProviderStrings() {

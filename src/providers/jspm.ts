@@ -9,7 +9,7 @@ import { SemverRange } from "sver";
 // @ts-ignore
 import { fetch } from "#fetch";
 
-const cdnUrl = "https://ga.jspm.io/";
+let cdnUrl = "https://ga.jspm.io/";
 const systemCdnUrl = "https://ga.system.jspm.io/";
 const apiUrl = "https://api.jspm.io/";
 
@@ -23,6 +23,10 @@ export async function pkgToUrl(
   layer: string
 ): Promise<`${string}/`> {
   return `${layer === "system" ? systemCdnUrl : cdnUrl}${pkgToStr(pkg)}/`;
+}
+
+export function configure(config: any) {
+  cdnUrl = config.cdnUrl || "https://ga.jspm.io/";
 }
 
 const exactPkgRegEx =

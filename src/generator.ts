@@ -40,7 +40,7 @@ import { Replacer } from "./common/str.js";
 import { analyzeHtml } from "./html/analyze.js";
 import { InstallTarget, type InstallMode } from "./install/installer.js";
 import { LockResolutions } from "./install/lock.js";
-import { getDefaultProviderStrings, type Provider } from "./providers/index.js";
+import { configureProviders, getDefaultProviderStrings, type Provider } from "./providers/index.js";
 import * as nodemodules from "./providers/nodemodules.js";
 import { Resolver } from "./trace/resolver.js";
 import { getMaybeWrapperUrl } from "./common/wrapper.js";
@@ -315,6 +315,24 @@ export interface GeneratorOptions {
    * Defaults to 3.
    */
   fetchRetries?: number;
+
+  /**
+   * Provider configuration options
+   * 
+   * @example
+   * ```js
+   * const generator = new Generator({
+   *   mapUrl: import.meta.url,
+   *   defaultProvider: "jspm.io",
+   *   providerConfig: {
+   *     "jspm.io": {
+   *       cdnUrl: `https://jspm-mirror.com/`
+   *     }
+   *   }
+   */
+  providerConfig?: {
+    [providerName: string]: any;
+  };
 }
 
 export interface ModuleAnalysis {
@@ -408,6 +426,7 @@ export class Generator {
     typeScript = false,
     integrity = false,
     fetchRetries,
+    providerConfig = {},
   }: GeneratorOptions = {}) {
     // Initialise the debug logger:
     const { log, logStream } = createLogger();
@@ -524,6 +543,8 @@ export class Generator {
     // Set the fetch retry count
     if (typeof fetchRetries === 'number')
       setRetryCount(fetchRetries);
+
+    configureProviders(providerConfig, resolver.providers);
   }
 
   /**
