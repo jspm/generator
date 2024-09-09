@@ -84,10 +84,10 @@ run = 'node -C source --enable-source-maps $DEP'
 name = 'test:integration'
 dep = 'integration:'
 
-
 [[task]]
 name = 'integration:#'
 deps = ['test/##.test.js', 'lib']
+# env = { JSPM_GENERATOR_LOG = '1' }
 run = 'node -C source --enable-source-maps $DEP'
 
 [[task]]

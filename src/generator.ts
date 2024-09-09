@@ -306,6 +306,12 @@ export interface GeneratorOptions {
   typeScript?: boolean;
 
   /**
+   * Support tracing SystemJS dependencies when generating the import map.
+   * Disabled by default.
+   */
+  system?: boolean;
+
+  /**
    * Whether to include "integrity" field in the import map
    */
   integrity?: boolean;
@@ -424,6 +430,7 @@ export class Generator {
     ignore = [],
     commonJS = false,
     typeScript = false,
+    system = false,
     integrity = false,
     fetchRetries,
     providerConfig = {},
@@ -495,6 +502,7 @@ export class Generator {
       preserveSymlinks: true,
       traceCjs: commonJS,
       traceTs: typeScript,
+      traceSystem: system,
     });
     if (customProviders) {
       for (const provider of Object.keys(customProviders)) {
@@ -722,9 +730,7 @@ export class Generator {
       );
     } catch (err) {
       // Most likely cause of a generation failure:
-      throw new JspmError(
-        `${err.message}\n\nIf you are linking locally against your node_modules folder, make sure that you have all the necessary dependencies installed.`
-      );
+      err.message += '\n\nIf you are linking locally against your node_modules folder, make sure that you have all the necessary dependencies installed.';
     }
 
     const preloadDeps =
@@ -926,21 +932,9 @@ export class Generator {
       );
     }
 
-    // Split the case of multiple install targets:
-    if (Array.isArray(install)) {
-      if (install.length === 0) {
-        const { map, staticDeps, dynamicDeps } = await this.traceMap.extractMap(this.traceMap.pins, this.integrity);
-        this.map = map;
-        return { staticDeps, dynamicDeps };
-      }
-
-      return await Promise.all(
-        install.map((install) => this._install(install, mode))
-      ).then((installs) => installs.find((i) => i));
-    }
-
-    // Split the case of multiple install subpaths:
-    if (typeof install !== "string" && install.subpaths !== undefined) {
+    // Split the case of multiple install subpaths into multiple installs
+    // TODO: flatten all subpath installs here
+    if (!Array.isArray(install) && typeof install !== "string" && install.subpaths !== undefined) {
       install.subpaths.every((subpath) => {
         if (
           typeof subpath !== "string" ||
@@ -950,24 +944,20 @@ export class Generator {
             `Install subpath "${subpath}" must be equal to "." or start with "./".`
           );
       });
-      return await Promise.all(
-        install.subpaths.map((subpath) =>
-          this._install(
-            {
-              target: (install as Install).target,
-              alias: (install as Install).alias,
-              subpath,
-            },
-            mode
-          )
-        )
-      ).then((installs) => installs.find((i) => i));
+      return this._install(install.subpaths.map((subpath) => ({
+        target: (install as Install).target,
+        alias: (install as Install).alias,
+        subpath,
+      })));
     }
 
-    // Handle case of a single install target with at most one subpath:
-    let error = false;
+    if (!Array.isArray(install))
+      install = [install];
+
+    // Handle case of multiple install targets with at most one subpath:
     await this.traceMap.processInputMap; // don't race input processing
-    try {
+
+    const imports = await Promise.all(install.map(async install => {
       // Resolve input information to a target package:
       let alias, target, subpath;
       if (typeof install === "string" || typeof install.target === "string") {
@@ -991,26 +981,27 @@ export class Generator {
       mode ??= "latest-primaries";
 
       await this.traceMap.add(alias, target, mode);
-      await this.traceMap.visit(
-        alias + subpath.slice(1),
-        {
+
+      return alias + (subpath ? subpath.slice(1) : '');
+    }));
+
+    await Promise.all(imports.map(async impt => {
+      await this.traceMap.visit(impt, {
           installMode: mode,
           toplevel: true,
         },
         this.mapUrl.href
       );
+      
+      // Add the target import as a top-level pin
+      // we do this after the trace, so failed installs don't pollute the map
+      if (!this.traceMap.pins.includes(impt))
+        this.traceMap.pins.push(impt);
+    }));
 
-      // Add the target package as a top-level pin:
-      if (!this.traceMap.pins.includes(alias + subpath.slice(1)))
-        this.traceMap.pins.push(alias + subpath.slice(1));
-    } catch (e) {
-      error = true;
-      throw e;
-    } finally {
-      const { map, staticDeps, dynamicDeps } = await this.traceMap.extractMap(this.traceMap.pins, this.integrity);
-      this.map = map;
-      if (!error) return { staticDeps, dynamicDeps };
-    }
+    const { map, staticDeps, dynamicDeps } = await this.traceMap.extractMap(this.traceMap.pins, this.integrity);
+    this.map = map;
+    return { staticDeps, dynamicDeps };
   }
 
   /**
@@ -1171,7 +1162,7 @@ export class Generator {
 
   getAnalysis(url: string | URL): ModuleAnalysis {
     if (typeof url !== "string") url = url.href;
-    const trace = this.traceMap.tracedUrls[url];
+    const trace = this.traceMap.resolver.getAnalysis(url);
     if (!trace)
       throw new Error(
         `The URL ${url} has not been traced by this generator instance.`

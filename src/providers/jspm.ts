@@ -26,7 +26,8 @@ export async function pkgToUrl(
 }
 
 export function configure(config: any) {
-  cdnUrl = config.cdnUrl || "https://ga.jspm.io/";
+  if (config.cdnUrl)
+    cdnUrl = config.cdnUrl;
 }
 
 const exactPkgRegEx =
@@ -72,59 +73,74 @@ export function clearResolveCache() {
   resolveCache = {};
 }
 
+const cachedErrors = new Map();
+
 async function checkBuildOrError(
+  resolver: Resolver,
   pkgUrl: string,
   fetchOpts: any
 ): Promise<boolean> {
-  const pjsonRes = await fetch(`${pkgUrl}package.json`, fetchOpts);
-  if (pjsonRes.ok) return true;
-  // no package.json! Check if there's a build error:
-  const errLogRes = await fetch(`${pkgUrl}/_error.log`, fetchOpts);
-  if (errLogRes.ok) {
-    const errLog = await errLogRes.text();
-    throw new JspmError(
-      `Resolved dependency ${pkgUrl} with error:\n\n${errLog}\nPlease post an issue at jspm/project on GitHub, or by following the link below:\n\nhttps://github.com/jspm/project/issues/new?title=CDN%20build%20error%20for%20${encodeURIComponent(
-        pkgUrl
-      )}&body=_Reporting%20CDN%20Build%20Error._%0A%0A%3C!--%20%20No%20further%20description%20necessary,%20just%20click%20%22Submit%20new%20issue%22%20--%3E`
-    );
+  const pcfg = await resolver.getPackageConfig(pkgUrl);
+  if (pcfg) {
+    return true;
   }
-  console.error(
-    `Unable to request ${pkgUrl}package.json - ${pjsonRes.status} ${
-      pjsonRes.statusText || "returned"
-    }`
-  );
-  return false;
+  // no package.json! Check if there's a build error:
+  if (cachedErrors.has(pkgUrl))
+    return cachedErrors.get(pkgUrl);
+
+  const cachedErrorPromise = (async () => {
+    try {
+      const errLog = await fetch.text(`${pkgUrl}/_error.log`, fetchOpts);
+      throw new JspmError(
+        `Resolved dependency ${pkgUrl} with error:\n\n${errLog}\nPlease post an issue at jspm/project on GitHub, or by following the link below:\n\nhttps://github.com/jspm/project/issues/new?title=CDN%20build%20error%20for%20${encodeURIComponent(
+          pkgUrl
+        )}&body=_Reporting%20CDN%20Build%20Error._%0A%0A%3C!--%20%20No%20further%20description%20necessary,%20just%20click%20%22Submit%20new%20issue%22%20--%3E`
+      );
+    } catch (e) {
+      return false;
+    }
+  })();
+  cachedErrors.set(pkgUrl, cachedErrorPromise);
+  return cachedErrorPromise;
 }
 
-async function ensureBuild(pkg: ExactPackage, fetchOpts: any) {
-  if (await checkBuildOrError(await pkgToUrl(pkg, "default"), fetchOpts))
+const buildRequested = new Map();
+
+async function ensureBuild(resolver: Resolver, pkg: ExactPackage, fetchOpts: any) {
+  if (await checkBuildOrError(resolver, await pkgToUrl(pkg, "default"), fetchOpts))
     return;
 
   const fullName = `${pkg.name}@${pkg.version}`;
 
   // no package.json AND no build error -> post a build request
   // once the build request has been posted, try polling for up to 2 mins
-  const buildRes = await fetch(`${apiUrl}build/${fullName}`, fetchOpts);
-  if (!buildRes.ok && buildRes.status !== 403) {
-    const err = (await buildRes.json()).error;
-    throw new JspmError(
-      `Unable to request the JSPM API for a build of ${fullName}, with error: ${err}.`
-    );
-  }
-
-  // build requested -> poll on that
-  let startTime = Date.now();
-  while (true) {
-    await new Promise((resolve) => setTimeout(resolve, BUILD_POLL_INTERVAL));
-
-    if (await checkBuildOrError(await pkgToUrl(pkg, "default"), fetchOpts))
-      return;
-
-    if (Date.now() - startTime >= BUILD_POLL_TIME)
+  if (buildRequested.has(fullName))
+    return buildRequested.get(fullName);
+  const buildPromise = (async () => {
+    const buildRes = await fetch(`${apiUrl}build/${fullName}`, fetchOpts);
+    if (!buildRes.ok && buildRes.status !== 403) {
+      const err = (await buildRes.json()).error;
       throw new JspmError(
-        `Timed out waiting for the build of ${fullName} to be ready on the JSPM CDN. Try again later, or post a JSPM project issue if the issue persists.`
+        `Unable to request the JSPM API for a build of ${fullName}, with error: ${err}.`
       );
-  }
+    }
+
+    // build requested -> poll on that
+    let startTime = Date.now();
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, BUILD_POLL_INTERVAL));
+
+      if (await checkBuildOrError(resolver, await pkgToUrl(pkg, "default"), fetchOpts))
+        return;
+
+      if (Date.now() - startTime >= BUILD_POLL_TIME)
+        throw new JspmError(
+          `Timed out waiting for the build of ${fullName} to be ready on the JSPM CDN. Try again later, or post a JSPM project issue if the issue persists.`
+        );
+    }
+  })();
+  buildRequested.set(fullName, buildPromise);
+  return buildPromise;
 }
 
 export async function resolveLatestTarget(
@@ -138,7 +154,7 @@ export async function resolveLatestTarget(
   // exact version optimization
   if (range.isExact && !range.version.tag) {
     const pkg = { registry, name, version: range.version.toString() };
-    await ensureBuild(pkg, this.fetchOpts);
+    await ensureBuild(this, pkg, this.fetchOpts);
     return pkg;
   }
 
@@ -169,7 +185,7 @@ export async function resolveLatestTarget(
         lookup.version
       }${parentUrl ? " [" + parentUrl + "]" : ""}`
     );
-    await ensureBuild(lookup, this.fetchOpts);
+    await ensureBuild(this, lookup, this.fetchOpts);
     return lookup;
   }
   if (range.isExact && range.version.tag) {
@@ -192,7 +208,7 @@ export async function resolveLatestTarget(
         parentUrl ? " [" + parentUrl + "]" : ""
       }`
     );
-    await ensureBuild(lookup, this.fetchOpts);
+    await ensureBuild(this, lookup, this.fetchOpts);
     return lookup;
   }
   let stableFallback = false;
@@ -221,7 +237,7 @@ export async function resolveLatestTarget(
           parentUrl ? " [" + parentUrl + "]" : ""
         }`
       );
-      await ensureBuild(lookup, this.fetchOpts);
+      await ensureBuild(this, lookup, this.fetchOpts);
       return lookup;
     }
   }
@@ -247,7 +263,7 @@ export async function resolveLatestTarget(
         parentUrl ? " [" + parentUrl + "]" : ""
       }`
     );
-    await ensureBuild(lookup, this.fetchOpts);
+    await ensureBuild(this, lookup, this.fetchOpts);
     return lookup;
   }
   return null;
@@ -259,6 +275,8 @@ function pkgToLookupUrl(pkg: ExactPackage, edge = false) {
   }`;
 }
 
+const lookupCache = new Map();
+
 async function lookupRange(
   this: Resolver,
   registry: string,
@@ -268,12 +286,14 @@ async function lookupRange(
   parentUrl?: string
 ): Promise<ExactPackage | null> {
   const url = pkgToLookupUrl({ registry, name, version: range }, unstable);
-  const res = await fetch(url, this.fetchOpts);
-  switch (res.status) {
-    case 304:
-    case 200:
-      return { registry, name, version: (await res.text()).trim() };
-    case 404:
+  if (lookupCache.has(url))
+    return lookupCache.get(url);
+  const lookupPromise = (async () => {
+    const version = await fetch.text(url, this.fetchOpts);
+    if (version) {
+      return { registry, name, version: version.trim() };
+    } else {
+      // not found
       const versions = await fetchVersions(name);
       const semverRange = new SemverRange(String(range) || "*", unstable);
       const version = semverRange.bestMatch(versions, unstable);
@@ -285,16 +305,11 @@ async function lookupRange(
         `Unable to resolve ${registry}:${name}@${range} to a valid version${importedFrom(
           parentUrl
         )}`
-      );
-    default:
-      throw new JspmError(
-        `Invalid status code ${
-          res.status
-        } looking up "${registry}:${name}" from ${url} - ${
-          res.statusText
-        }${importedFrom(parentUrl)}`
-      );
-  }
+      ); 
+    }
+  })();
+  lookupCache.set(url, lookupPromise);
+  return lookupPromise;
 }
 
 const versionsCacheMap = new Map<string, string[]>();
@@ -303,9 +318,9 @@ async function fetchVersions(name: string): Promise<string[]> {
   if (versionsCacheMap.has(name)) {
     return versionsCacheMap.get(name);
   }
-  const registryLookup = await (
-    await fetch(`https://npmlookup.jspm.io/${encodeURI(name)}`, {})
-  ).json();
+  const registryLookup = JSON.parse(await (
+    await fetch.text(`https://npmlookup.jspm.io/${encodeURI(name)}`, {})
+  )) || {};
   const versions = Object.keys(registryLookup.versions || {});
   versionsCacheMap.set(name, versions);
 

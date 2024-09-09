@@ -1,6 +1,11 @@
+import { JspmError } from "../common/err.js";
 import { getIntegrity } from "../common/integrity.js";
 
-export interface Analysis {
+export type Analysis = AnalysisData | {
+  parseError: JspmError | Error
+};
+
+export interface AnalysisData {
   deps: string[];
   dynamicDeps: string[];
   cjsLazyDeps: string[] | null;

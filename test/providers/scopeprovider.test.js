@@ -18,6 +18,7 @@ assert.strictEqual(
   json.imports["lit-element"],
   "./node_modules/lit-element/lit-element.js"
 );
+console.log(json);
 assert.ok(
   json.scopes["./node_modules/lit-element/"]["lit-html/"].startsWith(
     "https://ga.jspm.io"

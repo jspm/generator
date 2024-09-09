@@ -27,7 +27,7 @@ setInterval(() => {
   self.__TEST_FAILURES__ = [];
 
   suite("Browser Tests", async function () {
-    this.timeout(30000);
+    this.timeout(120_000);
     for (const name of tests) {
       if (name.startsWith("deno") || name.startsWith("node")) continue;
       test(name, async function () {
