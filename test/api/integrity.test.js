@@ -13,5 +13,5 @@ assert.strictEqual(
 );
 assert.strictEqual(
   json.integrity["https://ga.jspm.io/npm:react@16.14.0/dev.index.js"],
-  "sha384-9Mi1J+3gFLBPlgiPETEugnpEPEy1odxLTBsMnqO6Z6r0btFl5v4D/UYAmGqfhaLr"
+  "sha384-9fzQTOt5Qymc9ZJlv20DEPObkT3aHvkvCTxEDkOdtJbDEKIBx4XbUA1EWkWVACyd"
 );

@@ -1,6 +1,6 @@
 // @ts-ignore
 import version from "../version.js";
-import { wrapWithRetry, FetchFn } from "./fetch-common.js";
+import { wrappedFetch, WrappedFetch } from "./fetch-common.js";
 import path from "path";
 import { homedir } from "os";
 import process from "process";
@@ -65,11 +65,10 @@ const dirResponse = {
   },
 };
 
-export const fetch: FetchFn = wrapWithRetry(async function (
+export const fetch: WrappedFetch = wrappedFetch(async function (
   url: URL,
   opts?: Record<string, any>
 ) {
-  if (!opts) throw new Error("Always expect fetch options to be passed");
   const urlString = url.toString();
   const protocol = urlString.slice(0, urlString.indexOf(":") + 1);
   let source: string | Buffer;

@@ -51,17 +51,59 @@ export function isMappableScheme(
   return mappableSchemes.has(specifier.slice(0, specifier.indexOf(":")));
 }
 
+export interface TraceEntry {
+  deps: string[];
+  dynamicDeps: string[];
+  // assetDeps: { expr: string, start: number, end: number, assets: string[] }
+  hasStaticParent: boolean;
+  size: number;
+  integrity: string;
+
+  // wasCjs is true if the module is a CJS module, but also if it's an ESM
+  // module that was transpiled from a CJS module. This is checkable on the
+  // jspm.io CDN by looking for an export for the module with a '!cjs'
+  // extension in its parent package:
+  wasCjs: boolean;
+
+  // usesCjs is true iff the module is both a CJS module and actually _uses_
+  // CJS-specific globals like "require" or "module. If not, we can actually
+  // link it for browser/deno runtimes despite it being CJS:
+  usesCjs: boolean;
+
+  // For cjs modules, the list of hoisted deps
+  // this is needed for proper cycle handling
+  cjsLazyDeps: string[];
+  format:
+    | "esm"
+    | "commonjs"
+    | "system"
+    | "json"
+    | "css"
+    | "typescript"
+    | "wasm";
+
+  // network errors are stored on the traceEntryPromises promise, while parser
+  // errors are stored here. This allows for existence checks in resolver operations.
+  parseError: Error
+}
+
 export class Resolver {
   log: Log;
   pcfgPromises: Record<string, Promise<void>> = Object.create(null);
+  analysisPromises: Record<string, Promise<void>> = Object.create(null);
   pcfgs: Record<string, PackageConfig | null> = Object.create(null);
   fetchOpts: any;
   preserveSymlinks;
   providers = defaultProviders;
+  // null implies "not found"
+  traceEntries: Record<string, TraceEntry | null> = Object.create(null);
+  // any trace error is retained in this promise
+  traceEntryPromises: Record<string, Promise<void>> = Object.create(null);
   env: string[];
   cjsEnv: string[];
-  traceCjs;
-  traceTs;
+  traceCjs: boolean;
+  traceTs: boolean;
+  traceSystem: boolean;
   constructor({
     env,
     log,
@@ -69,6 +111,7 @@ export class Resolver {
     preserveSymlinks = false,
     traceCjs = true,
     traceTs = true,
+    traceSystem = true,
   }: {
     env: string[];
     log: Log;
@@ -76,6 +119,7 @@ export class Resolver {
     preserveSymlinks?: boolean;
     traceCjs?: boolean;
     traceTs?: boolean;
+    traceSystem: boolean;
   }) {
     if (env.includes("require"))
       throw new Error("Cannot manually pass require condition");
@@ -87,6 +131,7 @@ export class Resolver {
     this.preserveSymlinks = preserveSymlinks;
     this.traceCjs = traceCjs;
     this.traceTs = traceTs;
+    this.traceSystem = traceSystem;
   }
 
   addCustomProvider(name: string, provider: Provider) {
@@ -214,7 +259,14 @@ export class Resolver {
           }
         }
 
-        const res = await fetch(`${pkgUrl}package.json`, this.fetchOpts);
+        try {
+          var res = await fetch(`${pkgUrl}package.json`, this.fetchOpts);
+        } catch (e) {
+          // CSP errors can't be detected, but should be treated as missing
+          // therefore we just ignore errors as none
+          this.pcfgs[pkgUrl] = null;
+          return;
+        }
         switch (res.status) {
           case 200:
           case 304:
@@ -270,23 +322,14 @@ export class Resolver {
   }
 
   async exists(resolvedUrl: string) {
-    const res = await fetch(resolvedUrl, this.fetchOpts);
-    switch (res.status) {
-      case 200:
-      case 304:
-        return true;
-      case 400:
-      case 401:
-      case 403:
-      case 404:
-      case 406:
-      case 500:
-        return false;
-      default:
-        throw new JspmError(
-          `Invalid status code ${res.status} loading ${resolvedUrl}. ${res.statusText}`
-        );
+    try {
+      await this.analyze(resolvedUrl);
+    } catch {
+      // we ignore network errors when doing exists resolutions
+      return false;
     }
+    // 404 still caches as null, although this is not currently used
+    return !!this.traceEntries[resolvedUrl];
   }
 
   async resolveLatestTarget(
@@ -424,7 +467,7 @@ export class Resolver {
         const pcfg = await this.getPackageConfig(pkgUrl);
         if (pcfg && typeof pcfg.browser === "object" && pcfg.browser !== null) {
           const subpath = "./" + url.slice(pkgUrl.length);
-          if (pcfg.browser[subpath]) {
+          if (subpath in pcfg.browser) {
             const target = pcfg.browser[subpath];
             if (target === false)
               throw new Error(
@@ -846,165 +889,56 @@ export class Resolver {
     }
   }
 
-  async analyze(
-    resolvedUrl: string,
-    parentUrl: string,
-    system: boolean,
-    isRequire: boolean,
-    retry = true
-  ): Promise<Analysis> {
-    const res = await fetch(resolvedUrl, this.fetchOpts);
-    if (!res)
-      throw new JspmError(
-        `Unable to fetch URL "${resolvedUrl}" for ${parentUrl}`
-      );
-    switch (res.status) {
-      case 200:
-      case 304:
-        break;
-      case 404:
-        throw new JspmError(
-          `Module not found: ${resolvedUrl}${importedFrom(parentUrl)}`,
-          "MODULE_NOT_FOUND"
-        );
-      default:
-        throw new JspmError(
-          `Invalid status code ${res.status} loading ${resolvedUrl}. ${res.statusText}`
-        );
-    }
-    try {
-      var source = await res.arrayBuffer();
-    } catch (e) {
-      if (
-        retry &&
-        (e.code === "ERR_SOCKET_TIMEOUT" ||
-          e.code === "ETIMEOUT" ||
-          e.code === "ECONNRESET")
-      )
-        return this.analyze(resolvedUrl, parentUrl, system, isRequire, false);
-      throw e;
-    }
-    // TODO: headers over extensions for non-file URLs
-    try {
-      if (resolvedUrl.endsWith(".wasm")) {
-        try {
-          var compiled = await WebAssembly.compile(source);
-        } catch (e) {
-          throw e;
-        }
-        return {
-          deps: WebAssembly.Module.imports(compiled).map(
-            ({ module }) => module
-          ),
-          dynamicDeps: [],
+  getAnalysis(resolvedUrl: string): TraceEntry | null | undefined {
+    const traceEntry = this.traceEntries[resolvedUrl];
+    if (traceEntry?.parseError)
+      throw traceEntry.parseError;
+    return traceEntry;
+  }
+
+  async analyze(resolvedUrl: string): Promise<TraceEntry | null> {
+    if (!this.traceEntryPromises[resolvedUrl]) this.traceEntryPromises[resolvedUrl] = (async () => {
+      let traceEntry: TraceEntry | null = null;
+      const analysis = await getAnalysis(this, resolvedUrl);
+      if (analysis) {
+        traceEntry = {
+          parseError: null,
+          wasCjs: false,
+          usesCjs: false,
+          deps: null,
+          dynamicDeps: null,
           cjsLazyDeps: null,
-          size: source.byteLength,
-          format: "wasm",
-          integrity: await getIntegrity(new Uint8Array(source)),
+          hasStaticParent: true,
+          size: NaN,
+          integrity: "",
+          format: undefined,
         };
-      }
+        if ('parseError' in analysis) {
+          traceEntry.parseError = analysis.parseError;
+        }
+        else {
+          const { deps, dynamicDeps, cjsLazyDeps, size, format, integrity } = analysis;
+          traceEntry.integrity = integrity;
+          traceEntry.format = format;
+          traceEntry.size = size;
+          traceEntry.deps = deps.sort();
+          traceEntry.dynamicDeps = dynamicDeps.sort();
+          traceEntry.cjsLazyDeps = cjsLazyDeps ? cjsLazyDeps.sort() : cjsLazyDeps;
 
-      source = new TextDecoder().decode(source);
-
-      if (
-        this.traceTs &&
-        (resolvedUrl.endsWith(".ts") ||
-          resolvedUrl.endsWith(".tsx") ||
-          resolvedUrl.endsWith(".jsx"))
-      )
-        return await createTsAnalysis(source, resolvedUrl);
-
-      if (resolvedUrl.endsWith(".json")) {
-        try {
-          JSON.parse(source);
-          return {
-            deps: [],
-            dynamicDeps: [],
-            cjsLazyDeps: null,
-            size: source.length,
-            format: "json",
-            integrity: await getIntegrity(source),
-          };
-        } catch {}
-      }
-
-      if (resolvedUrl.endsWith(".css")) {
-        try {
-          return {
-            deps: [],
-            dynamicDeps: [],
-            cjsLazyDeps: null,
-            size: source.length,
-            format: "css",
-            integrity: await getIntegrity(source),
-          };
-        } catch {}
-      }
-
-      const [imports, exports] = parse(source) as any as [any[], string[]];
-      if (
-        imports.every((impt) => impt.d > 0) &&
-        !exports.length &&
-        resolvedUrl.startsWith("file:")
-      ) {
-        // Support CommonJS package boundary checks for non-ESM on file: protocol only
-        if (isRequire) {
-          if (
-            this.traceCjs &&
-            !(
-              resolvedUrl.endsWith(".mjs") ||
-              (resolvedUrl.endsWith(".js") &&
-                (
-                  await this.getPackageConfig(
-                    await this.getPackageBase(resolvedUrl)
-                  )
-                )?.type === "module")
-            )
-          ) {
-            return createCjsAnalysis(imports, source, resolvedUrl);
-          }
-        } else if (
-          this.traceCjs &&
-          (resolvedUrl.endsWith(".cjs") ||
-            (resolvedUrl.endsWith(".js") &&
-              (
-                await this.getPackageConfig(
-                  await this.getPackageBase(resolvedUrl)
-                )
-              )?.type !== "module"))
-        ) {
-          return createCjsAnalysis(imports, source, resolvedUrl);
+          // wasCJS distinct from CJS because it applies to CJS transformed into ESM
+          // from the resolver perspective
+          const wasCJS =
+            format === "commonjs" || (await this.wasCommonJS(resolvedUrl));
+          if (wasCJS) traceEntry.wasCjs = true;
         }
       }
-      return system
-        ? createSystemAnalysis(source, imports, resolvedUrl)
-        : createEsmAnalysis(imports, source, resolvedUrl);
-    } catch (e) {
-      if (!e.message || !e.message.startsWith("Parse error @:")) throw e;
-      // fetch is _unstable_!!!
-      // so we retry the fetch first
-      if (retry) {
-        try {
-          return this.analyze(resolvedUrl, parentUrl, system, isRequire, false);
-        } catch {}
-      }
-      // TODO: better parser errors
-      if (e.message && e.message.startsWith("Parse error @:")) {
-        const [topline] = e.message.split("\n", 1);
-        const pos = topline.slice(14);
-        let [line, col] = pos.split(":");
-        const lines = source.split("\n");
-        let errStack = "";
-        if (line > 1) errStack += "\n  " + lines[line - 2];
-        errStack += "\n> " + lines[line - 1];
-        errStack += "\n  " + " ".repeat(col - 1) + "^";
-        if (lines.length > 1) errStack += "\n  " + lines[line];
-        throw new JspmError(
-          `${errStack}\n\nError parsing ${resolvedUrl}:${pos}`
-        );
-      }
-      throw e;
-    }
+      this.traceEntries[resolvedUrl] = traceEntry;
+    })();
+    await this.traceEntryPromises[resolvedUrl];
+    const traceEntry = this.traceEntries[resolvedUrl];
+    if (traceEntry?.parseError)
+      throw traceEntry.parseError;
+    return traceEntry;
   }
 
   // Note: changes to this function must be updated enumeratePackageTargets too
@@ -1188,4 +1122,132 @@ function allDotKeys(exports: Record<string, any>) {
     if (p[0] !== ".") return false;
   }
   return true;
+}
+
+// TODO: Refactor legacy intermediate Analysis type into TraceEntry directly
+async function getAnalysis(resolver: Resolver, resolvedUrl: string): Promise<Analysis | null> {
+  const parentIsRequire = false;
+  const source = await fetch.arrayBuffer(resolvedUrl, resolver.fetchOpts);
+  if (!source)
+    return null;
+  // TODO: headers over extensions for non-file URLs
+  try {
+    if (resolvedUrl.endsWith(".wasm")) {
+      try {
+        var compiled = await WebAssembly.compile(source);
+      } catch (e) {
+        throw e;
+      }
+      return {
+        deps: WebAssembly.Module.imports(compiled).map(
+          ({ module }) => module
+        ),
+        dynamicDeps: [],
+        cjsLazyDeps: null,
+        size: source.byteLength,
+        format: "wasm",
+        integrity: await getIntegrity(new Uint8Array(source)),
+      };
+    }
+
+    var sourceText = new TextDecoder().decode(source);
+
+    if (
+      resolver.traceTs &&
+      (resolvedUrl.endsWith(".ts") ||
+        resolvedUrl.endsWith(".tsx") ||
+        resolvedUrl.endsWith(".jsx"))
+    )
+      return await createTsAnalysis(sourceText, resolvedUrl);
+
+    if (resolvedUrl.endsWith(".json")) {
+      try {
+        JSON.parse(sourceText);
+        return {
+          deps: [],
+          dynamicDeps: [],
+          cjsLazyDeps: null,
+          size: sourceText.length,
+          format: "json",
+          integrity: await getIntegrity(sourceText),
+        };
+      } catch {}
+    }
+
+    if (resolvedUrl.endsWith(".css")) {
+      try {
+        return {
+          deps: [],
+          dynamicDeps: [],
+          cjsLazyDeps: null,
+          size: sourceText.length,
+          format: "css",
+          integrity: await getIntegrity(sourceText),
+        };
+      } catch {}
+    }
+
+    const [imports, exports] = parse(sourceText) as any as [any[], string[]];
+    if (
+      imports.every((impt) => impt.d > 0) &&
+      !exports.length &&
+      resolvedUrl.startsWith("file:")
+    ) {
+      // Support CommonJS package boundary checks for non-ESM on file: protocol only
+      if (parentIsRequire) {
+        if (
+          resolver.traceCjs &&
+          !(
+            resolvedUrl.endsWith(".mjs") ||
+            (resolvedUrl.endsWith(".js") &&
+              (
+                await resolver.getPackageConfig(
+                  await resolver.getPackageBase(resolvedUrl)
+                )
+              )?.type === "module")
+          )
+        ) {
+          return createCjsAnalysis(imports, sourceText, resolvedUrl);
+        }
+      } else if (
+        resolver.traceCjs &&
+        (resolvedUrl.endsWith(".cjs") ||
+          (resolvedUrl.endsWith(".js") &&
+            (
+              await resolver.getPackageConfig(
+                await resolver.getPackageBase(resolvedUrl)
+              )
+            )?.type !== "module"))
+      ) {
+        return createCjsAnalysis(imports, sourceText, resolvedUrl);
+      }
+    }
+    return resolver.traceSystem
+      ? createSystemAnalysis(sourceText, imports, resolvedUrl)
+      : createEsmAnalysis(imports, sourceText, resolvedUrl);
+  } catch (e) {
+    if (!e.message || !e.message.startsWith("Parse error @:")) {
+      return {
+        parseError: e
+      };
+    }
+    // TODO: better parser errors
+    if (e.message && e.message.startsWith("Parse error @:")) {
+      const [topline] = e.message.split("\n", 1);
+      const pos = topline.slice(14);
+      let [line, col] = pos.split(":");
+      const lines = sourceText.split("\n");
+      let errStack = "";
+      if (line > 1) errStack += "\n  " + lines[line - 2];
+      errStack += "\n> " + lines[line - 1];
+      errStack += "\n  " + " ".repeat(col - 1) + "^";
+      if (lines.length > 1) errStack += "\n  " + lines[line];
+      return {
+        parseError: new JspmError(
+          `${errStack}\n\nError parsing ${resolvedUrl}:${pos}`
+        )
+      };
+    }
+    throw e;
+  }
 }

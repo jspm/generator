@@ -1,9 +1,9 @@
 import { fileURLToPath } from "url";
-import { wrapWithRetry, FetchFn } from "./fetch-common.js";
+import { wrappedFetch, WrappedFetch } from "./fetch-common.js";
 
 export function clearCache() {}
 
-export const fetch: FetchFn = wrapWithRetry(async function (
+export const fetch: WrappedFetch = wrappedFetch(async function (
   url: URL,
   ...args: any[]
 ) {

@@ -8,6 +8,7 @@ const generator = new Generator({
 await generator.install("react-dom");
 
 const json = generator.getMap();
+
 assert.strictEqual(
   json.scopes["https://ga.jspm.io/"]["node:process"],
   undefined

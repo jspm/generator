@@ -1,7 +1,6 @@
 import {
   type InstallerOptions,
   InstallTarget,
-  ResolutionMode,
   InstallMode,
 } from "../install/installer.js";
 import {
@@ -21,7 +20,7 @@ import {
   getMapMatch,
   getScopeMatches,
 } from "@jspm/import-map";
-import { isBuiltinScheme, isMappableScheme, Resolver } from "./resolver.js";
+import { isBuiltinScheme, isMappableScheme, Resolver, TraceEntry } from "./resolver.js";
 import { Log } from "../common/log.js";
 import {
   mergeConstraints,
@@ -58,43 +57,6 @@ export interface TraceMapOptions extends InstallerOptions {
   commonJS?: boolean;
 }
 
-interface TraceGraph {
-  [tracedUrls: string]: TraceEntry;
-}
-
-interface TraceEntry {
-  promise: Promise<void> | null;
-  deps: string[];
-  dynamicDeps: string[];
-  // assetDeps: { expr: string, start: number, end: number, assets: string[] }
-  hasStaticParent: boolean;
-  size: number;
-  integrity: string;
-
-  // wasCjs is true if the module is a CJS module, but also if it's an ESM
-  // module that was transpiled from a CJS module. This is checkable on the
-  // jspm.io CDN by looking for an export for the module with a '!cjs'
-  // extension in its parent package:
-  wasCjs: boolean;
-
-  // usesCjs is true iff the module is both a CJS module and actually _uses_
-  // CJS-specific globals like "require" or "module. If not, we can actually
-  // link it for browser/deno runtimes despite it being CJS:
-  usesCjs: boolean;
-
-  // For cjs modules, the list of hoisted deps
-  // this is needed for proper cycle handling
-  cjsLazyDeps: string[];
-  format:
-    | "esm"
-    | "commonjs"
-    | "system"
-    | "json"
-    | "css"
-    | "typescript"
-    | "wasm";
-}
-
 interface VisitOpts {
   static?: boolean;
   toplevel: boolean;
@@ -123,7 +85,6 @@ function combineSubpaths(
 export default class TraceMap {
   installer: Installer | undefined;
   opts: TraceMapOptions;
-  tracedUrls: TraceGraph = {};
   inputMap: ImportMap; // custom imports
   mapUrl: URL;
   baseUrl: URL;
@@ -225,7 +186,23 @@ export default class TraceMap {
     // We support analysis of CommonJS modules for local workflows, where it's
     // very likely that the user has some CommonJS dependencies, but this is
     // something that the user has to explicitly enable:
-    const entry = await this.getTraceEntry(resolved, parentUrl);
+    if (isBuiltinScheme(resolved)) return null;
+
+    if (resolved.endsWith("/"))
+      throw new JspmError(
+        `Trailing "/" installs not supported installing ${resolved} for ${parentUrl}`
+      );
+    try {
+      var entry = await this.resolver.analyze(resolved);
+    } catch (e) {
+      if (e instanceof JspmError)
+        throw new Error(`Unable to analyze ${resolved} imported from ${parentUrl}: ${e.message}`);
+      else
+        throw new Error(`Unable to analyze ${resolved} imported from ${parentUrl}`, { cause: e });
+    }
+    if (entry === null) {
+      throw new Error(`Module not found ${resolved} imported from ${parentUrl}`);
+    }
     if (entry?.format === "commonjs" && entry.usesCjs && !this.opts.commonJS) {
       throw new JspmError(
         `Unable to trace ${resolved}, as it is a CommonJS module. Either enable CommonJS tracing explicitly by setting "GeneratorOptions.commonJS" to true, or use a provider that performs ESM transpiling like jspm.io via defaultProvider: 'jspm.io'.`
@@ -277,21 +254,8 @@ export default class TraceMap {
     // note this plucks custom top-level custom imports
     // we may want better control over this
     map.extend(this.inputMap);
-    // re-drive all the traces to convergence
-    do {
-      this.installer!.newInstalls = false;
-      await Promise.all(
-        modules.map(async (module) => {
-          await this.visit(module, {
-            installMode: "freeze", // pruning shouldn't change versions
-            static: this.opts.static,
-            toplevel: true,
-          });
-        })
-      );
-    } while (this.installer!.newInstalls);
 
-    // The final loop gives us the mappings
+    // visit to build the mappings
     const staticList = new Set();
     const dynamicList = new Set();
     const dynamics: [string, string][] = [];
@@ -316,7 +280,7 @@ export default class TraceMap {
           const existing = map.imports[specifier];
           if (
             !existing ||
-            (existing !== resolved && this.tracedUrls?.[parentUrl]?.wasCjs)
+            (existing !== resolved && this.resolver.getAnalysis(parentUrl)?.wasCjs)
           ) {
             map.set(specifier, resolved);
           }
@@ -402,12 +366,13 @@ export default class TraceMap {
     installOpts: InstallMode,
     toplevel: boolean
   ): Promise<string> {
-    const cjsEnv = this.tracedUrls[parentUrl]?.wasCjs;
+    const parentAnalysis = this.resolver.getAnalysis(parentUrl);
+    const cjsEnv = parentAnalysis?.wasCjs;
 
     const parentPkgUrl = await this.resolver.getPackageBase(parentUrl);
     if (!parentPkgUrl) throwInternalError();
 
-    const parentIsCjs = this.tracedUrls[parentUrl]?.format === "commonjs";
+    const parentIsCjs = parentAnalysis?.format === "commonjs";
 
     if (
       (!isPlain(specifier) || specifier === "..") &&
@@ -614,64 +579,5 @@ export default class TraceMap {
     throw new JspmError(
       `No resolution in map for ${specifier}${importedFrom(parentUrl)}`
     );
-  }
-
-  private async getTraceEntry(
-    resolvedUrl: string,
-    parentUrl: string
-  ): Promise<TraceEntry | null> {
-    if (resolvedUrl in this.tracedUrls) {
-      const entry = this.tracedUrls[resolvedUrl];
-      await entry.promise;
-      return entry;
-    }
-
-    if (isBuiltinScheme(resolvedUrl)) return null;
-
-    if (resolvedUrl.endsWith("/"))
-      throw new JspmError(
-        `Trailing "/" installs not supported installing ${resolvedUrl} for ${parentUrl}`
-      );
-
-    const traceEntry: TraceEntry = (this.tracedUrls[resolvedUrl] = {
-      promise: null,
-      wasCjs: false,
-      usesCjs: false,
-      deps: null,
-      dynamicDeps: null,
-      cjsLazyDeps: null,
-      hasStaticParent: true,
-      size: NaN,
-      integrity: "",
-      format: undefined,
-    });
-
-    traceEntry.promise = (async () => {
-      const parentIsCjs = this.tracedUrls[parentUrl]?.format === "commonjs";
-
-      const { deps, dynamicDeps, cjsLazyDeps, size, format, integrity } =
-        await this.resolver.analyze(
-          resolvedUrl,
-          parentUrl,
-          this.opts.system,
-          parentIsCjs
-        );
-      traceEntry.integrity = integrity;
-      traceEntry.format = format;
-      traceEntry.size = size;
-      traceEntry.deps = deps.sort();
-      traceEntry.dynamicDeps = dynamicDeps.sort();
-      traceEntry.cjsLazyDeps = cjsLazyDeps ? cjsLazyDeps.sort() : cjsLazyDeps;
-
-      // wasCJS distinct from CJS because it applies to CJS transformed into ESM
-      // from the resolver perspective
-      const wasCJS =
-        format === "commonjs" || (await this.resolver.wasCommonJS(resolvedUrl));
-      if (wasCJS) traceEntry.wasCjs = true;
-
-      traceEntry.promise = null;
-    })();
-    await traceEntry.promise;
-    return traceEntry;
   }
 }
