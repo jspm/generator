@@ -1,8 +1,12 @@
-import { ExactPackage, PackageConfig } from "../install/package.js";
+import { ExactPackage, LatestPackageTarget, PackageConfig } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 // @ts-ignore
 import { fetch } from "#fetch";
 import { JspmError } from "../common/err.js";
+import { fetchVersions } from "./jspm.js";
+// @ts-ignore
+import { SemverRange } from "sver";
+import { importedFrom } from "../common/url.js";
 
 const cdnUrl = "https://esm.sh/";
 
@@ -74,5 +78,22 @@ export async function getPackageConfig(
   return pcfg;
 }
 
-// Use JSPM version resolver for now:
-export { resolveLatestTarget } from "./jspm.js";
+export async function resolveLatestTarget(
+  this: Resolver,
+  target: LatestPackageTarget,
+  layer: string,
+  parentUrl: string
+): Promise<ExactPackage | null> {
+  const { registry, name, range, unstable } = target;
+  const versions = await fetchVersions(name);
+  const semverRange = new SemverRange(String(range) || "*", unstable);
+  const version = semverRange.bestMatch(versions, unstable);
+  if (version) {
+    return { registry, name, version: version.toString() };
+  }
+  throw new JspmError(
+    `Unable to resolve ${registry}:${name}@${range} to a valid version${importedFrom(
+      parentUrl
+    )}`
+  );
+}

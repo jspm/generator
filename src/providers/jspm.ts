@@ -305,7 +305,7 @@ async function lookupRange(
         `Unable to resolve ${registry}:${name}@${range} to a valid version${importedFrom(
           parentUrl
         )}`
-      ); 
+      );
     }
   })();
   lookupCache.set(url, lookupPromise);
@@ -314,7 +314,7 @@ async function lookupRange(
 
 const versionsCacheMap = new Map<string, string[]>();
 
-async function fetchVersions(name: string): Promise<string[]> {
+export async function fetchVersions(name: string): Promise<string[]> {
   if (versionsCacheMap.has(name)) {
     return versionsCacheMap.get(name);
   }
