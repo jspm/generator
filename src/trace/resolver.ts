@@ -104,6 +104,7 @@ export class Resolver {
   traceCjs: boolean;
   traceTs: boolean;
   traceSystem: boolean;
+  context: Record<string, any>;
   constructor({
     env,
     log,
@@ -132,6 +133,7 @@ export class Resolver {
     this.traceCjs = traceCjs;
     this.traceTs = traceTs;
     this.traceSystem = traceSystem;
+    this.context = {};
   }
 
   addCustomProvider(name: string, provider: Provider) {
@@ -359,8 +361,8 @@ export class Resolver {
     const resolveLatestTarget = getProvider(
       provider,
       this.providers
-    ).resolveLatestTarget.bind(this);
-    const pkg = await resolveLatestTarget(latestTarget, layer, parentUrl);
+    ).resolveLatestTarget;
+    const pkg = await resolveLatestTarget.call(this, latestTarget, layer, parentUrl);
     if (pkg) return pkg;
 
     if (provider === "nodemodules") {
