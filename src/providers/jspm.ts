@@ -28,6 +28,8 @@ export async function pkgToUrl(
 export function configure(config: any) {
   if (config.cdnUrl)
     cdnUrl = config.cdnUrl;
+  lookupCache = new Map();
+  versionsCacheMap = new Map();
 }
 
 const exactPkgRegEx =
@@ -275,7 +277,7 @@ function pkgToLookupUrl(pkg: ExactPackage, edge = false) {
   }`;
 }
 
-const lookupCache = new Map();
+let lookupCache = new Map();
 
 async function lookupRange(
   this: Resolver,
@@ -312,7 +314,7 @@ async function lookupRange(
   return lookupPromise;
 }
 
-const versionsCacheMap = new Map<string, string[]>();
+let versionsCacheMap = new Map<string, string[]>();
 
 export async function fetchVersions(name: string): Promise<string[]> {
   if (versionsCacheMap.has(name)) {
