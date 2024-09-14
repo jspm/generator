@@ -16,6 +16,22 @@ const apiUrl = "https://api.jspm.io/";
 const BUILD_POLL_TIME = 5 * 60 * 1000;
 const BUILD_POLL_INTERVAL = 5 * 1000;
 
+interface JspmCache {
+  lookupCache: Map<string, Promise<ExactPackage>>;
+  versionsCacheMap: Map<string, string[]>;
+  resolveCache: Record<
+    string,
+    {
+      latest: Promise<ExactPackage | null>;
+      majors: Record<string, Promise<ExactPackage | null>>;
+      minors: Record<string, Promise<ExactPackage | null>>;
+      tags: Record<string, Promise<ExactPackage | null>>;
+    }
+  >;
+  cachedErrors: Map<string, Promise<boolean>>;
+  buildRequested: Map<string, Promise<void>>;
+}
+
 export const supportedLayers = ["default", "system"];
 
 export async function pkgToUrl(
@@ -59,21 +75,19 @@ export function parseUrlPkg(url: string) {
   }
 }
 
-let resolveCache: Record<
-  string,
-  {
-    latest: Promise<ExactPackage | null>;
-    majors: Record<string, Promise<ExactPackage | null>>;
-    minors: Record<string, Promise<ExactPackage | null>>;
-    tags: Record<string, Promise<ExactPackage | null>>;
+function getJspmCache (resolver: Resolver): JspmCache {
+  const jspmCache = resolver.context.jspmCache;
+  if (!resolver.context.jspmCache) {
+    return resolver.context.jspmCache = {
+      lookupCache: new Map(),
+      versionsCacheMap: new Map(),
+      resolveCache: {},
+      cachedErrors: new Map(),
+      buildRequested: new Map(),
+    };
   }
-> = {};
-
-export function clearResolveCache() {
-  resolveCache = {};
+  return jspmCache;
 }
-
-const cachedErrors = new Map();
 
 async function checkBuildOrError(
   resolver: Resolver,
@@ -84,6 +98,7 @@ async function checkBuildOrError(
   if (pcfg) {
     return true;
   }
+  const { cachedErrors } = getJspmCache(resolver);
   // no package.json! Check if there's a build error:
   if (cachedErrors.has(pkgUrl))
     return cachedErrors.get(pkgUrl);
@@ -104,13 +119,13 @@ async function checkBuildOrError(
   return cachedErrorPromise;
 }
 
-const buildRequested = new Map();
-
 async function ensureBuild(resolver: Resolver, pkg: ExactPackage, fetchOpts: any) {
   if (await checkBuildOrError(resolver, await pkgToUrl(pkg, "default"), fetchOpts))
     return;
 
   const fullName = `${pkg.name}@${pkg.version}`;
+
+  const { buildRequested } = getJspmCache(resolver);
 
   // no package.json AND no build error -> post a build request
   // once the build request has been posted, try polling for up to 2 mins
@@ -157,6 +172,8 @@ export async function resolveLatestTarget(
     await ensureBuild(this, pkg, this.fetchOpts);
     return pkg;
   }
+
+  const { resolveCache } = getJspmCache(this);
 
   const cache = (resolveCache[target.registry + ":" + target.name] =
     resolveCache[target.registry + ":" + target.name] || {
@@ -275,8 +292,6 @@ function pkgToLookupUrl(pkg: ExactPackage, edge = false) {
   }`;
 }
 
-const lookupCache = new Map();
-
 async function lookupRange(
   this: Resolver,
   registry: string,
@@ -285,6 +300,7 @@ async function lookupRange(
   unstable: boolean,
   parentUrl?: string
 ): Promise<ExactPackage | null> {
+  const { lookupCache } = getJspmCache(this);
   const url = pkgToLookupUrl({ registry, name, version: range }, unstable);
   if (lookupCache.has(url))
     return lookupCache.get(url);
@@ -294,7 +310,7 @@ async function lookupRange(
       return { registry, name, version: version.trim() };
     } else {
       // not found
-      const versions = await fetchVersions(name);
+      const versions = await fetchVersions.call(this, name);
       const semverRange = new SemverRange(String(range) || "*", unstable);
       const version = semverRange.bestMatch(versions, unstable);
 
@@ -312,9 +328,8 @@ async function lookupRange(
   return lookupPromise;
 }
 
-const versionsCacheMap = new Map<string, string[]>();
-
-export async function fetchVersions(name: string): Promise<string[]> {
+export async function fetchVersions(this: Resolver, name: string): Promise<string[]> {
+  const { versionsCacheMap } = getJspmCache(this);
   if (versionsCacheMap.has(name)) {
     return versionsCacheMap.get(name);
   }
