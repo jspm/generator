@@ -1,7 +1,7 @@
 import { ExactPackage, LatestPackageTarget, PackageConfig } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 // @ts-ignore
-import { fetch } from "#fetch";
+import { fetch } from "../common/fetch.js";
 import { JspmError } from "../common/err.js";
 import { fetchVersions } from "./jspm.js";
 // @ts-ignore

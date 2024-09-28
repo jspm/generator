@@ -1,4 +1,4 @@
-import { fetch } from "#fetch";
+import { fetch } from "../../lib/common/fetch.js";
 import { Generator } from "@jspm/generator";
 import assert from "assert";
 

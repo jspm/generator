@@ -6,7 +6,7 @@ import {
 import { Resolver } from "../trace/resolver.js";
 import { SemverRange } from "sver";
 // @ts-ignore
-import { fetch } from "#fetch";
+import { fetch } from "../common/fetch.js";
 import { Install } from "../generator.js";
 
 const cdnUrl = "https://deno.land/x/";

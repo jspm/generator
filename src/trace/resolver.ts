@@ -8,7 +8,7 @@ import {
 import { JspmError } from "../common/err.js";
 import { Log } from "../common/log.js";
 // @ts-ignore
-import { fetch } from "#fetch";
+import { fetch } from "../common/fetch.js";
 import { importedFrom } from "../common/url.js";
 // @ts-ignore
 import { parse } from "es-module-lexer/js";

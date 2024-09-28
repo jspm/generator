@@ -3,7 +3,7 @@ import { ExactPackage } from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 import { Provider } from "./index.js";
 // @ts-ignore
-import { fetch } from "#fetch";
+import { fetch } from "../common/fetch.js";
 import { JspmError } from "../common/err.js";
 import { importedFrom } from "../common/url.js";
 import { PackageConfig } from "../install/package.js";

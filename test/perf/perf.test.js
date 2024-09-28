@@ -1,6 +1,6 @@
 import { Generator } from "@jspm/generator";
 import assert from "assert";
-import { fetch } from '#fetch';
+import { fetch } from '../../lib/common/fetch.js';
 
 const largeInstallSet = await (await fetch(new URL('./large-install-set.json', import.meta.url), {})).json();
 
