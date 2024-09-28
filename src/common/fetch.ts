@@ -2,6 +2,9 @@
 import { fetch as fetchImpl, clearCache } from '#fetch';
 
 export interface WrappedResponse {
+  url: string;
+  headers: Headers;
+  ok: boolean;
   status: number;
   statusText?: string;
   text?(): Promise<string>;
