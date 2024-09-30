@@ -29,7 +29,7 @@ import {
 } from "./install/package.js";
 import TraceMap from "./trace/tracemap.js";
 // @ts-ignore
-import { clearCache as clearFetchCache, fetch as _fetch } from "#fetch";
+import { clearCache as clearFetchCache, fetch as _fetch, setFetch } from "./common/fetch.js";
 import { IImportMap, ImportMap } from "@jspm/import-map";
 import process from "process";
 import { SemverRange } from "sver";
@@ -46,8 +46,12 @@ import { Resolver } from "./trace/resolver.js";
 import { getMaybeWrapperUrl } from "./common/wrapper.js";
 import { setRetryCount } from "./common/fetch-common.js";
 
-// Utility exports for users:
-export { analyzeHtml };
+export {
+  // utility export
+  analyzeHtml,
+  // hook export
+  setFetch
+};
 
 // Type exports for users:
 export { Provider };
@@ -159,7 +163,7 @@ export interface GeneratorOptions {
   cache?: "offline" | boolean;
 
   /**
-   * User-provided fetch options for fetching modules, check https://github.com/npm/make-fetch-happen#extra-options
+   * User-provided fetch options for fetching modules, eg check https://github.com/npm/make-fetch-happen#extra-options for Node.js fetch
    */
   fetchOptions?: Record<string, any>;
 

@@ -7,7 +7,7 @@ import { Resolver } from "../trace/resolver.js";
 // @ts-ignore
 import { SemverRange } from "sver";
 // @ts-ignore
-import { fetch } from "#fetch";
+import { fetch } from "../common/fetch.js";
 
 let cdnUrl = "https://ga.jspm.io/";
 const systemCdnUrl = "https://ga.system.jspm.io/";
