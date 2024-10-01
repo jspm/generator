@@ -471,10 +471,7 @@ export class Resolver {
           const subpath = "./" + url.slice(pkgUrl.length);
           if (subpath in pcfg.browser) {
             const target = pcfg.browser[subpath];
-            if (target === false)
-              throw new Error(
-                `TODO: Empty browser map for ${subpath} in ${url}`
-              );
+            if (target === false) return 'node:@empty';
             if (!target.startsWith("./"))
               throw new Error(
                 `TODO: External browser map for ${subpath} to ${target} in ${url}`
