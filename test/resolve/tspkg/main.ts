@@ -1,2 +1,3 @@
+import type { t } from './types.ts';
 import "./dep.ts";
-export var p: number = 5;
+export var p: t = 5;

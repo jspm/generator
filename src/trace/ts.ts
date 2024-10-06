@@ -85,13 +85,15 @@ export async function createTsAnalysis(
           return {
             visitor: {
               ExportAllDeclaration(path) {
-                imports.add(path.node.source.value);
+                if (path.node.exportKind !== 'type')
+                  imports.add(path.node.source.value);
               },
               ExportNamedDeclaration(path) {
                 if (path.node.source) imports.add(path.node.source.value);
               },
               ImportDeclaration(path) {
-                imports.add(path.node.source.value);
+                if (path.node.exportKind !== 'type')
+                  imports.add(path.node.source.value);
               },
               Import(path) {
                 dynamicImports.add(
