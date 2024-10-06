@@ -3,6 +3,7 @@ import assert from "assert";
 
 const generator = new Generator({
   mapUrl: import.meta.url,
+  commonJS: true
 });
 
 // Should not throw, index file doesn't use CJS:
@@ -15,3 +16,15 @@ await (async () => {
     assert(false);
   } catch {}
 })();
+
+await generator.install({ target: './cjspkg', subpath: './browser.js' });
+assert.deepStrictEqual(generator.getMap(), {
+  imports: {
+    './cjspkg/browser-dep-exclude.js': 'https://ga.jspm.io/npm:@jspm/core@2.0.1/nodelibs/@empty.js',
+    'cjspkg/browser.js': './cjspkg/browser.js',
+    unusedcjspkg: './unusedcjspkg/index.js'
+  },
+  scopes: {
+    './cjspkg/': { jquery: 'https://ga.jspm.io/npm:jquery@3.7.1/dist/jquery.js' }
+  }
+});

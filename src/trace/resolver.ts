@@ -105,6 +105,7 @@ export class Resolver {
   traceTs: boolean;
   traceSystem: boolean;
   context: Record<string, any>;
+  installer: Installer;
   constructor({
     env,
     log,
@@ -471,10 +472,7 @@ export class Resolver {
           const subpath = "./" + url.slice(pkgUrl.length);
           if (subpath in pcfg.browser) {
             const target = pcfg.browser[subpath];
-            if (target === false)
-              throw new Error(
-                `TODO: Empty browser map for ${subpath} in ${url}`
-              );
+            if (target === false) return this.resolveEmpty(parentIsCjs, url);
             if (!target.startsWith("./"))
               throw new Error(
                 `TODO: External browser map for ${subpath} to ${target} in ${url}`
@@ -720,6 +718,29 @@ export class Resolver {
     return null;
   }
 
+  async resolveEmpty(cjsEnv: boolean, originalSpecifier: string, parentUrl?: URL) {
+    const stdlibTarget = {
+      registry: "npm",
+      name: "@jspm/core",
+      ranges: [new SemverRange("*")],
+      unstable: true,
+    };
+    const provider = this.installer.getProvider(stdlibTarget);
+    const pkg = await this.resolveLatestTarget(
+      stdlibTarget,
+      provider,
+      parentUrl?.href
+    );
+    return this.resolveExport(
+      await this.pkgToUrl(pkg, provider),
+      "./nodelibs/@empty",
+      cjsEnv,
+      false,
+      originalSpecifier,
+      parentUrl
+    );
+  }
+
   // Note: updates here must be tracked in function above
   async resolveExport(
     pkgUrl: `${string}/`,
@@ -727,7 +748,6 @@ export class Resolver {
     cjsEnv: boolean,
     parentIsCjs: boolean,
     originalSpecifier: string,
-    installer: Installer,
     parentUrl?: URL
   ): Promise<string> {
     const env = cjsEnv ? this.cjsEnv : this.env;
@@ -739,27 +759,7 @@ export class Resolver {
       pcfg.exports !== null &&
       Object.keys(pcfg.exports).length === 0
     ) {
-      const stdlibTarget = {
-        registry: "npm",
-        name: "@jspm/core",
-        ranges: [new SemverRange("*")],
-        unstable: true,
-      };
-      const provider = installer.getProvider(stdlibTarget);
-      const pkg = await this.resolveLatestTarget(
-        stdlibTarget,
-        provider,
-        parentUrl.href
-      );
-      return this.resolveExport(
-        await this.pkgToUrl(pkg, provider),
-        "./nodelibs/@empty",
-        cjsEnv,
-        parentIsCjs,
-        originalSpecifier,
-        installer,
-        parentUrl
-      );
+      return this.resolveEmpty(cjsEnv, originalSpecifier, parentUrl);
     }
 
     function throwExportNotDefined() {

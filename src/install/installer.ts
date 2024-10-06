@@ -119,6 +119,7 @@ export class Installer {
   ) {
     this.log = log;
     this.resolver = resolver;
+    this.resolver.installer = this;
     this.resolutions = opts.resolutions || {};
     this.installBaseUrl = baseUrl;
     this.opts = opts;

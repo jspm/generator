@@ -74,6 +74,8 @@ function combineSubpaths(
   installSubpath: "." | `./${string}` | null,
   traceSubpath: "." | `./${string}`
 ): `./${string}` | "." {
+  if (traceSubpath.endsWith('/'))
+    throw new Error('Trailing slash subpaths unsupported');
   return installSubpath === null ||
     installSubpath === "." ||
     traceSubpath === "."
@@ -508,7 +510,6 @@ export default class TraceMap {
           cjsEnv,
           parentIsCjs,
           specifier,
-          this.installer,
           new URL(parentUrl)
         )
       );
@@ -561,11 +562,10 @@ export default class TraceMap {
       const resolved = await this.resolver.realPath(
         await this.resolver.resolveExport(
           installUrl,
-          combineSubpaths(installSubpath, subpath),
+          combineSubpaths(installSubpath, parentIsCjs && subpath.endsWith('/') ? subpath.slice(0, -1) as `./${string}` : subpath),
           cjsEnv,
           parentIsCjs,
           specifier,
-          this.installer,
           new URL(parentUrl)
         )
       );
