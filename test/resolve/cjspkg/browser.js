@@ -1,2 +1,2 @@
-require('./browser-dep-exclude.js');
-require('./browser-dep-include.js');
+import './browser-dep-exclude.js';
+import './browser-dep-include.js';
