@@ -13,7 +13,7 @@ let cdnUrl = "https://ga.jspm.io/";
 const systemCdnUrl = "https://ga.system.jspm.io/";
 const apiUrl = "https://api.jspm.io/";
 
-const BUILD_POLL_TIME = 5 * 60 * 1000;
+const BUILD_POLL_TIME = 60 * 1000;
 const BUILD_POLL_INTERVAL = 5 * 1000;
 
 interface JspmCache {
@@ -150,7 +150,7 @@ async function ensureBuild(resolver: Resolver, pkg: ExactPackage, fetchOpts: any
 
       if (Date.now() - startTime >= BUILD_POLL_TIME)
         throw new JspmError(
-          `Timed out waiting for the build of ${fullName} to be ready on the JSPM CDN. Try again later, or post a JSPM project issue if the issue persists.`
+          `Timed out waiting for the build of ${fullName} to be ready on the JSPM CDN. Try again later, or post a jspm.io project issue at https://github.com/jspm/project if the problem persists.`
         );
     }
   })();
