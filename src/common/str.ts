@@ -30,8 +30,8 @@ export class Replacer {
       const [wsMatch] = this.source.slice(endIndex).match(trimWs) ?? [];
       this.source =
         this.source.slice(0, endIndex) +
-        this.source.slice(endIndex + wsMatch?.length ?? 0);
-      addOffset(this.offsetTable, end, -wsMatch?.length ?? 0);
+        this.source.slice(endIndex + (wsMatch?.length ?? 0));
+      addOffset(this.offsetTable, end, -(wsMatch?.length ?? 0));
     }
   }
 
