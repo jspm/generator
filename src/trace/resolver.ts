@@ -472,7 +472,7 @@ export class Resolver {
           const subpath = "./" + url.slice(pkgUrl.length);
           if (subpath in pcfg.browser) {
             const target = pcfg.browser[subpath];
-            if (target === false) return this.resolveEmpty(parentIsCjs, url);
+            if (target === false) return this.resolveEmpty(parentIsCjs, url, pkgUrl);
             if (!target.startsWith("./"))
               throw new Error(
                 `TODO: External browser map for ${subpath} to ${target} in ${url}`
@@ -718,7 +718,7 @@ export class Resolver {
     return null;
   }
 
-  async resolveEmpty(cjsEnv: boolean, originalSpecifier: string, parentUrl?: URL) {
+  async resolveEmpty(cjsEnv: boolean, originalSpecifier: string, parentUrl: string) {
     const stdlibTarget = {
       registry: "npm",
       name: "@jspm/core",
@@ -729,7 +729,7 @@ export class Resolver {
     const pkg = await this.resolveLatestTarget(
       stdlibTarget,
       provider,
-      parentUrl?.href
+      parentUrl
     );
     return this.resolveExport(
       await this.pkgToUrl(pkg, provider),
@@ -748,7 +748,7 @@ export class Resolver {
     cjsEnv: boolean,
     parentIsCjs: boolean,
     originalSpecifier: string,
-    parentUrl?: URL
+    parentUrl?: string
   ): Promise<string> {
     const env = cjsEnv ? this.cjsEnv : this.env;
     const pcfg = (await this.getPackageConfig(pkgUrl)) || {};

@@ -510,7 +510,7 @@ export default class TraceMap {
           cjsEnv,
           parentIsCjs,
           specifier,
-          new URL(parentUrl)
+          parentUrl
         )
       );
       this.log(
@@ -566,7 +566,7 @@ export default class TraceMap {
           cjsEnv,
           parentIsCjs,
           specifier,
-          new URL(parentUrl)
+          parentUrl
         )
       );
       this.log(
