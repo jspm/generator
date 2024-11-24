@@ -45,7 +45,7 @@ let _fetch: WrappedFetch = wrappedFetch(fetchImpl);
  * Allows customizing the fetch implementation used by the generator.
  */
 export function setFetch(fetch: typeof globalThis.fetch | WrappedFetch) {
-  _fetch = fetch as WrappedFetch;
+  _fetch = wrappedFetch(fetch as WrappedFetch);
 }
 
 export { clearCache, _fetch as fetch };
