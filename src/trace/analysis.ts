@@ -1,3 +1,4 @@
+import babel from '@babel/core'
 import { JspmError } from "../common/err.js";
 import { getIntegrity } from "../common/integrity.js";
 
@@ -32,7 +33,8 @@ export async function createEsmAnalysis(
   source: string,
   url: string
 ): Promise<Analysis> { // Change the return type to Promise<Analysis>
-  if (!imports.length && registerRegEx.test(source))
+  const coolSource = babel.transformSync(source, {comments: false}).code;
+  if (!imports.length && registerRegEx.test(coolSource))
     return createSystemAnalysis(source, imports, url);
   const deps: string[] = [];
   const dynamicDeps: string[] = [];
@@ -75,7 +77,8 @@ export async function createSystemAnalysis(
   imports: string[],
   url: string
 ): Promise<Analysis> {
-  const [, , , rawDeps, , , contextId] = source.match(registerRegEx) || [];
+  const coolSource = babel.transformSync(source, {comments: false}).code;
+  const [, , , rawDeps, , , contextId] = coolSource.match(registerRegEx) || [];
   if (!rawDeps) return createEsmAnalysis(imports, source, url);
   const deps = JSON.parse(rawDeps.replace(/'/g, '"'));
   const dynamicDeps: string[] = [];
