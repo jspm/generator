@@ -1,9 +1,11 @@
 import { JspmError } from "../common/err.js";
 import { getIntegrity } from "../common/integrity.js";
 
-export type Analysis = AnalysisData | {
-  parseError: JspmError | Error
-};
+export type Analysis =
+  | AnalysisData
+  | {
+      parseError: JspmError | Error;
+    };
 
 export interface AnalysisData {
   deps: string[];
@@ -31,8 +33,9 @@ export async function createEsmAnalysis(
   imports: any[],
   source: string,
   url: string
-): Promise<Analysis> { // Change the return type to Promise<Analysis>
-  if (!imports.length && registerRegEx.test(source))
+): Promise<Analysis> {
+  // Change the return type to Promise<Analysis>
+  if (!imports.length && systemMatch(source))
     return createSystemAnalysis(source, imports, url);
   const deps: string[] = [];
   const dynamicDeps: string[] = [];
@@ -67,15 +70,21 @@ export async function createEsmAnalysis(
     integrity: await getIntegrity(source),
   };
 }
+const leadingCommentRegex = /^\s*(\/\*[\s\S]*?\*\/|\s*\/\/[^\n]*)*/;
+const registerRegex = /^\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
 
-const registerRegEx =
-  /^\s*(\/\*[^\*]*(\*(?!\/)[^\*]*)*\*\/|\s*\/\/[^\n]*)*\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
+function systemMatch(code) {
+  const commentMatch = code.match(leadingCommentRegex);
+  const offset = commentMatch ? commentMatch[0].length : 0;
+  return code.slice(offset).match(registerRegex);
+}
+
 export async function createSystemAnalysis(
   source: string,
   imports: string[],
   url: string
 ): Promise<Analysis> {
-  const [, , , rawDeps, , , contextId] = source.match(registerRegEx) || [];
+  const [, rawDeps, contextId] = systemMatch(source) || [];
   if (!rawDeps) return createEsmAnalysis(imports, source, url);
   const deps = JSON.parse(rawDeps.replace(/'/g, '"'));
   const dynamicDeps: string[] = [];
