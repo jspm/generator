@@ -20,7 +20,7 @@ await (async () => {
 await generator.install({ target: './cjspkg', subpath: './browser.js' });
 assert.deepStrictEqual(generator.getMap(), {
   imports: {
-    './cjspkg/browser-dep-exclude.js': 'https://ga.jspm.io/npm:@jspm/core@2.0.1/nodelibs/@empty.js',
+    './cjspkg/browser-dep-exclude.js': 'https://ga.jspm.io/npm:@jspm/core@2.1.0/nodelibs/@empty.js',
     'cjspkg/browser.js': './cjspkg/browser.js',
     unusedcjspkg: './unusedcjspkg/index.js'
   },
