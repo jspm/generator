@@ -68,8 +68,8 @@ export async function createEsmAnalysis(
   };
 }
 
-const registerRegEx =
-  /^\s*(\/\*[^\*]*(\*(?!\/)[^\*]*)*\*\/|\s*\/\/[^\n]*)*\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
+const registerRegEx = /^\s*(\/\*(?:[^*]|\*(?!\/))*\*\/|\s*\/\/[^\n]*)*\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
+
 export async function createSystemAnalysis(
   source: string,
   imports: string[],
