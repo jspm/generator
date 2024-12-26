@@ -1,9 +1,11 @@
 import { JspmError } from "../common/err.js";
 import { getIntegrity } from "../common/integrity.js";
 
-export type Analysis = AnalysisData | {
-  parseError: JspmError | Error
-};
+export type Analysis =
+  | AnalysisData
+  | {
+      parseError: JspmError | Error;
+    };
 
 export interface AnalysisData {
   deps: string[];
@@ -31,7 +33,8 @@ export async function createEsmAnalysis(
   imports: any[],
   source: string,
   url: string
-): Promise<Analysis> { // Change the return type to Promise<Analysis>
+): Promise<Analysis> {
+  // Change the return type to Promise<Analysis>
   if (!imports.length && registerRegEx.test(source))
     return createSystemAnalysis(source, imports, url);
   const deps: string[] = [];
@@ -68,8 +71,8 @@ export async function createEsmAnalysis(
   };
 }
 
-const registerRegEx = /^\s*(\/\*(?:[^*]|\*(?!\/))*\*\/|\s*\/\/[^\n]*)*\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
-
+const registerRegEx =
+  /^\s*(\/\*[^\*]*(?:\*(?!\/)[^\*]*)*\*\/|\s*\/\/[^\n]*)*\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
 export async function createSystemAnalysis(
   source: string,
   imports: string[],
