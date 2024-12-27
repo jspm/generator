@@ -368,7 +368,7 @@ export class Resolver {
 
     if (provider === "nodemodules") {
       throw new JspmError(
-        `${parentUrl}node_modules/${target.name} does not exist, try installing "${target.name}" with npm first via "npm install ${target.name}".`
+        `Cannot find package ${target.name} in node_modules from parent ${parentUrl}. Try installing "${target.name}" with npm first adding it to package.json "dependencies" or running "npm install --save ${target.name}".`
       );
     } else {
       throw new JspmError(
