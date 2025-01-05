@@ -837,11 +837,21 @@ export class Generator {
       for (let dep of preloadDeps.sort()) {
         if (first || whitespace) preloads += newlineTab;
         if (first) first = false;
-        preloads += `<link rel="modulepreload" href="${
+        const url =
           rootUrl || htmlUrl
             ? relativeUrl(new URL(dep), new URL(rootUrl || htmlUrl), !!rootUrl)
-            : dep
-        }" />`;
+            : dep;
+        preloads += `<link rel="modulepreload" href="${url}"${
+          integrity
+            ? ` integrity="${await getIntegrity(
+                new Uint8Array(
+                  await (
+                    await fetch(url, this.traceMap.resolver.fetchOpts)
+                  ).arrayBuffer()
+                )
+              )}"`
+            : ""
+        } />`;
       }
     }
 
