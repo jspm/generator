@@ -42,8 +42,7 @@ export async function pkgToUrl(
 }
 
 export function configure(config: any) {
-  if (config.cdnUrl)
-    cdnUrl = config.cdnUrl;
+  if (config.cdnUrl) cdnUrl = config.cdnUrl;
 }
 
 const exactPkgRegEx =
@@ -75,16 +74,16 @@ export function parseUrlPkg(url: string) {
   }
 }
 
-function getJspmCache (resolver: Resolver): JspmCache {
+function getJspmCache(resolver: Resolver): JspmCache {
   const jspmCache = resolver.context.jspmCache;
   if (!resolver.context.jspmCache) {
-    return resolver.context.jspmCache = {
+    return (resolver.context.jspmCache = {
       lookupCache: new Map(),
       versionsCacheMap: new Map(),
       resolveCache: {},
       cachedErrors: new Map(),
       buildRequested: new Map(),
-    };
+    });
   }
   return jspmCache;
 }
@@ -100,8 +99,7 @@ async function checkBuildOrError(
   }
   const { cachedErrors } = getJspmCache(resolver);
   // no package.json! Check if there's a build error:
-  if (cachedErrors.has(pkgUrl))
-    return cachedErrors.get(pkgUrl);
+  if (cachedErrors.has(pkgUrl)) return cachedErrors.get(pkgUrl);
 
   const cachedErrorPromise = (async () => {
     try {
@@ -119,8 +117,14 @@ async function checkBuildOrError(
   return cachedErrorPromise;
 }
 
-async function ensureBuild(resolver: Resolver, pkg: ExactPackage, fetchOpts: any) {
-  if (await checkBuildOrError(resolver, await pkgToUrl(pkg, "default"), fetchOpts))
+async function ensureBuild(
+  resolver: Resolver,
+  pkg: ExactPackage,
+  fetchOpts: any
+) {
+  if (
+    await checkBuildOrError(resolver, await pkgToUrl(pkg, "default"), fetchOpts)
+  )
     return;
 
   const fullName = `${pkg.name}@${pkg.version}`;
@@ -129,8 +133,7 @@ async function ensureBuild(resolver: Resolver, pkg: ExactPackage, fetchOpts: any
 
   // no package.json AND no build error -> post a build request
   // once the build request has been posted, try polling for up to 2 mins
-  if (buildRequested.has(fullName))
-    return buildRequested.get(fullName);
+  if (buildRequested.has(fullName)) return buildRequested.get(fullName);
   const buildPromise = (async () => {
     const buildRes = await fetch(`${apiUrl}build/${fullName}`, fetchOpts);
     if (!buildRes.ok && buildRes.status !== 403) {
@@ -145,7 +148,13 @@ async function ensureBuild(resolver: Resolver, pkg: ExactPackage, fetchOpts: any
     while (true) {
       await new Promise((resolve) => setTimeout(resolve, BUILD_POLL_INTERVAL));
 
-      if (await checkBuildOrError(resolver, await pkgToUrl(pkg, "default"), fetchOpts))
+      if (
+        await checkBuildOrError(
+          resolver,
+          await pkgToUrl(pkg, "default"),
+          fetchOpts
+        )
+      )
         return;
 
       if (Date.now() - startTime >= BUILD_POLL_TIME)
@@ -302,8 +311,7 @@ async function lookupRange(
 ): Promise<ExactPackage | null> {
   const { lookupCache } = getJspmCache(this);
   const url = pkgToLookupUrl({ registry, name, version: range }, unstable);
-  if (lookupCache.has(url))
-    return lookupCache.get(url);
+  if (lookupCache.has(url)) return lookupCache.get(url);
   const lookupPromise = (async () => {
     const version = await fetch.text(url, this.fetchOpts);
     if (version) {
@@ -328,14 +336,18 @@ async function lookupRange(
   return lookupPromise;
 }
 
-export async function fetchVersions(this: Resolver, name: string): Promise<string[]> {
+export async function fetchVersions(
+  this: Resolver,
+  name: string
+): Promise<string[]> {
   const { versionsCacheMap } = getJspmCache(this);
   if (versionsCacheMap.has(name)) {
     return versionsCacheMap.get(name);
   }
-  const registryLookup = JSON.parse(await (
-    await fetch.text(`https://npmlookup.jspm.io/${encodeURI(name)}`, {})
-  )) || {};
+  const registryLookup =
+    JSON.parse(
+      await await fetch.text(`https://npmlookup.jspm.io/${encodeURI(name)}`, {})
+    ) || {};
   const versions = Object.keys(registryLookup.versions || {});
   versionsCacheMap.set(name, versions);
 
