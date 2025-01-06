@@ -1,5 +1,5 @@
 // @ts-ignore
-import { fetch as fetchImpl, clearCache } from '#fetch';
+import { fetch as fetchImpl, clearCache } from "#fetch";
 
 export interface WrappedResponse {
   url: string;
@@ -15,17 +15,21 @@ export interface WrappedResponse {
 export type FetchFn = (
   url: URL | string,
   ...args: any[]
-) => Promise<WrappedResponse | globalThis.Response>
+) => Promise<WrappedResponse | globalThis.Response>;
 
 export type WrappedFetch = ((
   url: URL | string,
   ...args: any[]
-) => Promise<WrappedResponse | globalThis.Response>)  & {
-  arrayBuffer: (url: URL | string, ...args: any[]) => Promise<ArrayBuffer | null>,
-  text: (url: URL | string, ...args: any[]) => Promise<string | null>
+) => Promise<WrappedResponse | globalThis.Response>) & {
+  arrayBuffer: (
+    url: URL | string,
+    ...args: any[]
+  ) => Promise<ArrayBuffer | null>;
+  text: (url: URL | string, ...args: any[]) => Promise<string | null>;
 };
 
-let retryCount = 5, poolSize = 100;
+let retryCount = 5,
+  poolSize = 100;
 
 export function setRetryCount(count: number) {
   retryCount = count;
@@ -44,7 +48,7 @@ export function setFetch(fetch: typeof globalThis.fetch | WrappedFetch) {
   _fetch = fetch as WrappedFetch;
 }
 
-export { clearCache, _fetch as fetch }
+export { clearCache, _fetch as fetch };
 
 /**
  * Wraps a fetch request with pooling, and retry logic on exceptions (emfile / network errors).
@@ -75,8 +79,7 @@ function wrappedFetch(fetch: FetchFn): WrappedFetch {
         try {
           var res = await fetch(url, ...args);
         } catch (e) {
-          if (retries++ >= retryCount)
-            throw e;
+          if (retries++ >= retryCount) throw e;
           continue;
         }
         switch (res.status) {
@@ -92,12 +95,12 @@ function wrappedFetch(fetch: FetchFn): WrappedFetch {
         try {
           return await res.arrayBuffer();
         } catch (e) {
-          if (retries++ >= retryCount &&
-              e.code === "ERR_SOCKET_TIMEOUT" ||
-              e.code === "ETIMEOUT" ||
-              e.code === "ECONNRESET" ||
-              e.code === 'FETCH_ERROR') {
-
+          if (
+            (retries++ >= retryCount && e.code === "ERR_SOCKET_TIMEOUT") ||
+            e.code === "ETIMEOUT" ||
+            e.code === "ECONNRESET" ||
+            e.code === "FETCH_ERROR"
+          ) {
           }
         }
       }
@@ -107,8 +110,7 @@ function wrappedFetch(fetch: FetchFn): WrappedFetch {
   };
   wrappedFetch.text = async function (url, ...args) {
     const arrayBuffer = await this.arrayBuffer(url, ...args);
-    if (!arrayBuffer)
-        return null;
+    if (!arrayBuffer) return null;
     return new TextDecoder().decode(arrayBuffer);
   };
   return wrappedFetch;
@@ -117,12 +119,10 @@ function wrappedFetch(fetch: FetchFn): WrappedFetch {
 // restrict in-flight fetches to a pool of 100
 let p = [];
 let c = 0;
-function pushFetchPool () {
-  if (++c > poolSize)
-    return new Promise(r => p.push(r));
+function pushFetchPool() {
+  if (++c > poolSize) return new Promise((r) => p.push(r));
 }
-function popFetchPool () {
+function popFetchPool() {
   c--;
-  if (p.length)
-    p.shift()();
+  if (p.length) p.shift()();
 }

@@ -20,7 +20,12 @@ import {
   getMapMatch,
   getScopeMatches,
 } from "@jspm/import-map";
-import { isBuiltinScheme, isMappableScheme, Resolver, TraceEntry } from "./resolver.js";
+import {
+  isBuiltinScheme,
+  isMappableScheme,
+  Resolver,
+  TraceEntry,
+} from "./resolver.js";
 import { Log } from "../common/log.js";
 import {
   mergeConstraints,
@@ -74,8 +79,8 @@ function combineSubpaths(
   installSubpath: "." | `./${string}` | null,
   traceSubpath: "." | `./${string}`
 ): `./${string}` | "." {
-  if (traceSubpath.endsWith('/'))
-    throw new Error('Trailing slash subpaths unsupported');
+  if (traceSubpath.endsWith("/"))
+    throw new Error("Trailing slash subpaths unsupported");
   return installSubpath === null ||
     installSubpath === "." ||
     traceSubpath === "."
@@ -198,12 +203,19 @@ export default class TraceMap {
       var entry = await this.resolver.analyze(resolved);
     } catch (e) {
       if (e instanceof JspmError)
-        throw new Error(`Unable to analyze ${resolved} imported from ${parentUrl}: ${e.message}`);
+        throw new Error(
+          `Unable to analyze ${resolved} imported from ${parentUrl}: ${e.message}`
+        );
       else
-        throw new Error(`Unable to analyze ${resolved} imported from ${parentUrl}`, { cause: e });
+        throw new Error(
+          `Unable to analyze ${resolved} imported from ${parentUrl}`,
+          { cause: e }
+        );
     }
     if (entry === null) {
-      throw new Error(`Module not found ${resolved} imported from ${parentUrl}`);
+      throw new Error(
+        `Module not found ${resolved} imported from ${parentUrl}`
+      );
     }
     if (entry?.format === "commonjs" && entry.usesCjs && !this.opts.commonJS) {
       throw new JspmError(
@@ -282,7 +294,8 @@ export default class TraceMap {
           const existing = map.imports[specifier];
           if (
             !existing ||
-            (existing !== resolved && this.resolver.getAnalysis(parentUrl)?.wasCjs)
+            (existing !== resolved &&
+              this.resolver.getAnalysis(parentUrl)?.wasCjs)
           ) {
             map.set(specifier, resolved);
           }
@@ -562,7 +575,12 @@ export default class TraceMap {
       const resolved = await this.resolver.realPath(
         await this.resolver.resolveExport(
           installUrl,
-          combineSubpaths(installSubpath, parentIsCjs && subpath.endsWith('/') ? subpath.slice(0, -1) as `./${string}` : subpath),
+          combineSubpaths(
+            installSubpath,
+            parentIsCjs && subpath.endsWith("/")
+              ? (subpath.slice(0, -1) as `./${string}`)
+              : subpath
+          ),
           cjsEnv,
           parentIsCjs,
           specifier,

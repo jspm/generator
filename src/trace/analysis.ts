@@ -71,7 +71,8 @@ export async function createEsmAnalysis(
   };
 }
 const leadingCommentRegex = /^\s*(\/\*[\s\S]*?\*\/|\s*\/\/[^\n]*)*/;
-const registerRegex = /^\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
+const registerRegex =
+  /^\s*System\s*\.\s*register\s*\(\s*(\[[^\]]*\])\s*,\s*\(?function\s*\(\s*([^\),\s]+\s*(,\s*([^\),\s]+)\s*)?\s*)?\)/;
 
 function systemMatch(code) {
   const commentMatch = code.match(leadingCommentRegex);

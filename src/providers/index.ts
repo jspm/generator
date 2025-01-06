@@ -71,7 +71,10 @@ export function getProvider(name: string, providers: Record<string, Provider>) {
 }
 
 // Apply provider configurations
-export function configureProviders(providerConfig: Record<string, any>, providers: Record<string, Provider>) {
+export function configureProviders(
+  providerConfig: Record<string, any>,
+  providers: Record<string, Provider>
+) {
   for (const [providerName, provider] of Object.entries(providers)) {
     if (provider.configure) {
       provider.configure(providerConfig[providerName] || {});

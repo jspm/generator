@@ -29,7 +29,11 @@ import {
 } from "./install/package.js";
 import TraceMap from "./trace/tracemap.js";
 // @ts-ignore
-import { clearCache as clearFetchCache, fetch as _fetch, setFetch } from "./common/fetch.js";
+import {
+  clearCache as clearFetchCache,
+  fetch as _fetch,
+  setFetch,
+} from "./common/fetch.js";
 import { IImportMap, ImportMap } from "@jspm/import-map";
 import process from "process";
 import { SemverRange } from "sver";
@@ -40,7 +44,11 @@ import { Replacer } from "./common/str.js";
 import { analyzeHtml } from "./html/analyze.js";
 import { InstallTarget, type InstallMode } from "./install/installer.js";
 import { LockResolutions } from "./install/lock.js";
-import { configureProviders, getDefaultProviderStrings, type Provider } from "./providers/index.js";
+import {
+  configureProviders,
+  getDefaultProviderStrings,
+  type Provider,
+} from "./providers/index.js";
 import * as nodemodules from "./providers/nodemodules.js";
 import { Resolver } from "./trace/resolver.js";
 import { getMaybeWrapperUrl } from "./common/wrapper.js";
@@ -50,7 +58,7 @@ export {
   // utility export
   analyzeHtml,
   // hook export
-  setFetch
+  setFetch,
 };
 
 // Type exports for users:
@@ -328,7 +336,7 @@ export interface GeneratorOptions {
 
   /**
    * Provider configuration options
-   * 
+   *
    * @example
    * ```js
    * const generator = new Generator({
@@ -553,8 +561,7 @@ export class Generator {
     if (inputMap) this.addMappings(inputMap);
 
     // Set the fetch retry count
-    if (typeof fetchRetries === 'number')
-      setRetryCount(fetchRetries);
+    if (typeof fetchRetries === "number") setRetryCount(fetchRetries);
 
     configureProviders(providerConfig, resolver.providers);
   }
@@ -639,7 +646,10 @@ export class Generator {
       error = true;
       throw e;
     } finally {
-      const { map, staticDeps, dynamicDeps } = await this.traceMap.extractMap(this.traceMap.pins, this.integrity);
+      const { map, staticDeps, dynamicDeps } = await this.traceMap.extractMap(
+        this.traceMap.pins,
+        this.integrity
+      );
       this.map = map;
       if (!error) return { staticDeps, dynamicDeps };
     }
@@ -734,7 +744,8 @@ export class Generator {
       );
     } catch (err) {
       // Most likely cause of a generation failure:
-      err.message += '\n\nIf you are linking locally against your node_modules folder, make sure that you have all the necessary dependencies installed.';
+      err.message +=
+        "\n\nIf you are linking locally against your node_modules folder, make sure that you have all the necessary dependencies installed.";
     }
 
     const preloadDeps =
@@ -938,7 +949,11 @@ export class Generator {
 
     // Split the case of multiple install subpaths into multiple installs
     // TODO: flatten all subpath installs here
-    if (!Array.isArray(install) && typeof install !== "string" && install.subpaths !== undefined) {
+    if (
+      !Array.isArray(install) &&
+      typeof install !== "string" &&
+      install.subpaths !== undefined
+    ) {
       install.subpaths.every((subpath) => {
         if (
           typeof subpath !== "string" ||
@@ -948,62 +963,71 @@ export class Generator {
             `Install subpath "${subpath}" must be equal to "." or start with "./".`
           );
       });
-      return this._install(install.subpaths.map((subpath) => ({
-        target: (install as Install).target,
-        alias: (install as Install).alias,
-        subpath,
-      })));
+      return this._install(
+        install.subpaths.map((subpath) => ({
+          target: (install as Install).target,
+          alias: (install as Install).alias,
+          subpath,
+        }))
+      );
     }
 
-    if (!Array.isArray(install))
-      install = [install];
+    if (!Array.isArray(install)) install = [install];
 
     // Handle case of multiple install targets with at most one subpath:
     await this.traceMap.processInputMap; // don't race input processing
 
-    const imports = await Promise.all(install.map(async install => {
-      // Resolve input information to a target package:
-      let alias, target, subpath;
-      if (typeof install === "string" || typeof install.target === "string") {
-        ({ alias, target, subpath } = await installToTarget.call(
-          this,
-          install,
-          this.traceMap.installer.defaultRegistry
-        ));
-      } else {
-        ({ alias, target, subpath } = install);
-        validatePkgName(alias);
-      }
+    const imports = await Promise.all(
+      install.map(async (install) => {
+        // Resolve input information to a target package:
+        let alias, target, subpath;
+        if (typeof install === "string" || typeof install.target === "string") {
+          ({ alias, target, subpath } = await installToTarget.call(
+            this,
+            install,
+            this.traceMap.installer.defaultRegistry
+          ));
+        } else {
+          ({ alias, target, subpath } = install);
+          validatePkgName(alias);
+        }
 
-      this.log(
-        "generator/install",
-        `Adding primary constraint for ${alias}: ${JSON.stringify(target)}`
-      );
+        this.log(
+          "generator/install",
+          `Adding primary constraint for ${alias}: ${JSON.stringify(target)}`
+        );
 
-      // By default, an install takes the latest compatible version for primary
-      // dependencies, and existing in-range versions for secondaries:
-      mode ??= "latest-primaries";
+        // By default, an install takes the latest compatible version for primary
+        // dependencies, and existing in-range versions for secondaries:
+        mode ??= "latest-primaries";
 
-      await this.traceMap.add(alias, target, mode);
+        await this.traceMap.add(alias, target, mode);
 
-      return alias + (subpath ? subpath.slice(1) : '');
-    }));
+        return alias + (subpath ? subpath.slice(1) : "");
+      })
+    );
 
-    await Promise.all(imports.map(async impt => {
-      await this.traceMap.visit(impt, {
-          installMode: mode,
-          toplevel: true,
-        },
-        this.mapUrl.href
-      );
-      
-      // Add the target import as a top-level pin
-      // we do this after the trace, so failed installs don't pollute the map
-      if (!this.traceMap.pins.includes(impt))
-        this.traceMap.pins.push(impt);
-    }));
+    await Promise.all(
+      imports.map(async (impt) => {
+        await this.traceMap.visit(
+          impt,
+          {
+            installMode: mode,
+            toplevel: true,
+          },
+          this.mapUrl.href
+        );
 
-    const { map, staticDeps, dynamicDeps } = await this.traceMap.extractMap(this.traceMap.pins, this.integrity);
+        // Add the target import as a top-level pin
+        // we do this after the trace, so failed installs don't pollute the map
+        if (!this.traceMap.pins.includes(impt)) this.traceMap.pins.push(impt);
+      })
+    );
+
+    const { map, staticDeps, dynamicDeps } = await this.traceMap.extractMap(
+      this.traceMap.pins,
+      this.integrity
+    );
     this.map = map;
     return { staticDeps, dynamicDeps };
   }
@@ -1014,8 +1038,10 @@ export class Generator {
    */
   async reinstall() {
     await this.traceMap.processInputMap;
-    const { map, staticDeps, dynamicDeps } =
-      await this.traceMap.extractMap(this.traceMap.pins, this.integrity);
+    const { map, staticDeps, dynamicDeps } = await this.traceMap.extractMap(
+      this.traceMap.pins,
+      this.integrity
+    );
     this.map = map;
     return { staticDeps, dynamicDeps };
   }
@@ -1086,8 +1112,10 @@ export class Generator {
     }
 
     await this._install(installs, mode);
-    const { map, staticDeps, dynamicDeps } =
-      await this.traceMap.extractMap(this.traceMap.pins, this.integrity);
+    const { map, staticDeps, dynamicDeps } = await this.traceMap.extractMap(
+      this.traceMap.pins,
+      this.integrity
+    );
     this.map = map;
     return { staticDeps, dynamicDeps };
   }
@@ -1113,8 +1141,10 @@ export class Generator {
       );
     }
     this.traceMap.pins = pins;
-    const { staticDeps, dynamicDeps, map } =
-      await this.traceMap.extractMap(this.traceMap.pins, this.integrity);
+    const { staticDeps, dynamicDeps, map } = await this.traceMap.extractMap(
+      this.traceMap.pins,
+      this.integrity
+    );
     this.map = map;
     return { staticDeps, dynamicDeps };
   }
@@ -1439,4 +1469,3 @@ function detectDefaultProvider(
 
   return defaultProvider || winner || "jspm.io";
 }
-

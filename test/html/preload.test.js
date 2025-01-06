@@ -27,8 +27,16 @@ let html = `
 `;
 let pins = await generator.addMappings(html);
 
-const reactProductionIntegrity = await getIntegrity(await (await fetch('https://ga.jspm.io/npm:react@16.14.0/cjs/react.production.min.js')).text());
-const reactIndexIntegrity = await getIntegrity(await (await fetch('https://ga.jspm.io/npm:react@16.14.0/index.js')).text());
+const reactProductionIntegrity = await getIntegrity(
+  await (
+    await fetch(
+      "https://ga.jspm.io/npm:react@16.14.0/cjs/react.production.min.js"
+    )
+  ).text()
+);
+const reactIndexIntegrity = await getIntegrity(
+  await (await fetch("https://ga.jspm.io/npm:react@16.14.0/index.js")).text()
+);
 
 assert.strictEqual(
   await generator.htmlInject(html, { pins, integrity: true }),

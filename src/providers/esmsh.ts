@@ -1,4 +1,8 @@
-import { ExactPackage, LatestPackageTarget, PackageConfig } from "../install/package.js";
+import {
+  ExactPackage,
+  LatestPackageTarget,
+  PackageConfig,
+} from "../install/package.js";
 import { Resolver } from "../trace/resolver.js";
 // @ts-ignore
 import { fetch } from "../common/fetch.js";

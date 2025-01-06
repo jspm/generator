@@ -84,7 +84,7 @@ export interface TraceEntry {
 
   // network errors are stored on the traceEntryPromises promise, while parser
   // errors are stored here. This allows for existence checks in resolver operations.
-  parseError: Error
+  parseError: Error;
 }
 
 export class Resolver {
@@ -363,7 +363,12 @@ export class Resolver {
       provider,
       this.providers
     ).resolveLatestTarget;
-    const pkg = await resolveLatestTarget.call(this, latestTarget, layer, parentUrl);
+    const pkg = await resolveLatestTarget.call(
+      this,
+      latestTarget,
+      layer,
+      parentUrl
+    );
     if (pkg) return pkg;
 
     if (provider === "nodemodules") {
@@ -424,7 +429,7 @@ export class Resolver {
         // subfolder checks before file checks because of fetch
         if (await this.exists(url + "/package.json")) {
           const pcfg = (await this.getPackageConfig(url)) || {};
-          const urlUrl = new URL(url + '/');
+          const urlUrl = new URL(url + "/");
           if (this.env.includes("browser") && typeof pcfg.browser === "string")
             return this.finalizeResolve(
               await legacyMainResolve.call(this, pcfg.browser, urlUrl),
@@ -472,7 +477,8 @@ export class Resolver {
           const subpath = "./" + url.slice(pkgUrl.length);
           if (subpath in pcfg.browser) {
             const target = pcfg.browser[subpath];
-            if (target === false) return this.resolveEmpty(parentIsCjs, url, pkgUrl);
+            if (target === false)
+              return this.resolveEmpty(parentIsCjs, url, pkgUrl);
             if (!target.startsWith("./"))
               throw new Error(
                 `TODO: External browser map for ${subpath} to ${target} in ${url}`
@@ -718,7 +724,11 @@ export class Resolver {
     return null;
   }
 
-  async resolveEmpty(cjsEnv: boolean, originalSpecifier: string, parentUrl: string) {
+  async resolveEmpty(
+    cjsEnv: boolean,
+    originalSpecifier: string,
+    parentUrl: string
+  ) {
     const stdlibTarget = {
       registry: "npm",
       name: "@jspm/core",
@@ -893,53 +903,54 @@ export class Resolver {
 
   getAnalysis(resolvedUrl: string): TraceEntry | null | undefined {
     const traceEntry = this.traceEntries[resolvedUrl];
-    if (traceEntry?.parseError)
-      throw traceEntry.parseError;
+    if (traceEntry?.parseError) throw traceEntry.parseError;
     return traceEntry;
   }
 
   async analyze(resolvedUrl: string): Promise<TraceEntry | null> {
-    if (!this.traceEntryPromises[resolvedUrl]) this.traceEntryPromises[resolvedUrl] = (async () => {
-      let traceEntry: TraceEntry | null = null;
-      const analysis = await getAnalysis(this, resolvedUrl);
-      if (analysis) {
-        traceEntry = {
-          parseError: null,
-          wasCjs: false,
-          usesCjs: false,
-          deps: null,
-          dynamicDeps: null,
-          cjsLazyDeps: null,
-          hasStaticParent: true,
-          size: NaN,
-          integrity: "",
-          format: undefined,
-        };
-        if ('parseError' in analysis) {
-          traceEntry.parseError = analysis.parseError;
-        }
-        else {
-          const { deps, dynamicDeps, cjsLazyDeps, size, format, integrity } = analysis;
-          traceEntry.integrity = integrity;
-          traceEntry.format = format;
-          traceEntry.size = size;
-          traceEntry.deps = deps.sort();
-          traceEntry.dynamicDeps = dynamicDeps.sort();
-          traceEntry.cjsLazyDeps = cjsLazyDeps ? cjsLazyDeps.sort() : cjsLazyDeps;
+    if (!this.traceEntryPromises[resolvedUrl])
+      this.traceEntryPromises[resolvedUrl] = (async () => {
+        let traceEntry: TraceEntry | null = null;
+        const analysis = await getAnalysis(this, resolvedUrl);
+        if (analysis) {
+          traceEntry = {
+            parseError: null,
+            wasCjs: false,
+            usesCjs: false,
+            deps: null,
+            dynamicDeps: null,
+            cjsLazyDeps: null,
+            hasStaticParent: true,
+            size: NaN,
+            integrity: "",
+            format: undefined,
+          };
+          if ("parseError" in analysis) {
+            traceEntry.parseError = analysis.parseError;
+          } else {
+            const { deps, dynamicDeps, cjsLazyDeps, size, format, integrity } =
+              analysis;
+            traceEntry.integrity = integrity;
+            traceEntry.format = format;
+            traceEntry.size = size;
+            traceEntry.deps = deps.sort();
+            traceEntry.dynamicDeps = dynamicDeps.sort();
+            traceEntry.cjsLazyDeps = cjsLazyDeps
+              ? cjsLazyDeps.sort()
+              : cjsLazyDeps;
 
-          // wasCJS distinct from CJS because it applies to CJS transformed into ESM
-          // from the resolver perspective
-          const wasCJS =
-            format === "commonjs" || (await this.wasCommonJS(resolvedUrl));
-          if (wasCJS) traceEntry.wasCjs = true;
+            // wasCJS distinct from CJS because it applies to CJS transformed into ESM
+            // from the resolver perspective
+            const wasCJS =
+              format === "commonjs" || (await this.wasCommonJS(resolvedUrl));
+            if (wasCJS) traceEntry.wasCjs = true;
+          }
         }
-      }
-      this.traceEntries[resolvedUrl] = traceEntry;
-    })();
+        this.traceEntries[resolvedUrl] = traceEntry;
+      })();
     await this.traceEntryPromises[resolvedUrl];
     const traceEntry = this.traceEntries[resolvedUrl];
-    if (traceEntry?.parseError)
-      throw traceEntry.parseError;
+    if (traceEntry?.parseError) throw traceEntry.parseError;
     return traceEntry;
   }
 
@@ -1127,11 +1138,13 @@ function allDotKeys(exports: Record<string, any>) {
 }
 
 // TODO: Refactor legacy intermediate Analysis type into TraceEntry directly
-async function getAnalysis(resolver: Resolver, resolvedUrl: string): Promise<Analysis | null> {
+async function getAnalysis(
+  resolver: Resolver,
+  resolvedUrl: string
+): Promise<Analysis | null> {
   const parentIsRequire = false;
   const source = await fetch.arrayBuffer(resolvedUrl, resolver.fetchOpts);
-  if (!source)
-    return null;
+  if (!source) return null;
   // TODO: headers over extensions for non-file URLs
   try {
     if (resolvedUrl.endsWith(".wasm")) {
@@ -1141,9 +1154,7 @@ async function getAnalysis(resolver: Resolver, resolvedUrl: string): Promise<Ana
         throw e;
       }
       return {
-        deps: WebAssembly.Module.imports(compiled).map(
-          ({ module }) => module
-        ),
+        deps: WebAssembly.Module.imports(compiled).map(({ module }) => module),
         dynamicDeps: [],
         cjsLazyDeps: null,
         size: source.byteLength,
@@ -1230,7 +1241,7 @@ async function getAnalysis(resolver: Resolver, resolvedUrl: string): Promise<Ana
   } catch (e) {
     if (!e.message || !e.message.startsWith("Parse error @:")) {
       return {
-        parseError: e
+        parseError: e,
       };
     }
     // TODO: better parser errors
@@ -1247,7 +1258,7 @@ async function getAnalysis(resolver: Resolver, resolvedUrl: string): Promise<Ana
       return {
         parseError: new JspmError(
           `${errStack}\n\nError parsing ${resolvedUrl}:${pos}`
-        )
+        ),
       };
     }
     throw e;
