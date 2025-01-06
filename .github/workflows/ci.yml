@@ -50,8 +50,9 @@ jobs:
       - run: npm install
       - run: chomp test:browser
         env:
-          CI_BROWSER: /opt/hostedtoolcache/firefox/${{ matrix.firefox }}/x64/firefox
+          CI_BROWSER: C:\Program Files\Firefox_${{ matrix.firefox }}\firefox.exe
           CI_BROWSER_FLAGS: -headless
+          CI_BROWSER_FLUSH: taskkill /F /IM firefox.exe
           SKIP_PERF: 1
 
   test-servers:
