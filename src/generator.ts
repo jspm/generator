@@ -511,7 +511,7 @@ export class Generator {
       env,
       log,
       fetchOpts,
-      preserveSymlinks: true,
+      preserveSymlinks: typeof process?.versions?.node === "string",
       traceCjs: commonJS,
       traceTs: typeScript,
       traceSystem: system,

@@ -128,6 +128,7 @@ export function createProvider(
  * find it then recurse through the parent directories until you do.
  * TODO: we don't currently handle the target's version constraints here
  */
+let realpath, pathToFileURL;
 async function nodeResolve(
   this: Resolver,
   name: string,
