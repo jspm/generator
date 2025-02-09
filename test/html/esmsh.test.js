@@ -23,5 +23,5 @@ html = `
 pins = await generator.addMappings(html);
 
 assert(
-  (await generator.htmlInject(html, { pins })).includes("https://esm.sh/v")
+  (await generator.htmlInject(html, { pins })).includes("https://esm.sh/*")
 );

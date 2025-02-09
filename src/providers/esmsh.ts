@@ -54,32 +54,7 @@ export async function getPackageConfig(
       );
   }
 
-  const pcfg = await res.json();
-
-  // esm.sh uses exports paths as paths
-  // so we rewrite all exports paths to point to their internal path and let esm.sh do resolution
-  // note: strictly speaking we should add ?conditions=... here for the condition set
-  // but that will require some more wiring
-  if (pcfg.exports) {
-    // in the conditional expoort case, paths seem to work?
-    // so go with that
-    if (Object.keys(pcfg.exports).every((key) => !key.startsWith("./"))) {
-      pcfg.exports["."] = pcfg.exports;
-    } else {
-      // let esm.sh resolve conditions
-      for (const key of Object.keys(pcfg.exports)) {
-        pcfg.exports[key] = key;
-      }
-    }
-    // wildcard key for esmsh to do its own fallback resolution too
-    pcfg.exports["./*"] = "./*";
-  }
-  if (pcfg.imports) {
-    for (const key of Object.keys(pcfg.imports)) {
-      pcfg.imports[key] = key;
-    }
-  }
-  return pcfg;
+  return await res.json();
 }
 
 export async function resolveLatestTarget(
