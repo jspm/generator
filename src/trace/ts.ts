@@ -123,6 +123,7 @@ export async function createTsAnalysis(
   };
 }
 
+// We use the special character \x10 as a "wildcard symbol"
 function buildDynamicString(
   node,
   fileName,
@@ -149,7 +150,7 @@ function buildDynamicString(
           lastIsWildcard
         );
         if (nextStr.length) {
-          lastIsWildcard = nextStr.endsWith("*");
+          lastIsWildcard = nextStr.endsWith("\x10");
           str += nextStr;
         }
       }
@@ -163,7 +164,7 @@ function buildDynamicString(
       isEsm,
       lastIsWildcard
     );
-    if (leftResolved.length) lastIsWildcard = leftResolved.endsWith("*");
+    if (leftResolved.length) lastIsWildcard = leftResolved.endsWith("\x10");
     const rightResolved = buildDynamicString(
       node.right,
       fileName,
@@ -186,5 +187,5 @@ function buildDynamicString(
       return './' + fileName;
     }
   }*/
-  return lastIsWildcard ? "" : "*";
+  return lastIsWildcard ? "" : "\x10";
 }

@@ -335,6 +335,15 @@ export interface GeneratorOptions {
   fetchRetries?: number;
 
   /**
+   * The same as the Node.js `--preserve-symlinks` flag, except it will apply
+   * to both the main and the dependencies.
+   * See https://nodejs.org/api/cli.html#--preserve-symlinks.
+   * This is only supported for file: URLs.
+   * Defaults to false, like Node.js.
+   */
+  preserveSymlinks?: boolean;
+
+  /**
    * Provider configuration options
    *
    * @example
@@ -446,6 +455,7 @@ export class Generator {
     integrity = false,
     fetchRetries,
     providerConfig = {},
+    preserveSymlinks,
   }: GeneratorOptions = {}) {
     // Initialise the debug logger:
     const { log, logStream } = createLogger();
@@ -458,6 +468,8 @@ export class Generator {
         }
       })();
     }
+    if (typeof preserveSymlinks !== "boolean")
+      preserveSymlinks = typeof process?.versions?.node === "string";
 
     // Initialise the resource fetcher:
     let fetchOpts: Record<string, any> = {
@@ -511,7 +523,7 @@ export class Generator {
       env,
       log,
       fetchOpts,
-      preserveSymlinks: true,
+      preserveSymlinks,
       traceCjs: commonJS,
       traceTs: typeScript,
       traceSystem: system,

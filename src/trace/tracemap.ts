@@ -254,7 +254,8 @@ export default class TraceMap {
 
     await Promise.all(
       allDeps.map(async (dep) => {
-        if (dep.indexOf("*") !== -1) {
+        // Special wildcard tracing syntax for dynamic imports, todo
+        if (dep.indexOf("\x10") !== -1) {
           this.log("todo", "Handle wildcard trace " + dep + " in " + resolved);
           return;
         }
