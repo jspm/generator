@@ -71,3 +71,26 @@ import assert from "assert";
     `https://ga.jspm.io/npm:lit@${expectedVersion}/directive.js`
   );
 }
+
+{
+  const generator = new Generator({ defaultProvider: 'jsdelivr' });
+  await generator.addMappings({
+    "imports": {
+      "lodash": "https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.js",
+      "lodash/filter.js": "https://cdn.jsdelivr.net/npm/lodash@4.17.20/filter.js"
+    }  
+  });
+
+  await generator.update();
+  const json = generator.getMap();
+  const expectedVersion = (await lookup("lodash@4")).resolved.version;
+
+  assert.strictEqual(
+    json.imports.lodash,
+    `https://cdn.jsdelivr.net/npm/lodash@${expectedVersion}/lodash.js`
+  );
+  assert.strictEqual(
+    json.imports['lodash/filter.js'],
+    `https://cdn.jsdelivr.net/npm/lodash@${expectedVersion}/filter.js`
+  );
+}

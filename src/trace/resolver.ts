@@ -634,20 +634,6 @@ export class Resolver {
         return bestMatch;
       }
     } else {
-      if (subpath !== ".") {
-        try {
-          if (
-            (await this.finalizeResolve(
-              new URL(subpath, new URL(pkgUrl)).href,
-              false,
-              false,
-              pkgUrl
-            )) === resolvedUrl
-          )
-            return ".";
-        } catch {}
-        return null;
-      }
       try {
         if (
           typeof pcfg.main === "string" &&
@@ -718,10 +704,19 @@ export class Resolver {
           )) === resolvedUrl
         )
           return ".";
-        return null;
+      } catch {}
+      try {
+        if (
+          (await this.finalizeResolve(
+            new URL(subpath, new URL(pkgUrl)).href,
+            false,
+            false,
+            pkgUrl
+          )) === resolvedUrl
+        )
+          return subpath;
       } catch {}
     }
-    return null;
   }
 
   async resolveEmpty(
