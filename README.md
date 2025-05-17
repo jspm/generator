@@ -2,7 +2,7 @@
 
 **The JSPM Generator repository has moved into the JSPM Monorepo.**
 
-**Please visit the new project location: [https://github.com/jspm/jspm](https://github.com/jspm/jspm/tree/main/generator)**
+**Please visit the new location: [https://github.com/jspm/jspm/tree/main/generator](https://github.com/jspm/jspm/tree/main/generator)**
 
 ---
 
