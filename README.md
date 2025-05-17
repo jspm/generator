@@ -1,12 +1,10 @@
-<div align="center">
-  <img style="display: inline-block; width: 100px; vertical-align: middle; margin-top: -1em;" src="https://jspm.org/jspm.png"/>
-  <h1 style="display: inline-block">JSPM Generator</h1>
-<p><strong>JSPM Generator is the core import map generation project used by JSPM, supporting import map package management.</strong></p>
-<a href="https://jspm.org/getting-started">Getting Started</a> | <a href="https://jspm.org/docs/generator">Documentation</a> | <a href="https://jspm.org/faq">FAQ</a>
-<br />
-<hr style="width:50%"/>
-</div>
-<br />
+# ⚠️ ARCHIVED
+
+**The JSPM Generator repository has moved into the JSPM Monorepo.**
+
+**Please visit the new project location: [https://github.com/jspm/jspm](https://github.com/jspm/jspm/tree/main/generator)**
+
+---
 
 This is the core import map generation project for the [JSPM CLI](https://github.com/jspm/jspm).
 
